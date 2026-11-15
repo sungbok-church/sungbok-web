@@ -7,7 +7,7 @@
 | 자료 목록 | `/resources/sunday-sermon` · `series-sermon` · `seasonal-sermon` | 「자료 찾기」 검색 · 분류 칩 · 결과 수와 정렬 · 글 중심 목록(A안 «빠른 목록형») |
 | 문서 열람 | `/resources/<분류>/<자료id>` | 「자료 목록」 돌아가기 · 제목과 메타 · 내려받기 · 설교 영상 보기 · 열람기(쪽 넘김·확대) |
 
-> 결정 배경: [ADR 0013](../decisions/0013-content-repository-and-video-id-link.md). 시안은 A·B·C 세 안이었고 A안으로 확정(2026-11-13).
+> 결정 배경: [ADR 0014](../decisions/0014-content-repository-and-video-id-link.md). 시안은 A·B·C 세 안이었고 A안으로 확정(2026-11-13).
 
 ## 화면 규칙
 

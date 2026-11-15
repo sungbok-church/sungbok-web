@@ -7,7 +7,7 @@
 | 성복의 뜰 | `/news/garden` · `/news/garden/영상id` | **영상**. 예배 설교와 같은 화면 |
 | 교회앨범 | `/news/album` · `/news/album/id` | C안 «목록 + 미리보기» |
 
-별도 공지사항 메뉴는 두지 않는다(2026-10-08 회의). 결정 배경: [ADR 0013](../decisions/0013-content-repository-and-video-id-link.md).
+별도 공지사항 메뉴는 두지 않는다(2026-10-08 회의). 결정 배경: [ADR 0014](../decisions/0014-content-repository-and-video-id-link.md).
 
 ## 주일광고 · 성복의 뜰 — 영상
 

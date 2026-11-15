@@ -4,7 +4,7 @@
 // 후보 띠는 액자 밑단(유리 턱)에 걸쳐 벽 위로 내려온다 — 영상 픽셀은 하나도 가리지 않는다.
 // 전환(handoff): 고른 썸네일이 제자리에서 벽 전체로 번지고(scale + crossfade), 액자는 새 포스터로 덮인 뒤 플레이어를 바꾼다.
 import { Volume2, VolumeX } from 'lucide-react';
-import Image from 'next/image';
+import { YoutubeThumb } from '@/shared/components/features/YoutubeThumb';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import type { HomeVideo } from '@/domains/home/api/homeVideoFeed';
@@ -12,6 +12,7 @@ import { useHomeVideoFeed } from '@/domains/home/api/useHomeVideoFeed';
 import { LABELS } from '@/domains/home/data/homeVideo';
 import { useAudioFocus } from '@/shared/lib/audioFocus';
 import { useNearViewport } from '@/shared/lib/hooks/useNearViewport';
+import { usePageLoaded } from '@/shared/lib/hooks/usePageLoaded';
 import { cn } from '@/shared/lib/utils';
 import { createPlayer, type YTPlayer } from '@/shared/lib/youtubePlayer';
 
@@ -19,7 +20,9 @@ const SECTION_LABEL = '광고 영상';
 /** 포스터가 재생 중인 영상을 다 덮은 뒤에 플레이어를 바꾼다(검은 틈 없이) */
 const SWAP_MS = 340;
 const THUMB_SIZES = '(min-width: 768px) 220px, 40vw';
-const SCREEN_SIZES = '(min-width: 1500px) 1320px, 88vw';
+// 폰(768px 미만)은 640px 판(sd, 약 50KB)을 받게 한다 — 기기 배율 3 이면 1280px 판(약 175KB)을 고르는데, 액자 폭(약 340px)엔
+// 640px 판도 2배 가까운 밀도라 충분하다. 폭을 실제보다 작게(213px) 적는 건 배율 2·3 모두에서 640px 판에 멈추게 하려는 것.
+const SCREEN_SIZES = '(max-width: 767px) 213px, (min-width: 1500px) 1320px, 88vw';
 const SKELETON_THUMBS = 5;
 
 const CSS = `
@@ -171,6 +174,8 @@ const Skeleton = () => (
   </section>
 );
 
+export const NoticeReelSkeleton = Skeleton;
+
 /* ───────────── 본체 ───────────── */
 
 type Bloom = {
@@ -187,12 +192,14 @@ type Bloom = {
 
 const Wall = ({ video, entering }: { video: HomeVideo; entering?: boolean }) => (
   <div className={cn('absolute inset-0', entering && 'sp-b-wall-in')}>
-    <Image
+    <YoutubeThumb
       src={video.thumbnail}
       alt=""
       fill
-      sizes="320px"
-      loading="eager"
+      // 크게 흐린 배경이라 가장 작은 판(320px, 약 15KB)이면 충분하다 — 기기 배율과 상관없이 그것을 고르게 폭을 작게 적는다(배율 3 에서도 256w 후보 = 320px 판)
+      sizes="80px"
+      // 섹션 전체를 덮는 배경이라 폰에서는 16:9 보다 세로로 길다 — 검은 띠가 든 4:3 크기는 쓰지 않는다
+      wide
       className="scale-125 object-cover blur-3xl saturate-150"
     />
   </div>
@@ -211,6 +218,8 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
   const [edge, setEdge] = useState({ l: false, r: false });
   // 가리키거나 포커스한 후보의 큰 포스터를 미리 받아 둔다 — 누르는 순간 액자에 선명하게 깔린다
   const [warmId, setWarmId] = useState<string | null>(null);
+  // 첫 영상이 움직이기 시작했나(한 번 켜지면 유지) — 다음 영상 큰 포스터를 그때부터 받는다
+  const [primed, setPrimed] = useState(false);
 
   const index = Math.min(rawIndex, n - 1);
   const mounted = Math.min(rawMounted, n - 1);
@@ -220,6 +229,7 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
   const prev = prevIndex !== null && prevIndex !== index ? notices[prevIndex] : undefined;
   const warm = notices.find(v => v.id === warmId && v.id !== current.id && v.id !== upcoming.id);
   const settled = index === mounted;
+  if (!cover && !primed) setPrimed(true);
 
   const sectionRef = useRef<HTMLElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -228,10 +238,17 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
   const barRef = useRef<HTMLSpanElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const swapTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // 유튜브 플레이어(IFrame API 스크립트 + iframe)는 릴이 한 화면 앞까지 왔을 때 만든다 — 첫 로딩에서 뺀다.
+  // 유튜브 플레이어(플레이어 코드 약 1MB)는 릴 한 화면 앞에서 멈춘 채로 미리 만들어 두고, 재생(영상 데이터)은
+  // 릴이 실제로 화면에 들어왔을 때 시작한다 — 도착하면 플레이어가 준비돼 있어 바로 움직이고, 화면 밖에서 영상을
+  // 받지는 않는다. 미리 만들기는 페이지 첫 로딩이 끝난 뒤에만 — 새로고침이 스크롤 위치를 되돌려 릴 근처에서 열려도
+  // 첫 화면과 회선을 다투지 않게(화면에 이미 들어와 있으면 바로 만든다). 그 전에는 썸네일이 자리를 채운다.
+  const seen = useNearViewport(sectionRef, '0px');
   const near = useNearViewport(sectionRef, '100% 0px');
+  const pageLoaded = usePageLoaded();
+  const prepare = seen || (near && pageLoaded);
+  const startRef = useRef<(() => void) | null>(null);
   const bloomSeq = useRef(0);
-  const live = useRef({ index, mounted, soundOn: false, next: () => {} });
+  const live = useRef({ index, mounted, soundOn: false, seen: false, next: () => {} });
 
   const audio = useAudioFocus('reel');
 
@@ -274,7 +291,13 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
 
   // 플레이어 콜백이 언제나 최신 상태를 보도록 렌더 뒤에 맞춰 둔다
   useEffect(() => {
-    live.current = { index, mounted, soundOn: audio.active, next: () => go((index + 1) % n) };
+    live.current = {
+      index,
+      mounted,
+      soundOn: audio.active,
+      seen,
+      next: () => go((index + 1) % n),
+    };
   });
   useEffect(() => () => clearTimeout(swapTimer.current), []);
 
@@ -284,7 +307,7 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
   const single = n === 1;
   useEffect(() => {
     const el = screenRef.current;
-    if (!el || !near) return;
+    if (!el || !prepare) return;
     let fallback: ReturnType<typeof setTimeout> | undefined;
     let watch: ReturnType<typeof setInterval> | undefined;
     const reveal = () => {
@@ -301,19 +324,35 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
     };
     // 모션 줄이기 — 자동재생·자동 로테이션을 끄고 플레이어의 네이티브 컨트롤로 사용자가 직접 재생한다
     const reduced = prefersReducedMotion();
+    let ready: YTPlayer | null = null;
+    let started = false;
+    // 멈춘 채 만든 플레이어를 재생한다 — 준비됐고 릴이 화면에 들어온 뒤(둘 중 늦은 쪽에서) 한 번만.
+    // 포스터는 재생을 건 뒤에만 걷는다(멈춘 플레이어의 유튜브 재생 버튼 화면이 드러나지 않게).
+    const start = () => {
+      if (!ready || started || reduced || !live.current.seen) return;
+      started = true;
+      // 무음으로 재생을 건 뒤 소리를 켠다 — 제스처 없는 소리 있는 재생은 브라우저가 막을 수 있다(막히면 로테이션이 멈춘다)
+      ready.playVideo();
+      if (live.current.soundOn) ready.unMute();
+      // 자동재생이 막힌 환경에서도 포스터가 플레이어를 계속 가리고 있지 않도록
+      fallback = setTimeout(reveal, 3200);
+    };
+    startRef.current = start;
     const destroy = createPlayer(el, playingId, {
-      autoplay: !reduced,
+      autoplay: false,
       controls: reduced,
       loop: single,
       onReady: p => {
         playerRef.current = p;
+        ready = p;
         const frame = p.getIframe();
         frame.title = playingTitle;
         // 로테이션은 릴이 몰고 간다 — 플레이어는 보기만 하고, 조작은 소리 버튼 하나(키보드 포커스도 넘긴다)
         if (!reduced) frame.tabIndex = -1;
-        if (live.current.soundOn) p.unMute();
-        // 자동재생이 막힌 환경에서도 포스터가 플레이어를 계속 가리고 있지 않도록
-        fallback = setTimeout(reveal, reduced ? 0 : 3200);
+        if (reduced) {
+          if (live.current.soundOn) p.unMute();
+          fallback = setTimeout(reveal, 0);
+        } else start();
       },
       onStateChange: (state, p) => {
         if (state === 1) revealWhenMoving(p);
@@ -326,9 +365,14 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
       clearTimeout(fallback);
       clearInterval(watch);
       playerRef.current = null;
+      startRef.current = null;
       destroy();
     };
-  }, [playingId, playingTitle, single, near]);
+  }, [playingId, playingTitle, single, prepare]);
+  // 릴이 화면에 들어왔다 — 미리 만들어 둔 플레이어가 준비돼 있으면 지금 재생한다(아니면 준비되는 순간 onReady 가 건다)
+  useEffect(() => {
+    if (seen) startRef.current?.();
+  }, [seen]);
 
   // 홈 단일 소리 규칙 — 다른 영상이 소리를 가져가면 내 것은 스스로 꺼진다
   useEffect(() => {
@@ -424,7 +468,13 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
                 }
                 onAnimationEnd={e => e.animationName === 'sp-b-bloom-move' && setBloom(null)}
               >
-                <Image src={bloom.src} alt="" fill sizes={THUMB_SIZES} className="object-cover" />
+                <YoutubeThumb
+                  src={bloom.src}
+                  alt=""
+                  fill
+                  sizes={THUMB_SIZES}
+                  className="object-cover"
+                />
               </div>
             )}
             {/* 밝은 스크림 — 벽은 가운데에서만 색을 띠고 위·아래는 페이지 배경으로 돌아간다(이웃과 이음새 없음) */}
@@ -437,11 +487,11 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
         <div className={HEAD_CLASS}>
           <h3
             key={current.id}
-            className="sp-b-title text-b1-text pb-1 text-title leading-[1.4] font-semibold tracking-[-0.015em] text-balance md:text-[21px]"
+            className="sp-b-title text-b1-text text-title pb-1 leading-[1.4] font-semibold tracking-[-0.015em] text-balance md:text-[21px]"
           >
             {current.title}
             {current.durationSec !== null && (
-              <span className="b1-mono text-b1-sub ml-2.5 text-caption font-normal tracking-normal whitespace-nowrap md:text-body-sm">
+              <span className="b1-mono text-b1-sub text-caption md:text-body-sm ml-2.5 font-normal tracking-normal whitespace-nowrap">
                 <span className="sr-only">길이 </span>
                 {clock(current.durationSec)}
               </span>
@@ -452,7 +502,7 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
             onClick={toggleSound}
             aria-label={soundLabel}
             className={cn(
-              'focus-visible:ring-b1-accent focus-visible:ring-offset-b1-bg inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border text-label font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 max-sm:w-11 sm:px-4',
+              'focus-visible:ring-b1-accent focus-visible:ring-offset-b1-bg text-label inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 max-sm:w-11 sm:px-4',
               audio.active
                 ? 'border-b1-text bg-b1-text text-white'
                 : 'border-b1-border bg-b1-surface/80 text-b1-text hover:border-b1-sub'
@@ -477,16 +527,15 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
               )}
             >
               {/* 띠에서 이미 받아 둔 작은 판이 먼저 깔리고, 큰 판이 도착하면 그 위에 얹힌다 — 덮는 순간에 빈 화면·이전 그림이 없다 */}
-              <Image
+              <YoutubeThumb
                 key={`lo-${current.id}`}
                 src={current.thumbnail}
                 alt=""
                 fill
                 sizes={THUMB_SIZES}
-                loading="eager"
                 className="object-cover"
               />
-              <Image
+              <YoutubeThumb
                 key={`hi-${current.id}`}
                 src={current.thumbnail}
                 alt=""
@@ -494,25 +543,24 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
                 sizes={SCREEN_SIZES}
                 className="object-cover"
               />
-              {hasQueue && (
-                <Image
+              {/* 다음 영상의 큰 포스터는 첫 영상이 움직이기 시작한 뒤에 받는다 — 첫 재생과 회선을 다투지 않게 */}
+              {hasQueue && primed && (
+                <YoutubeThumb
                   key={`next-${upcoming.id}`}
                   src={upcoming.thumbnail}
                   alt=""
                   fill
                   sizes={SCREEN_SIZES}
-                  loading="eager"
                   className="invisible object-cover"
                 />
               )}
               {warm && (
-                <Image
+                <YoutubeThumb
                   key={`warm-${warm.id}`}
                   src={warm.thumbnail}
                   alt=""
                   fill
                   sizes={SCREEN_SIZES}
-                  loading="eager"
                   className="invisible object-cover"
                 />
               )}
@@ -551,7 +599,7 @@ const Billboard = ({ notices }: { notices: HomeVideo[] }) => {
                             : 'shadow-b1-text/25 shadow-lg hover:-translate-y-1'
                         )}
                       >
-                        <Image
+                        <YoutubeThumb
                           src={v.thumbnail}
                           alt=""
                           fill

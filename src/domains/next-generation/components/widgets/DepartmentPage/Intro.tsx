@@ -3,7 +3,7 @@
 // 1440: 전폭 사진(100svh 핀)이 스크롤로 왼쪽 카드로 물러나고 오른쪽에 사실줄→소개→담당→안내 한 줄이 떠오른다.
 // 390: 사진이 뒤에 서 있고 흰 시트가 그 위로 올라오며 정보를 싣는다.
 // children(사진 쇼케이스)은 시트 안, 정보 아래에 렌더된다. 스크럽은 scroll + rAF(Lenis 가 움직인 실제 스크롤 값).
-import Image from 'next/image';
+import { Photo as SizedPhoto } from '@/shared/components/features/Photo';
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
 import type { Department, Photo } from './types';
@@ -12,7 +12,7 @@ const MAXW = 1200;
 const GUTTER = 32;
 const CARD = 0.46;
 const GAP = 64;
-/** 고정 헤더(DockNav) 높이 — 휴대폰에서 사진을 그 아래에 세운다 */
+/** 고정 헤더(DockNav) 높이 — 휴대폰에서 사진이 스크롤로 붙을 때 그 아래에 멈춘다(.en-pin top) */
 const HEADER_H = 64;
 /** 휴대폰에서 시트가 처음 보이는 최소 높이(화면 비율) */
 const MIN_PEEK = 0.14;
@@ -58,7 +58,9 @@ export default function Intro({ dept, door, children }: IntroProps) {
         : Math.min(vh, door?.src.height ?? vh);
       const x0 = (vw - w0) / 2;
       // 데스크톱: 가운데 두되 독(64px) 아래까지만 — 머리 바로 아래에서 바로 들어선다
-      const y0 = mobile ? HEADER_H : Math.min((vh - h0) / 2, 64);
+      // 휴대폰: 무대 맨 위에 붙인다. 헤더 높이만큼 띄우는 일은 핀(top)이 한다 — 여기서 또 띄우면
+      // 부서 이름·탭이 위에 있는 처음 화면에서 탭과 사진 사이가 그만큼 더 빈다.
+      const y0 = mobile ? 0 : Math.min((vh - h0) / 2, 64);
       const root = stage.closest<HTMLElement>('.en-root');
       // svh 기준으로 둔다 — 휴대폰 주소창이 접히며 innerHeight 가 바뀌어도 시트 위치(무대 높이)가 흔들리지 않게
       if (mobile) root?.style.setProperty('--en-peek', `calc(100svh - ${y0 + h0}px)`);
@@ -79,7 +81,8 @@ export default function Intro({ dept, door, children }: IntroProps) {
     const update = () => {
       raf = 0;
       const run = stage.offsetHeight - pin.offsetHeight;
-      const top = stage.getBoundingClientRect().top;
+      // 핀이 붙기 시작하는 자리(sticky top)부터 센다 — 휴대폰은 헤더 아래
+      const top = stage.getBoundingClientRect().top - (parseFloat(getComputedStyle(pin).top) || 0);
       const p = run > 0 ? clamp01(-top / run) : 1;
       stage.style.setProperty('--en-e', String(seg(p, 0.04, 0.6)));
       stage.style.setProperty('--en-i1', String(seg(p, 0.36, 0.64)));
@@ -135,12 +138,11 @@ export default function Intro({ dept, door, children }: IntroProps) {
         {dept.staff.map(s => (
           <li key={s.name} className="en-staff-row">
             <span className="en-staff-photo bg-b1-placeholder">
-              <Image
+              <SizedPhoto
                 src={s.photo}
                 alt={`${s.name} ${s.role}`}
                 fill
                 sizes="56px"
-                quality={90}
                 className="object-cover"
               />
             </span>
@@ -240,11 +242,14 @@ export default function Intro({ dept, door, children }: IntroProps) {
         @media (max-width: 899px) {
           .en-root { --en-peek: 14svh; }
           .en-stage { height: calc(200svh - var(--en-peek)); }
+          .en-pin { top: ${HEADER_H}px; }
           .en-photo { border-radius: 0; transform: scale(calc(1 - 0.06 * var(--en-e))); opacity: calc(1 - 0.55 * var(--en-e)); transform-origin: 50% 40%; }
           .en-info--desk { display: none; }
           .en-info--mob { display: flex; }
           .en-sheet {
-            margin-top: calc(-100svh + var(--en-peek)); background: var(--color-b1-bg);
+            /* 시트 윗변 = 무대 시작 + (100svh - peek) = 사진 바로 아래. 무대 높이가 200svh - peek 이므로 화면 한 장만큼만 당긴다.
+               (+peek 를 더하면 시트가 늘 화면 한 장 아래에서 시작해, 낮은 사진 밑이 통째로 비었다) */
+            margin-top: -100svh; background: var(--color-b1-bg);
             border-radius: 28px 28px 0 0; padding-top: 28px;
             box-shadow: 0 -12px 40px color-mix(in srgb, var(--color-b1-text) 10%, transparent);
           }
@@ -277,12 +282,11 @@ export default function Intro({ dept, door, children }: IntroProps) {
           <div className="en-photo bg-b1-placeholder">
             {door ? (
               <div className="en-photo-img">
-                <Image
+                <SizedPhoto
                   src={door.src}
                   alt={door.alt}
                   fill
                   preload
-                  quality={90}
                   // 휴대폰은 사진을 비율대로 폭에 맞춰 세운다(100vw). PC 는 화면 높이로 채우므로(cover) 높이 × 비율만큼 큰 원본이 필요하다.
                   sizes={`(max-width: 899px) 100vw, max(100vw, ${Math.round((door.src.width / door.src.height) * 100)}vh)`}
                   className="object-cover"
