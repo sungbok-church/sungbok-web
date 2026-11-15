@@ -1,0 +1,35 @@
+// 교회소식의 공개 자료 읽기 — 주일광고·성복의 뜰(영상), 주보, 교회앨범. 지금은 시드(data/)를 읽는다.
+// 관리자·DB 가 생기면 load 들만 DB 조회로 바꾼다(부르는 쪽은 그대로 — 그래서 지금도 async).
+// 임시저장과 보여 줄 것이 없는 글(영상 id·그림이 빈 글)은 여기서 걸러 공개 화면에 나가지 않는다.
+import { ALBUM_SEED } from '../data/albumSeed';
+import { BULLETIN_SEED } from '../data/bulletinSeed';
+import { NEWS_VIDEOS_SEED } from '../data/newsVideosSeed';
+import type { Album, BulletinIssue, NewsVideo, NewsVideoFeed } from './news.types';
+
+type Loaders = {
+  videos: () => Promise<readonly NewsVideo[]>;
+  issues: () => Promise<readonly BulletinIssue[]>;
+  albums: () => Promise<readonly Album[]>;
+};
+
+export const createNewsRepository = (load: Loaders) => ({
+  /** 주일광고·성복의 뜰 — 최신 날짜부터. 영상이 연결되지 않은 글은 싣지 않는다(글만 있는 화면으로 바꾸지 않는다) */
+  videos: async (feed: NewsVideoFeed): Promise<NewsVideo[]> =>
+    (await load.videos())
+      .filter(v => v.status === 'published' && v.feed === feed && v.videoId)
+      .sort((a, b) => b.date.localeCompare(a.date)),
+  /** 주보 — 최신 주일부터 */
+  issues: async (): Promise<BulletinIssue[]> =>
+    (await load.issues())
+      .filter(i => i.status === 'published' && i.pages.length > 0)
+      .sort((a, b) => b.date.localeCompare(a.date)),
+  /** 교회앨범 — 등록된 순서 그대로 */
+  albums: async (): Promise<Album[]> =>
+    (await load.albums()).filter(a => a.status === 'published' && a.images.length > 0),
+});
+
+export const newsRepository = createNewsRepository({
+  videos: async () => NEWS_VIDEOS_SEED,
+  issues: async () => BULLETIN_SEED,
+  albums: async () => ALBUM_SEED,
+});

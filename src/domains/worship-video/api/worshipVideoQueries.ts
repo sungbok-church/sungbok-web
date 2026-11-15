@@ -1,10 +1,10 @@
 // 예배 설교 쿼리 공용 모듈(순수) — 서버 미리 받기(worshipVideoPrefetch.server)와 화면 훅(useSermonLibrary)이 함께 쓴다.
 // 'use client' 파일에 두면 서버에서는 실제 값이 아니라 클라이언트 참조로 바뀌어 키가 어긋난다 — 그래서 여기.
-import type { WorshipPage } from '../config/worshipPages';
+import type { VideoPage } from '../config/worshipPages';
 import type { Sermon } from './worshipVideo.types';
 
-export const sermonLibraryQueryKey = (page: WorshipPage) => ['worship-library', page] as const;
-export const sermonDescriptionQueryKey = (page: WorshipPage, videoId: string) =>
+export const sermonLibraryQueryKey = (page: VideoPage) => ['worship-library', page] as const;
+export const sermonDescriptionQueryKey = (page: VideoPage, videoId: string) =>
   ['worship-description', page, videoId] as const;
 
 const text = (v: unknown): v is string => typeof v === 'string' && !!v;

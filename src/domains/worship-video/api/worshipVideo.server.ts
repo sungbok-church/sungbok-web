@@ -13,7 +13,16 @@ import {
   youtubeThumbnailsSchema,
 } from '@/shared/api/youtubeApi.server';
 
-import { WORSHIP_PAGES, type WorshipPage } from '../config/worshipPages';
+import type { NewsVideoFeed } from '@/domains/news/api/news.types';
+import { newsRepository } from '@/domains/news/api/newsRepository';
+
+import {
+  isWorshipPage,
+  WORSHIP_PAGES,
+  type VideoPage,
+  type WorshipPage,
+} from '../config/worshipPages';
+import { newsVideosToSermons } from './newsVideoSermon';
 import { sortSermons } from './sermonList';
 import { dateInText, parseSermonDescription, parseSermonTitle } from './sermonParse';
 import type { Sermon } from './worshipVideo.types';
@@ -151,15 +160,28 @@ const collect = async (page: WorshipPage): Promise<Collected> => {
   };
 };
 
-/** 예배 페이지의 설교 전체 — 날짜 최신순. 설명 본문은 무거워 싣지 않는다(fetchSermonDescription). */
-export const fetchSermonLibrary = async (page: WorshipPage): Promise<Sermon[]> =>
-  (await collect(page)).sermons;
+// 교회소식 영상(주일광고·성복의 뜰)은 유튜브 재생목록이 아니라 등록한 게시글에서 온다 — 유튜브를 부르지 않는다.
+const collectNews = async (feed: NewsVideoFeed): Promise<Collected> => {
+  const videos = await newsRepository.videos(feed);
+  return {
+    sermons: newsVideosToSermons(videos),
+    // 같은 영상을 두 번 등록했으면 목록처럼 앞의 글 것을 쓴다(Map 은 뒤의 값이 이긴다 — 그래서 뒤집어 넣는다)
+    descriptions: new Map([...videos].reverse().map(v => [v.videoId, v.description ?? ''])),
+  };
+};
+
+const collectPage = (page: VideoPage): Promise<Collected> =>
+  isWorshipPage(page) ? collect(page) : collectNews(page);
+
+/** 영상 페이지의 영상 전체 — 날짜 최신순. 설명 본문은 무거워 싣지 않는다(fetchSermonDescription). */
+export const fetchSermonLibrary = async (page: VideoPage): Promise<Sermon[]> =>
+  (await collectPage(page)).sermons;
 
 /**
- * 설교 한 편의 유튜브 설명 본문(설교일 줄은 뺀 것). 그 페이지 목록에 없는 id 는 null —
+ * 영상 한 편의 설명 본문(예배 설교는 유튜브 설명에서 설교일 줄을 뺀 것). 그 페이지 목록에 없는 id 는 null —
  * 임의 id 를 퍼부어도 유튜브를 더 부르지 않는다(쿼터는 공용, 일 10,000 — 바닥나면 홈 영상까지 죽는다).
  */
 export const fetchSermonDescription = async (
-  page: WorshipPage,
+  page: VideoPage,
   videoId: string
-): Promise<string | null> => (await collect(page)).descriptions.get(videoId) ?? null;
+): Promise<string | null> => (await collectPage(page)).descriptions.get(videoId) ?? null;

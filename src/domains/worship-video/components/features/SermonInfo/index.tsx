@@ -9,13 +9,10 @@ import { dateLabel, sermonTag } from '@/domains/worship-video/api/sermonList';
 import { markListReturn } from '@/domains/worship-video/api/sermonListState';
 import { useSermonDescription } from '@/domains/worship-video/api/useSermonLibrary';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
-import {
-  FOCUS,
-  HIT_34,
-  OUTLINE_BTN,
-  PILL,
-} from '@/domains/worship-video/components/features/sermonStyles';
-import { sermonPath, type WorshipPage } from '@/domains/worship-video/config/worshipPages';
+import { FOCUS, HIT_34, OUTLINE_BTN, PILL } from '@/shared/components/ui/controlStyles';
+import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProfile';
+import { sermonPath, type VideoPage } from '@/domains/worship-video/config/worshipPages';
+import type { SheetLink } from '@/domains/resources/api/sheetLinks';
 import { YoutubeIcon } from '@/shared/components/brand/YoutubeIcon';
 import { useCopyLink } from '@/shared/lib/hooks/useCopyLink';
 import { isPlainClick } from '@/shared/lib/isPlainClick';
@@ -32,15 +29,18 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState, type Ref } from 'react';
 
 interface Props {
-  page: WorshipPage;
+  page: VideoPage;
   sermon: Sermon;
   /** 이전(오래된)·다음(최신) 편 — 설교 목록에 보이는 순서(시리즈는 회차, 단편 설교는 날짜). 끝이면 없다 */
   older?: Sermon;
   newer?: Sermon;
   /** 이전 · 목록 · 다음 묶음 — 부르는 쪽이 화면 위치를 맞출 때 잰다 */
   navRef?: Ref<HTMLElement>;
-  /** 설교 시트지 파일 주소. 관리자에서 올린 것이 있을 때만 카드를 보인다(지금은 올리는 곳이 없어 늘 비어 있다) */
-  sheetHref?: string;
+  /**
+   * 이 영상에 연결된 공개 자료(설교 시트지) — 자료실과 같은 자료다(유튜브 영상 id 로 이어져 있다).
+   * 연결된 공개 자료가 있을 때만 카드를 보이고, 카드는 자료실의 그 자료 열람 화면으로 간다(같은 창).
+   */
+  sheets?: readonly SheetLink[];
 }
 
 // 설명이 이보다 길면 접어 두고 «더보기» 를 둔다 — 3줄(line-clamp-3)을 넘길 만한 길이
@@ -168,7 +168,7 @@ const Step = ({
         requestPlay(to.id);
         requestStepFocus(dir);
       }}
-      aria-label={`${word} ${to.no !== undefined ? `편: ${to.no}편` : `설교: ${to.title}`}`}
+      aria-label={`${word} ${to.no !== undefined ? `편: ${to.no}편` : `${VIDEO_PAGE_PROFILE[page].item}: ${to.title}`}`}
       className={cn(shape, FOCUS, 'hover:border-b1-accent-soft hover:bg-b1-accent-soft')}
     >
       {body}
@@ -206,7 +206,7 @@ const Actions = ({
  * 지금 영상의 제목·분류·이동(이전 · 목록 · 다음)·설명란·시트지·공유.
  * 링크 복사·유튜브에서 보기는 휴대폰에서는 설명·시트지 아래의 두 칸짜리 버튼, 태블릿부터는 분류 표시 옆의 작은 알약이다.
  */
-export const SermonInfo = ({ page, sermon, older, newer, navRef, sheetHref }: Props) => {
+export const SermonInfo = ({ page, sermon, older, newer, navRef, sheets }: Props) => {
   const { message, copy } = useCopyLink();
   // «이전»·«다음» 으로 넘어오면 설교 페이지가 새로 만들어져 누른 링크가 사라지고, 키보드 포커스가 문서 맨 위로 튄다.
   // 누른 쪽(playIntent 에 남겨 둔다)의 링크에 포커스를 되돌려 놓는다 — 이어서 넘길 수 있게. 그쪽이 끝 편이라
@@ -240,7 +240,11 @@ export const SermonInfo = ({ page, sermon, older, newer, navRef, sheetHref }: Pr
           )}
         />
         {/* 분류 표시와 같은 줄 오른쪽 — 자리가 모자라면(긴 분류 이름·좁은 화면) 다음 줄 오른쪽으로 내려간다 */}
-        <nav ref={navRef} aria-label="설교 이동" className="ml-auto flex gap-1 md:gap-1.5">
+        <nav
+          ref={navRef}
+          aria-label={`${VIDEO_PAGE_PROFILE[page].item} 이동`}
+          className="ml-auto flex gap-1 md:gap-1.5"
+        >
           <Step page={page} sermon={sermon} to={older} dir="older" />
           <Link
             ref={listLinkRef}
@@ -266,23 +270,30 @@ export const SermonInfo = ({ page, sermon, older, newer, navRef, sheetHref }: Pr
 
       <Description key={sermon.id} page={page} sermon={sermon} />
 
-      {sheetHref && (
-        <a
-          href={sheetHref}
-          className={cn(
-            'border-b1-border bg-b1-surface grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-2.5',
-            FOCUS
-          )}
-        >
-          <span className="bg-b1-accent-soft text-b1-accent grid size-11 place-items-center rounded-lg">
-            <FileText aria-hidden className="size-5" />
-          </span>
-          <span className="min-w-0">
-            <b className="text-b1-text text-label block font-bold">설교 시트지</b>
-            <small className="text-b1-sub text-caption block">{sermonTag(sermon)}</small>
-          </span>
-          <span className="text-b1-accent text-caption font-bold">보기</span>
-        </a>
+      {sheets && sheets.length > 0 && (
+        // 자료가 여러 개면(주일 시트지 + 가정예배 순서지 등) 카드도 여러 개 — 분류 이름과 자료 제목으로 구분된다
+        <ul className="m-0 grid list-none gap-2 p-0">
+          {sheets.map(sheet => (
+            <li key={sheet.id}>
+              <Link
+                href={sheet.href}
+                className={cn(
+                  'border-b1-border bg-b1-surface hover:border-b1-accent-soft duration-fast grid min-h-11 grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors',
+                  FOCUS
+                )}
+              >
+                <span className="bg-b1-accent-soft text-b1-accent grid size-11 place-items-center rounded-lg">
+                  <FileText aria-hidden className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <b className="text-b1-text text-label block font-bold">{sheet.label}</b>
+                  <small className="text-b1-sub text-caption block truncate">{sheet.title}</small>
+                </span>
+                <span className="text-b1-accent text-caption font-bold">보기</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
 
       <Actions

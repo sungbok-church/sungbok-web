@@ -12,6 +12,8 @@
 │   └── design-system.md
 ├── domains/                        # 도메인별 상세 (살아있는 문서)
 │   ├── home.md
+│   ├── news.md
+│   ├── resources.md
 │   └── worship-video.md
 ├── workflow/                       # 작업 방식·도구 (살아있는 문서)
 │   ├── prototype-preview.md
@@ -42,7 +44,8 @@
     ├── 0009-design-system-tokens-responsive.md
     ├── 0010-next16-node26-perf-baseline.md
     ├── 0011-github-org-and-env-source.md
-    └── 0012-date-temporal-and-admin-libraries.md
+    ├── 0012-date-temporal-and-admin-libraries.md
+    └── 0013-content-repository-and-video-id-link.md
 ```
 
 향후 추가될 카테고리(빈 폴더는 미리 만들지 않음):
@@ -73,6 +76,8 @@
 ### Domains
 
 - [home.md](domains/home.md) — 홈(`/`) 페이지의 7섹션 IA·섹션별 사양·CTA·모바일 적응·미결 사항
+- [news.md](domains/news.md) — 교회소식(`/news/*`): 주일광고·성복의 뜰은 예배와 같은 영상 화면(등록한 게시글의 유튜브 영상 id), 주보 B안 «바로 읽기»(연도별 접이식 목록·휴대폰 바텀시트·한 면/양면), 교회앨범 C안 «목록 + 미리보기», 공용 «크게 보기» 뷰어, 관리자 연동 때 바꿀 곳
+- [resources.md](domains/resources.md) — 자료실 설교 시트지(`/resources/*`): A안 목록·문서 열람 화면 규칙(확장자·용량 표시 안 함, 자료 형태별 처리), 저장소 구조, **관리자 등록 → 유튜브 영상 id 연결 → 자료실·예배 시트지 공통 사용** 구조와 연동할 때 할 일
 - [worship-video.md](domains/worship-video.md) — 예배 설교 영상(`/worship/sunday` 목록 · `/worship/sunday/영상id` 설교 한 편): 유튜브에 올리는 규칙(재생목록·제목·설명 첫 줄 날짜), 서버 수집·캐시 구조, 두 페이지의 화면 규칙
 
 ### Workflow
@@ -111,6 +116,7 @@
 - [0010-next16-node26-perf-baseline.md](decisions/0010-next16-node26-perf-baseline.md) — 2026-11-09 — Next 16·Node 26 업그레이드 + 성능 기준선: 유튜브는 서버 fetch 하나로(gapi·googleapis·axios 제거), 사진은 WebP 사전 변환(17.8MB→3.1MB), 폰트는 같은 출처, 무거운 임베드는 화면 근처에서, Vercel 서울 리전. (0008·0009 는 develop 쪽 ADR 이 쓰고 있어 건너뜀)
 - [0011-github-org-and-env-source.md](decisions/0011-github-org-and-env-source.md) — 2026-11-10 — 레포를 GitHub Organization 으로 이전, 환경변수 정본 = GitHub Secrets, Actions 는 Secrets→Vercel 덮어쓰기 동기화만(변수 1개씩), 배포는 Vercel Git 자동 유지, 레포 공개 유지. Pro·공용 계정·.env 커밋·Actions 전면 배포 탈락. 상태: 셋업 검증 대기
 - [0012-date-temporal-and-admin-libraries.md](decisions/0012-date-temporal-and-admin-libraries.md) — 2026-11-12 — 날짜는 UTC 로 주고받고 표시할 때만 Asia/Seoul. 서버는 Temporal(Node 26), 홈페이지 화면은 Intl(Safari·iOS 에 Temporal 없음) — ESLint 로 강제, 관리자 영역만 예외. date-fns·dayjs 탈락. zod 채택·유튜브 응답 검증 적용, react-hook-form·TanStack Table 채택(관리자 착수 때 설치), motion·react-youtube 보류, react-intersection-observer 탈락. Radix 통합·lodash 제거
+- [0013-content-repository-and-video-id-link.md](decisions/0013-content-repository-and-video-id-link.md) — 2026-11-16 — 자료실·교회소식의 공개 화면은 저장소 계층으로만 읽는다(지금은 시드, 관리자·DB 가 생기면 load 만 교체). 자료와 설교 영상은 유튜브 영상 id 로만 잇고(다대다) 연결은 자료 쪽에 한 번만. 주일광고·성복의 뜰은 예배의 영상 화면을 쓰되 출처는 등록한 게시글. 제목·재생목록으로 잇기, 시드 직접 import, 가짜 관리자 화면 탈락
 
 ## 컨벤션
 
@@ -165,6 +171,9 @@
 | [src/app/globals.css](../src/app/globals.css) 의 글자 크기·그림자·모션 토큰, [src/shared/components/ui/](../src/shared/components/ui/) 부품 | [design/design-system.md](design/design-system.md) + `/design` 견본 |
 | 디자인 바(토큰 규율·모션·a11y·카피 톤) 규칙 변경 | [../DESIGN.md](../DESIGN.md) |
 | [src/app/page.tsx](../src/app/page.tsx) 또는 [src/domains/home/](../src/domains/home/) 변경 | [domains/home.md](domains/home.md) |
+| [src/domains/resources/](../src/domains/resources/) · `src/app/resources/` 변경 | [domains/resources.md](domains/resources.md) |
+| [src/domains/news/](../src/domains/news/) · `src/app/news/` 변경 | [domains/news.md](domains/news.md) |
+| [src/domains/worship-video/](../src/domains/worship-video/) 변경(영상 페이지 추가 포함) | [domains/worship-video.md](domains/worship-video.md) |
 | 도메인 추가/구조 변경 | `domains/<domain>.md` |
 | 라우팅·상태 관리·렌더링 전략 변경 | `architecture/*.md` *(향후)* |
 

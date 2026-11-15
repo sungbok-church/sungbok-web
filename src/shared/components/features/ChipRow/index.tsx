@@ -1,23 +1,21 @@
 'use client';
 
-import type { SermonSeries } from '@/domains/worship-video/api/worshipVideo.types';
-import {
-  ARROW_BTN,
-  FOCUS,
-  HIT_34,
-  PILL,
-} from '@/domains/worship-video/components/features/sermonStyles';
+import { ARROW_BTN, FOCUS, HIT_34, PILL } from '@/shared/components/ui/controlStyles';
 import { usePrefersReducedMotion } from '@/shared/lib/hooks/usePrefersReducedMotion';
 import { useScrollEdges } from '@/shared/lib/hooks/useScrollEdges';
 import { cn } from '@/shared/lib/utils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRef } from 'react';
 
+export type ChipOption = { value: string; label: string };
+
 interface Props {
-  series: readonly SermonSeries[];
-  /** 고른 시리즈 이름. '' 이면 전체 */
+  /** 칩 묶음의 이름(화면낭독기) — «시리즈»·«연도»·«자료 분류» */
+  label: string;
+  options: readonly ChipOption[];
+  /** 고른 칩의 값. '' 이면 전체 */
   value: string;
-  onChange: (name: string) => void;
+  onChange: (value: string) => void;
 }
 
 // 화살표 자리 — 뒤로 넘어가는 칩은 배경색으로 흐려진다. 태블릿·PC 만(휴대폰은 손으로 민다)
@@ -25,10 +23,11 @@ const EDGE =
   'from-b1-bg pointer-events-none absolute inset-y-0 z-10 hidden w-[76px] items-center from-[46%] to-transparent md:flex';
 
 /**
- * 시리즈 칩 — 어느 폭에서나 한 줄. 넘치면 옆으로 넘기고, 태블릿·PC 는 넘길 것이 남은 쪽에 화살표가 나온다.
+ * 분류 칩 줄(«전체» + 분류들) — 어느 폭에서나 한 줄. 넘치면 옆으로 넘기고, 태블릿·PC 는 넘길 것이 남은 쪽에 화살표가 나온다.
  * 화살표는 마우스·터치 전용이다 — 끝까지 넘기면 사라지므로 키보드 포커스를 두지 않는다(키보드는 칩으로 다니고, 칩에 포커스가 가면 줄이 따라 움직인다).
+ * 예배 설교의 시리즈 칩, 주일광고의 연도 칩, 자료실의 분류 칩이 같이 쓴다.
  */
-export const SeriesChips = ({ series, value, onChange }: Props) => {
+export const ChipRow = ({ label, options, value, onChange }: Props) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const edges = useScrollEdges(rowRef);
   const reduced = usePrefersReducedMotion();
@@ -38,8 +37,8 @@ export const SeriesChips = ({ series, value, onChange }: Props) => {
     const row = rowRef.current;
     row?.scrollBy?.({ left: dir * row.clientWidth * 0.7, behavior });
   };
-  const pick = (name: string, chip: HTMLElement) => {
-    onChange(name);
+  const pick = (next: string, chip: HTMLElement) => {
+    onChange(next);
     // 고른 칩이 끝에 걸려 있으면(화살표·흐림에 가리면) 안쪽으로 당긴다 — 줄 안에서만 민다
     const row = rowRef.current;
     if (!row) return;
@@ -49,22 +48,22 @@ export const SeriesChips = ({ series, value, onChange }: Props) => {
     if (hidden) row.scrollTo?.({ left: chip.offsetLeft - 88, behavior });
   };
 
-  const chip = (name: string, label: string) => (
+  const chip = ({ value: v, label: text }: ChipOption) => (
     <button
-      key={name}
+      key={v}
       type="button"
-      aria-pressed={name === value}
-      onClick={e => pick(name, e.currentTarget)}
+      aria-pressed={v === value}
+      onClick={e => pick(v, e.currentTarget)}
       className={cn(
         PILL,
         HIT_34,
         FOCUS,
-        name === value
+        v === value
           ? 'border-b1-accent-soft bg-b1-accent-soft text-b1-accent font-bold'
           : 'text-b1-sub hover:text-b1-text'
       )}
     >
-      {label}
+      {text}
     </button>
   );
 
@@ -87,11 +86,11 @@ export const SeriesChips = ({ series, value, onChange }: Props) => {
       <div
         ref={rowRef}
         role="group"
-        aria-label="시리즈"
+        aria-label={label}
         className="-mx-[6vw] flex [scrollbar-width:none] gap-1.5 overflow-x-auto px-[6vw] py-1.5 md:-mx-1 md:px-1 [&::-webkit-scrollbar]:hidden"
       >
-        {chip('', '전체')}
-        {series.map(s => chip(s.name, s.name))}
+        {chip({ value: '', label: '전체' })}
+        {options.map(chip)}
       </div>
       {edges.end && (
         <span className={cn(EDGE, '-right-1 justify-end bg-gradient-to-l')}>

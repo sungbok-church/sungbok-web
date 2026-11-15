@@ -60,10 +60,18 @@
 |---|---|---|
 | 버튼 | `Button` variant `default·secondary·outline·ghost·destructive·link`, size `default`(44px)·`lg`(48px)·`icon`(44px)·`sm`(36px, **PC 관리자 표 안 전용**) | 글자 `text-label` |
 | 입력 | `Input`·`Textarea`·`Select`·`Checkbox`·`Switch`·`RadioGroup`·`Label`·**`FormField`**(라벨+도움말+오류, aria 연결) | 입력 글씨는 모든 폭에서 16px. 체크박스·라디오·스위치는 보이는 크기 16px, 누르는 영역 44px(`::after`) |
-| 겹침 | `Dialog`·`Sheet`(휴대폰은 `side="bottom"`)·`DropdownMenu`·`Toaster`(sonner, 레이아웃 배치는 관리자 패키지에서) | 닫기 버튼 44px. 움직임 줄이기 설정이면 즉시 열고 닫음 |
+| 겹침 | `Dialog`·`Sheet`(휴대폰은 `side="bottom"`. 공개 화면에서 사이트 헤더 위로 덮어야 하는 뷰어·바텀시트는 `radix-ui` Dialog 를 `z-[60]` 으로 직접 쓴다 — 공용 것은 헤더와 같은 `z-50`)·`DropdownMenu`·`Toaster`(sonner, 레이아웃 배치는 관리자 패키지에서) | 닫기 버튼 44px. 움직임 줄이기 설정이면 즉시 열고 닫음 |
 | 표시 | `Badge` variant `neutral·accent·success·warning·danger`, `Skeleton`, `Avatar`, `EmptyState` | 상태 색은 B1 상태 토큰만 |
 | 목록 | **`ResponsiveList`** — `md` 이상 표, 그 아래 카드 | 관리자 목록 화면의 기본 틀 |
 | 업로드 | **`ImageDropzone`** — 여러 장 선택(휴대폰 카메라·앨범), 미리보기, 앞뒤 이동, 삭제 | UI만. 축소·업로드는 부르는 쪽 |
 | 기존 | `Card`·`Table`·`Tabs`(긴 라벨은 탭 줄만 옆 스크롤)·`Tooltip`·`Pagination`·`NavigationMenu` | 토큰 연결·44px 적용 |
+
+**공개 화면의 목록·열람 조작**(예배 영상·교회소식·자료실이 같이 쓴다 — 연출 위젯이 아니라 B1 토큰을 쓰는 공용 조각):
+
+| 무엇 | 어디 | 규칙 |
+|---|---|---|
+| 클래스 묶음 `FOCUS`·`PILL`·`OUTLINE_BTN`·`ARROW_BTN`·`HIT_34/36` | `src/shared/components/ui/controlStyles.ts` | 알약(34px)·테두리 버튼·포커스 링. 보이는 크기가 44px 보다 작으면 `HIT_*` 로 누르는 영역을 넓힌다(1024 미만) |
+| `ChipRow` — «전체» + 분류 칩 한 줄 | `src/shared/components/features/ChipRow` | 넘치면 옆으로 넘기고 태블릿·PC 는 화살표. 설교 시리즈·주일광고 연도·자료 분류 |
+| `ViewerControls` — `PageStepper`·`ZoomControls`·`Segmented`·`ToolButton` | `src/shared/components/features/ViewerControls` | 쪽·장 넘김, 확대 100~300%(`lib/zoomSteps`), 고정 선택 버튼(44px). 끝에서는 `disabled` 대신 `aria-disabled`(포커스가 빠지지 않게) |
 
 **shadcn CLI 주의**: `pnpm dlx shadcn@latest add …` 가 `import { cn } from "cn"` 로 생성하고 엉뚱한 npm 패키지 `cn` 을 설치한 적이 있다(2026-11-05). 추가 뒤 import 를 `@/shared/lib/utils` 로 고치고, `dark:` 유틸과 `next-themes` 를 지운다.

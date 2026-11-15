@@ -6,7 +6,7 @@
 import { fetchJson, retryTransient } from '@/shared/api/fetchJson';
 import { useQuery } from '@tanstack/react-query';
 
-import type { WorshipPage } from '../config/worshipPages';
+import type { VideoPage } from '../config/worshipPages';
 import {
   sermonDescriptionQueryKey,
   sermonLibraryQueryKey,
@@ -19,7 +19,7 @@ const STALE = 10 * 60_000;
 
 // 취소 신호(signal)는 넘기지 않는다 — 넘기면 페이지를 떠날 때 react-query 가 진행 중 요청을 취소해
 // 돌아왔을 때 처음부터 다시 받는다. 떠나도 끝까지 받아 캐시에 남긴다.
-export const useSermonLibrary = (page: WorshipPage) =>
+export const useSermonLibrary = (page: VideoPage) =>
   useQuery({
     queryKey: sermonLibraryQueryKey(page),
     queryFn: async () => toSermons(await fetchJson(`/api/worship-video/library?page=${page}`)),
@@ -28,7 +28,7 @@ export const useSermonLibrary = (page: WorshipPage) =>
   });
 
 /** 고른 영상의 유튜브 설명 글. 고른 영상이 없으면(videoId 없음) 요청하지 않는다. */
-export const useSermonDescription = (page: WorshipPage, videoId: string | undefined) =>
+export const useSermonDescription = (page: VideoPage, videoId: string | undefined) =>
   useQuery({
     queryKey: sermonDescriptionQueryKey(page, videoId ?? ''),
     queryFn: async () =>
