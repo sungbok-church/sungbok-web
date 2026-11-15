@@ -11,13 +11,13 @@ import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-qu
 
 import { prefetchForIsr } from '@/shared/api/prefetchForIsr.server';
 
-import type { WorshipPage } from '../config/worshipPages';
+import type { VideoPage } from '../config/worshipPages';
 import { fetchSermonDescription, fetchSermonLibrary } from './worshipVideo.server';
 import type { Sermon } from './worshipVideo.types';
 import { sermonDescriptionQueryKey, sermonLibraryQueryKey } from './worshipVideoQueries';
 
 /** 목록 페이지 — 설교 목록. 실패 규칙은 prefetchForIsr: 운영 재생성 실패만 던지고(직전 페이지 유지), 빌드·개발 서버에서는 화면이 직접 받는다. */
-export const prefetchSermonLibrary = (page: WorshipPage) =>
+export const prefetchSermonLibrary = (page: VideoPage) =>
   prefetchForIsr(client =>
     client.prefetchQuery({
       queryKey: sermonLibraryQueryKey(page),
@@ -35,7 +35,7 @@ export const prefetchSermonLibrary = (page: WorshipPage) =>
  * 오류 화면이 된다. 못 받은 것은 싣지 않고 화면이 /api 로 받게 한다(Route Handler 는 지난 캐시로도 답한다).
  */
 export const prefetchSermonWatch = async (
-  page: WorshipPage,
+  page: VideoPage,
   videoId: string
 ): Promise<{ state: DehydratedState; found: boolean | undefined }> => {
   // prefetchQuery 는 실패를 삼키고 쿼리 상태에 남긴다 — dehydrate 는 성공한 쿼리만 싣는다

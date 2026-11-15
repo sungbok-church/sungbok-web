@@ -1,5 +1,7 @@
 // 설교 목록 계산(순수) — 정렬·검색·시리즈 묶기. 서버가 한 번 실어 보낸 설교 배열을 화면에서 그대로 다룬다
 // (목록을 바꿀 때마다 서버·유튜브를 부르지 않는다).
+import { includesAtBoundary, tightColon, verseForm } from '@/shared/lib/verseSearch';
+
 import { SINGLES } from './sermonParse';
 import type { Sermon, SermonSeries } from './worshipVideo.types';
 
@@ -17,46 +19,47 @@ export type ListQuery = {
 export const sortSermons = (list: readonly Sermon[]): Sermon[] =>
   [...list].sort((a, b) => b.date.localeCompare(a.date) || (b.no ?? 0) - (a.no ?? 0));
 
-// 본문 표기의 «:» 앞뒤 공백은 올리는 사람마다 다르다(«10:8» · «10: 8») — 비교할 땐 붙여서 본다
-const tight = (v: string) => v.replace(/\s*:\s*/g, ':');
-
-// «N장 M절»·«N장»·«M절» 을 «N:M» 꼴로 — 검색어와 목록 글 양쪽에 똑같이 적용해 표기 차이를 없앤다
-const verseForm = (v: string) =>
-  tight(
-    v
-      .toLowerCase()
-      .replace(/(\d+)\s*장\s*(\d+)/g, '$1:$2')
-      .replace(/(\d+)\s*장/g, '$1:')
-      .replace(/(\d)\s*절/g, '$1')
-  );
-
 /** 검색어를 본문 표기에 맞춘다 — «12장» → «12:», «13장 4절» → «13:4». 소문자·앞뒤 공백 제거. */
 export const searchKey = (q: string): string => verseForm(q.trim());
 
-const searchText = (s: Sermon) =>
-  [s.title, s.passage, s.series, s.occasion, s.no !== undefined && `${s.no}편`]
+/** 목록을 거르는 방식 — 페이지마다 다르다(config/videoPageProfile). 주지 않으면 예배 설교 목록의 규칙. */
+export type ListOptions = {
+  /** 칩이 가리키는 것 — series: 시리즈·분류 이름(기본), year: 연도(«2026년») */
+  chips?: 'series' | 'year';
+  /** 날짜로도 찾는다(«10.25») */
+  searchDate?: boolean;
+};
+
+/** 그 영상이 속한 칩 이름 */
+const chipOf = (s: Sermon, chips: ListOptions['chips']) =>
+  chips === 'year' ? `${s.date.slice(0, 4)}년` : s.series;
+
+const searchText = (s: Sermon, withDate?: boolean) =>
+  [
+    s.title,
+    s.passage,
+    s.series,
+    s.occasion,
+    s.no !== undefined && `${s.no}편`,
+    withDate && s.date.replaceAll('-', '.'),
+  ]
     .filter(Boolean)
     .join(' ');
 
-// 숫자로 시작하는 검색어는 앞이 숫자가 아닌 자리에서만 맞춘다 — «2:» 가 «12:» 안에서 걸리지 않게
-const includesAtBoundary = (text: string, key: string): boolean => {
-  if (!/^\d/.test(key)) return text.includes(key);
-  for (let i = text.indexOf(key); i >= 0; i = text.indexOf(key, i + 1)) {
-    if (i === 0 || !/\d/.test(text[i - 1])) return true;
-  }
-  return false;
-};
-
 /** sermons 는 최신순이어야 한다(sortSermons). 오래된 순은 그 역순. */
-export const filterSermons = (sermons: readonly Sermon[], query: ListQuery): Sermon[] => {
-  const raw = tight(query.q.trim().toLowerCase());
+export const filterSermons = (
+  sermons: readonly Sermon[],
+  query: ListQuery,
+  options: ListOptions = {}
+): Sermon[] => {
+  const raw = tightColon(query.q.trim().toLowerCase());
   const key = searchKey(query.q);
   const list = sermons.filter(s => {
-    if (query.series && s.series !== query.series) return false;
+    if (query.series && chipOf(s, options.chips) !== query.series) return false;
     if (!raw) return true;
-    const text = searchText(s);
+    const text = searchText(s, options.searchDate);
     // 친 그대로(제목 속 «12장» 같은 글자) 또는 본문 표기로 바꾼 것(«12장» → «12:»)
-    return tight(text.toLowerCase()).includes(raw) || includesAtBoundary(verseForm(text), key);
+    return tightColon(text.toLowerCase()).includes(raw) || includesAtBoundary(verseForm(text), key);
   });
   return query.sort === 'old' ? list.reverse() : list;
 };
@@ -78,6 +81,25 @@ export const buildSeries = (sermons: readonly Sermon[]): SermonSeries[] => {
   }
   const all = [...map.values()].sort((a, b) => b.latest.localeCompare(a.latest));
   return [...all.filter(x => x.name !== SINGLES), ...all.filter(x => x.name === SINGLES)];
+};
+
+/**
+ * 목록 페이지의 칩 — series 면 시리즈(buildSeries), year 면 연도(최근 연도부터, 그 해의 편수·가장 최근 편).
+ * sermons 는 최신순이어야 한다.
+ */
+export const buildChips = (
+  sermons: readonly Sermon[],
+  chips: NonNullable<ListOptions['chips']>
+): SermonSeries[] => {
+  if (chips === 'series') return buildSeries(sermons);
+  const map = new Map<string, SermonSeries>();
+  for (const s of sermons) {
+    const name = chipOf(s, 'year');
+    const cur = map.get(name);
+    if (cur) cur.count++;
+    else map.set(name, { name, count: 1, latest: s.date, thumbnail: s.thumbnail });
+  }
+  return [...map.values()].sort((a, b) => b.latest.localeCompare(a.latest));
 };
 
 /**
@@ -114,11 +136,13 @@ export const seriesByYear = (series: readonly SermonSeries[]): [string, SermonSe
  */
 export const neighbors = (
   sermons: readonly Sermon[],
-  id: string
+  id: string,
+  /** true 면 묶음을 가르지 않고 전체 목록(최신순)에서 이웃한다 — 회차가 없는 영상(주일광고 등) */
+  flat = false
 ): { older?: Sermon; newer?: Sermon } => {
   const cur = sermons.find(s => s.id === id);
   if (!cur) return {};
-  const list = seriesSermons(sermons, cur.series);
+  const list = flat ? sermons : seriesSermons(sermons, cur.series);
   const i = list.indexOf(cur);
   const older = list[i + 1];
   const newer = list[i - 1];
@@ -129,8 +153,12 @@ export const neighbors = (
  * 목록 페이지에 그릴 줄 — 조건이 하나도 없는 첫 화면(전체·최신순·검색 없음)에서는 맨 앞(최신 설교)을 뺀다.
  * 바로 위에 «최신 설교» 로 크게 보이므로 두 번 그리지 않는다. 조건을 걸면 최신 설교도 결과에 나온다.
  */
-export const listRows = (sermons: readonly Sermon[], query: ListQuery): Sermon[] => {
-  const list = filterSermons(sermons, query);
+export const listRows = (
+  sermons: readonly Sermon[],
+  query: ListQuery,
+  options: ListOptions = {}
+): Sermon[] => {
+  const list = filterSermons(sermons, query, options);
   return !query.q.trim() && !query.series && query.sort === 'new' ? list.slice(1) : list;
 };
 

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { fetchSermonDescription } from '@/domains/worship-video/api/worshipVideo.server';
-import { isWorshipPage } from '@/domains/worship-video/config/worshipPages';
+import { isVideoPage } from '@/domains/worship-video/config/worshipPages';
 import { upstreamErrorResponse } from '@/shared/api/upstreamStatus.server';
 
 // 설교 한 편의 유튜브 설명 글 — 고른 영상 것만 받는다(목록에 다 실으면 페이지가 수백 KB 무거워진다).
@@ -9,7 +9,7 @@ import { upstreamErrorResponse } from '@/shared/api/upstreamStatus.server';
 export async function GET(req: NextRequest) {
   const page = req.nextUrl.searchParams.get('page');
   const videoId = req.nextUrl.searchParams.get('v');
-  if (!isWorshipPage(page)) return NextResponse.json({ error: 'unknown page' }, { status: 400 });
+  if (!isVideoPage(page)) return NextResponse.json({ error: 'unknown page' }, { status: 400 });
   if (!videoId) return NextResponse.json({ error: 'v required' }, { status: 400 });
 
   try {

@@ -4,7 +4,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-import type { WorshipPage } from '../config/worshipPages';
+import type { VideoPage } from '../config/worshipPages';
 import { PAGE_STEP, type ListQuery } from './sermonList';
 
 export type ListState = ListQuery & {
@@ -14,7 +14,7 @@ export type ListState = ListQuery & {
 
 const INITIAL: ListState = { q: '', series: '', sort: 'new', shown: PAGE_STEP };
 
-const states = new Map<WorshipPage, ListState>();
+const states = new Map<VideoPage, ListState>();
 const listeners = new Set<() => void>();
 
 const subscribe = (onChange: () => void) => {
@@ -23,14 +23,14 @@ const subscribe = (onChange: () => void) => {
     listeners.delete(onChange);
   };
 };
-const read = (page: WorshipPage) => states.get(page) ?? INITIAL;
-const write = (page: WorshipPage, next: ListState) => {
+const read = (page: VideoPage) => states.get(page) ?? INITIAL;
+const write = (page: VideoPage, next: ListState) => {
   states.set(page, next);
   listeners.forEach(l => l());
 };
 
 /** 목록 페이지의 상태와 바꾸는 함수. 서버 HTML·하이드레이션 첫 렌더는 처음 상태(전체·최신순·첫 묶음). */
-export const useSermonListState = (page: WorshipPage) => {
+export const useSermonListState = (page: VideoPage) => {
   const state = useSyncExternalStore(
     subscribe,
     () => read(page),
@@ -54,14 +54,14 @@ export const useSermonListState = (page: WorshipPage) => {
 // 메뉴로 새로 들어온 경우에는 «돌아옴» 표시가 없어 맨 위에서 시작한다. 적어 둔 위치는 목록이 열릴 때마다 버린다 —
 // 남겨 두면 한참 뒤의 «목록» 이 예전 자리로 간다.
 
-const scrolls = new Map<WorshipPage, number>();
-const returning = new Set<WorshipPage>();
+const scrolls = new Map<VideoPage, number>();
+const returning = new Set<VideoPage>();
 
-export const rememberListScroll = (page: WorshipPage, y: number) => {
+export const rememberListScroll = (page: VideoPage, y: number) => {
   scrolls.set(page, y);
 };
 
-export const markListReturn = (page: WorshipPage) => {
+export const markListReturn = (page: VideoPage) => {
   returning.add(page);
 };
 
@@ -69,7 +69,7 @@ export const markListReturn = (page: WorshipPage) => {
  * 목록 화면이 열릴 때 부른다. «목록» 으로 돌아온 것이면 갈 스크롤 위치(적어 둔 것이 없으면 0), 아니면 undefined.
  * 어느 쪽이든 적어 둔 위치와 표시는 지워진다.
  */
-export const takeListReturn = (page: WorshipPage): number | undefined => {
+export const takeListReturn = (page: VideoPage): number | undefined => {
   const y = scrolls.get(page) ?? 0;
   scrolls.delete(page);
   return returning.delete(page) ? y : undefined;

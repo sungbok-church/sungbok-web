@@ -1,24 +1,27 @@
 'use client';
 
-import { buildSeries } from '@/domains/worship-video/api/sermonList';
+import { buildChips } from '@/domains/worship-video/api/sermonList';
 import { takeListReturn } from '@/domains/worship-video/api/sermonListState';
 import { useSermonLibrary } from '@/domains/worship-video/api/useSermonLibrary';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import { SermonLatest } from '@/domains/worship-video/components/features/SermonLatest';
 import { SermonList } from '@/domains/worship-video/components/features/SermonList';
-import { FOCUS } from '@/domains/worship-video/components/features/sermonStyles';
+import { FOCUS } from '@/shared/components/ui/controlStyles';
 import { QueryStatus } from '@/domains/worship-video/components/features/StatusText';
-import type { WorshipPage } from '@/domains/worship-video/config/worshipPages';
+import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProfile';
+import type { VideoPage } from '@/domains/worship-video/config/worshipPages';
 import { cn } from '@/shared/lib/utils';
 import { useLenis } from 'lenis/react';
 import { useLayoutEffect, useMemo } from 'react';
 
 interface Props {
-  page: WorshipPage;
+  page: VideoPage;
 }
 
 const ListView = ({ page, sermons }: Props & { sermons: Sermon[] }) => {
-  const series = useMemo(() => buildSeries(sermons), [sermons]);
+  // 칩은 페이지마다 다르다 — 예배 설교는 시리즈, 주일광고는 연도(config/videoPageProfile)
+  const { chips } = VIDEO_PAGE_PROFILE[page];
+  const series = useMemo(() => buildChips(sermons, chips), [sermons, chips]);
   const lenis = useLenis(); // 사이트 스크롤은 Lenis 가 맡는다(_provider)
 
   // 설교 페이지의 «목록» 으로 돌아왔으면 보던 자리로 간다(그 링크는 화면을 맨 위로 올리지 않는다 — SermonInfo).
@@ -55,7 +58,10 @@ export const SermonListPage = ({ page }: Props) => {
   return (
     // 상태 문구를 같은 상자 안에서 바꿔 끼운다 — «다시 시도» 뒤 포커스가 이 상자에 남아 문서 맨 위로 튀지 않는다
     <div data-focus-host tabIndex={-1} className={cn('rounded', FOCUS)}>
-      <QueryStatus query={q} empty="아직 등록된 설교 영상이 없습니다." />
+      <QueryStatus
+        query={q}
+        empty={`아직 등록된 ${VIDEO_PAGE_PROFILE[page].videoNoun}이 없습니다.`}
+      />
     </div>
   );
 };

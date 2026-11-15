@@ -4,8 +4,9 @@ import { requestPlay } from '@/domains/worship-video/api/playIntent';
 import { dateLabel, weekdayLabel } from '@/domains/worship-video/api/sermonList';
 import { rememberListScroll } from '@/domains/worship-video/api/sermonListState';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
-import { FOCUS } from '@/domains/worship-video/components/features/sermonStyles';
-import { sermonPath, type WorshipPage } from '@/domains/worship-video/config/worshipPages';
+import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProfile';
+import { sermonPath, type VideoPage } from '@/domains/worship-video/config/worshipPages';
+import { FOCUS } from '@/shared/components/ui/controlStyles';
 import { isPlainClick } from '@/shared/lib/isPlainClick';
 import { cn } from '@/shared/lib/utils';
 import { ArrowRight, Play } from 'lucide-react';
@@ -14,7 +15,7 @@ import Link from 'next/link';
 import { useId, type MouseEvent } from 'react';
 
 interface Props {
-  page: WorshipPage;
+  page: VideoPage;
   /** 가장 최근 설교 */
   sermon: Sermon;
 }
@@ -32,6 +33,7 @@ export const SermonLatest = ({ page, sermon }: Props) => {
     rememberListScroll(page, window.scrollY); // «목록» 으로 돌아올 자리
   };
   const day = weekdayLabel(sermon.date);
+  const profile = VIDEO_PAGE_PROFILE[page];
 
   return (
     <section
@@ -63,7 +65,7 @@ export const SermonLatest = ({ page, sermon }: Props) => {
         <div className="flex items-center justify-between gap-2.5 md:flex-col md:items-start md:gap-4 lg:gap-5">
           <p className="text-b1-accent text-caption flex items-center gap-2 font-bold">
             <span aria-hidden className="size-[7px] rounded-full bg-current" />
-            최신 설교
+            {profile.latest}
           </p>
           <p className="text-b1-sub text-caption tabular-nums">
             {dateLabel(sermon)}
@@ -101,7 +103,7 @@ export const SermonLatest = ({ page, sermon }: Props) => {
           )}
         >
           <Play aria-hidden className="size-3.5 fill-current" />
-          설교 시청하기
+          {profile.watch}
           <ArrowRight aria-hidden className="size-[17px]" />
         </Link>
       </div>

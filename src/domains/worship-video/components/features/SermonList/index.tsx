@@ -13,14 +13,11 @@ import {
   useSermonListState,
 } from '@/domains/worship-video/api/sermonListState';
 import type { Sermon, SermonSeries } from '@/domains/worship-video/api/worshipVideo.types';
-import { SeriesChips } from '@/domains/worship-video/components/features/SermonList/SeriesChips';
-import {
-  FOCUS,
-  HIT_36,
-  OUTLINE_BTN,
-} from '@/domains/worship-video/components/features/sermonStyles';
+import { FOCUS, HIT_36, OUTLINE_BTN } from '@/shared/components/ui/controlStyles';
 import { SermonThumb } from '@/domains/worship-video/components/features/SermonThumb';
-import { sermonPath, type WorshipPage } from '@/domains/worship-video/config/worshipPages';
+import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProfile';
+import { sermonPath, type VideoPage } from '@/domains/worship-video/config/worshipPages';
+import { ChipRow } from '@/shared/components/features/ChipRow';
 import { isPlainClick } from '@/shared/lib/isPlainClick';
 import { cn } from '@/shared/lib/utils';
 import { ChevronDown, Search } from 'lucide-react';
@@ -28,7 +25,7 @@ import Link from 'next/link';
 import { useEffect, useId, useMemo, useRef } from 'react';
 
 interface Props {
-  page: WorshipPage;
+  page: VideoPage;
   sermons: readonly Sermon[];
   series: readonly SermonSeries[];
 }
@@ -61,9 +58,19 @@ export const SermonList = ({ page, sermons, series }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const q = state.q.trim();
+  const profile = VIDEO_PAGE_PROFILE[page];
+  const options = useMemo(
+    () => ({ chips: profile.chips, searchDate: profile.searchDate }),
+    [profile]
+  );
   // 편수는 조건에 맞는 전체, 그리는 줄은 첫 화면에서 최신 설교를 뺀 것(위에 크게 보인다 — listRows)
-  const count = useMemo(() => filterSermons(sermons, state).length, [sermons, state]);
-  const rows = useMemo(() => listRows(sermons, state), [sermons, state]);
+  const count = useMemo(
+    () => filterSermons(sermons, state, options).length,
+    [sermons, state, options]
+  );
+  const rows = useMemo(() => listRows(sermons, state, options), [sermons, state, options]);
+  // 칩의 값과 글자가 같다(시리즈 이름·«2026년»)
+  const chipOptions = useMemo(() => series.map(x => ({ value: x.name, label: x.name })), [series]);
 
   // «설교 더보기» 를 누르면 버튼이 아래로 밀려난다 — 키보드 포커스를 새로 나온 첫 설교로 옮긴다(화면은 움직이지 않는다)
   const focusRow = useRef<number | null>(null);
@@ -81,7 +88,7 @@ export const SermonList = ({ page, sermons, series }: Props) => {
     >
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)] md:items-center">
         <h2 id={headId} className="text-b1-text text-h3 font-bold tracking-[-0.02em]">
-          설교 목록
+          {profile.item} 목록
         </h2>
         {/* 치는 대로 걸러지므로 검색 버튼은 두지 않는다. 자판의 «검색»(엔터)은 자판을 내려 결과를 보이게 한다 */}
         <form
@@ -92,7 +99,7 @@ export const SermonList = ({ page, sermons, series }: Props) => {
           }}
         >
           <label className="relative block">
-            <span className="sr-only">설교 검색</span>
+            <span className="sr-only">{profile.item} 검색</span>
             <Search
               aria-hidden
               className="text-b1-muted pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2"
@@ -102,7 +109,7 @@ export const SermonList = ({ page, sermons, series }: Props) => {
               type="search"
               value={state.q}
               onChange={e => setQuery({ q: e.target.value })}
-              placeholder="제목·본문 검색"
+              placeholder={profile.searchPlaceholder}
               autoComplete="off"
               enterKeyHint="search"
               // 입력칸 글씨는 16px(text-body) — 더 작으면 아이폰이 입력할 때 화면을 확대한다(DESIGN.md §7)
@@ -115,8 +122,9 @@ export const SermonList = ({ page, sermons, series }: Props) => {
         </form>
       </div>
 
-      <SeriesChips
-        series={series}
+      <ChipRow
+        label={profile.chipsLabel}
+        options={chipOptions}
         value={state.series}
         onChange={name => setQuery({ series: name })}
       />
@@ -215,7 +223,7 @@ export const SermonList = ({ page, sermons, series }: Props) => {
               'text-body-sm min-h-12 w-full px-[22px] md:w-auto md:min-w-[260px]'
             )}
           >
-            설교 더보기
+            {profile.item} 더보기
             <ChevronDown aria-hidden className="size-4" />
           </button>
         </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildChips,
   buildSeries,
   dateLabel,
   filterSermons,
@@ -347,5 +348,72 @@ describe('highlightParts', () => {
   it('정규식 기호가 든 검색어도 글자 그대로 찾는다', () => {
     expect(hits('은혜(恩惠)의 능력?', '(恩惠)')).toEqual(['(恩惠)']);
     expect(hits('a.b', '.')).toEqual(['.']);
+  });
+});
+
+// 교회소식 영상(주일광고·성복의 뜰) — 회차 없이 분류만 있는 영상. 최신순
+const NEWS: Sermon[] = sortSermons([
+  s({ id: 'n1025', series: '주일광고', date: '2026-10-25', title: '10월 25일 주일 광고' }),
+  s({ id: 'n1018', series: '주일광고', date: '2026-10-18', title: '10월 18일 주일 광고' }),
+  s({ id: 'n0105', series: '주일광고', date: '2025-01-05', title: '1월 5일 주일 광고' }),
+  s({ id: 'g1', series: '부흥집회', date: '2026-10-16', title: '가을특별부흥집회' }),
+  s({ id: 'g2', series: '교회소식', date: '2026-09-30', dateFrom: 'upload', title: '리모델링' }),
+]);
+
+describe('buildChips', () => {
+  it('series — 시리즈 칩(buildSeries 와 같다)', () => {
+    expect(buildChips(LIB, 'series')).toEqual(buildSeries(LIB));
+  });
+
+  it('year — 연도 칩, 최근 연도부터. 편수와 그 해의 가장 최근 편', () => {
+    expect(buildChips(NEWS, 'year')).toEqual([
+      { name: '2026년', count: 4, latest: '2026-10-25', thumbnail: 't/n1025' },
+      { name: '2025년', count: 1, latest: '2025-01-05', thumbnail: 't/n0105' },
+    ]);
+  });
+});
+
+describe('filterSermons — 연도 칩·날짜 검색(교회소식 영상)', () => {
+  const q = { q: '', series: '', sort: 'new' as const };
+
+  it('연도 칩으로 거른다', () => {
+    expect(ids(filterSermons(NEWS, { ...q, series: '2025년' }, { chips: 'year' }))).toEqual([
+      'n0105',
+    ]);
+    expect(filterSermons(NEWS, { ...q, series: '2026년' }, { chips: 'year' }).length).toBe(4);
+  });
+
+  it('날짜로 찾는다(«10.25»·«2026.10») — 날짜 검색을 켠 페이지에서만', () => {
+    expect(ids(filterSermons(NEWS, { ...q, q: '10.25' }, { searchDate: true }))).toEqual(['n1025']);
+    expect(ids(filterSermons(NEWS, { ...q, q: '2026.10' }, { searchDate: true }))).toEqual([
+      'n1025',
+      'n1018',
+      'g1',
+    ]);
+    // 예배 설교 목록은 날짜로 찾지 않는다 — «12» 같은 본문 검색에 날짜가 섞이지 않게
+    expect(filterSermons(NEWS, { ...q, q: '10.25' })).toEqual([]);
+  });
+
+  it('listRows 도 같은 기준 — 연도 칩을 고르면 최신 영상도 줄에 나온다', () => {
+    expect(ids(listRows(NEWS, q, { chips: 'year' }))).not.toContain('n1025');
+    expect(ids(listRows(NEWS, { ...q, series: '2026년' }, { chips: 'year' }))).toContain('n1025');
+  });
+});
+
+describe('neighbors — 묶음 없이 전체 날짜순(flat)', () => {
+  it('분류가 달라도 날짜로 이웃한다', () => {
+    expect(neighbors(NEWS, 'g1', true)).toEqual({
+      older: NEWS.find(x => x.id === 'g2'),
+      newer: NEWS.find(x => x.id === 'n1018'),
+    });
+  });
+
+  it('가장 최근 영상은 다음이 없고 가장 오래된 영상은 이전이 없다', () => {
+    expect(neighbors(NEWS, 'n1025', true).newer).toBeUndefined();
+    expect(neighbors(NEWS, 'n0105', true).older).toBeUndefined();
+  });
+
+  it('flat 이 아니면 같은 분류 안에서만(기존 규칙)', () => {
+    expect(neighbors(NEWS, 'g1')).toEqual({});
   });
 });

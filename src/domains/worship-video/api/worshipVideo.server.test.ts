@@ -8,7 +8,11 @@ vi.mock('@/shared/api/youtubeApi.server', async importOriginal => ({
 // 재생목록 설정은 시험용으로 — 실제 id 에 묶이지 않게
 vi.mock('../config/worshipPages', () => ({
   WORSHIP_PAGES: { sunday: ['PL-SUN'], both: ['PL-A', 'PL-B'] },
+  isWorshipPage: (page: string) => page !== 'announcements',
 }));
+// 교회소식 영상(등록한 게시글)은 저장소에서 온다
+const news = vi.hoisted(() => ({ videos: vi.fn() }));
+vi.mock('@/domains/news/api/newsRepository', () => ({ newsRepository: news }));
 
 import { YoutubeApiError, youtubeGet } from '@/shared/api/youtubeApi.server';
 
@@ -212,5 +216,51 @@ describe('fetchSermonDescription', () => {
     await expect(fetchSermonDescription('sunday', 'nope')).resolves.toBeNull();
     // 목록을 모으는 요청뿐(영상별 요청 없음)
     expect(get.mock.calls.every(([path]) => path === 'playlistItems')).toBe(true);
+  });
+});
+
+describe('교회소식 영상(주일광고·성복의 뜰) — 등록한 게시글에서', () => {
+  const post = (videoId: string, date: string, description?: string) => ({
+    id: `p-${videoId}`,
+    status: 'published',
+    feed: 'announcements',
+    title: `${date} 주일 광고`,
+    category: '주일광고',
+    date,
+    dateFrom: 'event',
+    videoId,
+    thumbnail: `t/${videoId}`,
+    poster: `p/${videoId}`,
+    ...(description !== undefined && { description }),
+  });
+  beforeEach(() => {
+    get.mockReset();
+    news.videos
+      .mockReset()
+      .mockResolvedValue([post('new', '2026-10-25', '광고 내용'), post('old', '2026-10-18')]);
+  });
+
+  it('저장소의 공개 게시글을 영상 목록으로 — 유튜브를 부르지 않는다', async () => {
+    const list = await fetchSermonLibrary('announcements');
+    expect(news.videos).toHaveBeenCalledWith('announcements');
+    expect(list.map(x => x.id)).toEqual(['new', 'old']);
+    expect(list[0]).toMatchObject({ series: '주일광고', date: '2026-10-25', dateFrom: 'sermon' });
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('설명 글 — 적어 둔 글, 없으면 빈 글. 목록에 없는 영상은 null', async () => {
+    expect(await fetchSermonDescription('announcements', 'new')).toBe('광고 내용');
+    expect(await fetchSermonDescription('announcements', 'old')).toBe('');
+    expect(await fetchSermonDescription('announcements', 'nope')).toBeNull();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('같은 영상을 두 번 등록했으면 목록도 설명도 앞의 글 것을 쓴다', async () => {
+    news.videos.mockResolvedValue([
+      post('same', '2026-10-25', '앞 글'),
+      post('same', '2026-10-18', '뒤 글'),
+    ]);
+    expect((await fetchSermonLibrary('announcements')).map(x => x.date)).toEqual(['2026-10-25']);
+    expect(await fetchSermonDescription('announcements', 'same')).toBe('앞 글');
   });
 });

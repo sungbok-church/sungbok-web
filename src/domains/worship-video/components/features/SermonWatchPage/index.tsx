@@ -8,24 +8,30 @@ import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import { SermonInfo } from '@/domains/worship-video/components/features/SermonInfo';
 import { SermonPlayer } from '@/domains/worship-video/components/features/SermonPlayer';
 import { SermonSidebar } from '@/domains/worship-video/components/features/SermonSidebar';
-import { FOCUS, OUTLINE_BTN } from '@/domains/worship-video/components/features/sermonStyles';
+import { FOCUS, OUTLINE_BTN } from '@/shared/components/ui/controlStyles';
 import { QueryStatus, STATUS_CLASS } from '@/domains/worship-video/components/features/StatusText';
-import { sermonPath, type WorshipPage } from '@/domains/worship-video/config/worshipPages';
+import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProfile';
+import { sermonPath, type VideoPage } from '@/domains/worship-video/config/worshipPages';
+import type { SheetLink } from '@/domains/resources/api/sheetLinks';
 import { cn } from '@/shared/lib/utils';
 import { useLenis } from 'lenis/react';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Props {
-  page: WorshipPage;
+  page: VideoPage;
   videoId: string;
+  /** 이 영상에 연결된 공개 자료(설교 시트지) — 서버가 자료실에서 찾아 넘긴다. 없으면 카드를 그리지 않는다 */
+  sheets?: readonly SheetLink[];
 }
 
 const WatchView = ({
   page,
   sermons,
   current,
-}: Pick<Props, 'page'> & { sermons: Sermon[]; current: Sermon }) => {
+  sheets,
+}: Pick<Props, 'page' | 'sheets'> & { sermons: Sermon[]; current: Sermon }) => {
+  const profile = VIDEO_PAGE_PROFILE[page];
   const frameRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -45,7 +51,7 @@ const WatchView = ({
   const [browsing, setBrowsing] = useState<string>();
   const seriesName = browsing ?? current.series;
   const series = useMemo(() => buildSeries(sermons), [sermons]);
-  const { older, newer } = neighbors(sermons, current.id);
+  const { older, newer } = neighbors(sermons, current.id, profile.flat);
 
   // 눌러서 넘어왔으면 플레이어부터 «이전 · 목록 · 다음» 까지 한 화면에 들어오게 맞춘다 — 서브페이지 머리(제목·메뉴)가 커서
   // 노트북 화면에서는 플레이어 아래가 잘린다. 주소로 바로 들어온 경우는 맨 위 그대로 둔다.
@@ -75,9 +81,20 @@ const WatchView = ({
     <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-7">
       <div className="min-w-0">
         <div ref={playerRef}>
-          <SermonPlayer sermon={current} frameRef={frameRef} />
+          <SermonPlayer
+            sermon={current}
+            title={`${current.title} ${profile.videoNoun}`}
+            frameRef={frameRef}
+          />
         </div>
-        <SermonInfo page={page} sermon={current} older={older} newer={newer} navRef={navRef} />
+        <SermonInfo
+          page={page}
+          sermon={current}
+          older={older}
+          newer={newer}
+          navRef={navRef}
+          sheets={sheets}
+        />
       </div>
       <SermonSidebar
         page={page}
@@ -98,19 +115,22 @@ const WatchView = ({
  * 못 채웠으면(빌드 중 실패 등) 화면이 받는다. 목록에 없는 영상은 서버가 404 를 낸다 — 여기까지 온 경우(목록을 화면이 받았을 때)에는
  * 찾을 수 없다고 알리고 목록으로 보낸다.
  */
-export const SermonWatchPage = ({ page, videoId }: Props) => {
+export const SermonWatchPage = ({ page, videoId, sheets }: Props) => {
   const q = useSermonLibrary(page);
+  const profile = VIDEO_PAGE_PROFILE[page];
   const current = q.data?.find(s => s.id === videoId);
-  if (q.data && current) return <WatchView page={page} sermons={q.data} current={current} />;
+  if (q.data && current) {
+    return <WatchView page={page} sermons={q.data} current={current} sheets={sheets} />;
+  }
   if (q.data?.length) {
     return (
       <div className={cn(STATUS_CLASS, 'flex flex-wrap items-center gap-x-4 gap-y-3')}>
-        <p role="status">이 설교 영상을 찾을 수 없습니다.</p>
+        <p role="status">이 {profile.videoNoun}을 찾을 수 없습니다.</p>
         <Link
           href={sermonPath(page)}
           className={cn(OUTLINE_BTN, FOCUS, 'text-label min-h-11 px-4')}
         >
-          설교 목록
+          {profile.item} 목록
         </Link>
       </div>
     );
@@ -118,7 +138,7 @@ export const SermonWatchPage = ({ page, videoId }: Props) => {
   return (
     // 상태 문구를 같은 상자 안에서 바꿔 끼운다 — «다시 시도» 뒤 포커스가 이 상자에 남아 문서 맨 위로 튀지 않는다
     <div data-focus-host tabIndex={-1} className={cn('rounded', FOCUS)}>
-      <QueryStatus query={q} empty="아직 등록된 설교 영상이 없습니다." />
+      <QueryStatus query={q} empty={`아직 등록된 ${profile.videoNoun}이 없습니다.`} />
     </div>
   );
 };
