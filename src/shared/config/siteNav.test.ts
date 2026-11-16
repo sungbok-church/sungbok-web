@@ -110,7 +110,7 @@ describe('buildRedirects', () => {
       { source: '/resources', destination: '/resources/sunday-sermon', permanent: false },
       { source: '/worship-video', destination: '/worship/sunday', permanent: false },
       { source: '/map', destination: '/location', permanent: false },
-      { source: '/worship/guide', destination: '/location', permanent: false },
+      { source: '/worship/guide', destination: '/location#worship-times', permanent: false },
     ]);
   });
 

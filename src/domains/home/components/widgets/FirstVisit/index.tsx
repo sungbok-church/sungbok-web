@@ -1,18 +1,26 @@
 // 처음 오신 분께 — 풀블리드 + 스크롤 고정 배경(background-attachment:fixed) + 글래스 카드.
 // 상세 절차(등록·5주 과정)와 등록·문의 폼은 우하단 플로팅 패널(RegisterPanel)에서.
 // 배경은 임시 stand-in(self-host) — 확정 시 교회 실제 사진으로 교체.
+// 홈의 지도 섹션은 찾아오시는 길 페이지로 옮겼다(ADR 0015) — 여기에는 주소 한 줄과 그 페이지 링크만 둔다.
 // 고정 배경은 마우스 기기(pointer: fine)에서만 쓴다. iOS Safari(폰·아이패드)는 fixed 배경을 페이지 전체 높이에
 // 맞춰 cover 해서 사진 한 귀퉁이만 수십 배 확대돼(흐릿한 색 덩어리) 보인다 — 터치 기기는 일반 스크롤 배경.
 'use client';
 
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, MapPin } from 'lucide-react';
+import Link from 'next/link';
 import { useRef } from 'react';
 
 import bg from '@/assets/images/main/first-visit.webp';
+import { CHURCH_LOCATION } from '@/shared/config/church';
 import { useNearViewport } from '@/shared/lib/hooks/useNearViewport';
+import { cn } from '@/shared/lib/utils';
 
 import { SECTION } from './data';
 import { MorphPanel, usePanelFlow } from './RegisterPanel';
+
+// 사진 위의 조작 요소 — 기본 포커스 선(accent 반투명)은 어두운 사진·글래스 위에서 잘 안 보여 흰 선으로 둔다
+const FOCUS_ON_PHOTO =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
 export const FirstVisit = () => {
   const flow = usePanelFlow();
@@ -39,14 +47,32 @@ export const FirstVisit = () => {
                 {SECTION.headingShort}
               </h2>
               <p className="text-body-sm mt-4 leading-[1.8] text-white/90">{SECTION.lead}</p>
-              <button
-                type="button"
-                onClick={flow.openPanel}
-                className="text-b1-accent text-label mt-7 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 font-bold transition-transform hover:-translate-y-0.5"
-              >
-                {SECTION.ctaLabel}
-                <ArrowRight size={16} />
-              </button>
+              <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2">
+                <button
+                  type="button"
+                  onClick={flow.openPanel}
+                  className={cn(
+                    FOCUS_ON_PHOTO,
+                    'text-b1-accent text-label inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 font-bold transition-transform hover:-translate-y-0.5'
+                  )}
+                >
+                  {SECTION.ctaLabel}
+                  <ArrowRight size={16} />
+                </button>
+                <Link
+                  href="/location"
+                  className={cn(
+                    FOCUS_ON_PHOTO,
+                    'text-label inline-flex min-h-11 items-center border-b-2 border-transparent px-1 font-semibold text-white transition-colors hover:border-white'
+                  )}
+                >
+                  {SECTION.directionsLabel}
+                </Link>
+              </div>
+              <p className="text-caption mt-6 flex items-start gap-1.5 border-t border-white/25 pt-5 text-white/90">
+                <MapPin size={15} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+                {CHURCH_LOCATION.address}
+              </p>
             </div>
           </div>
         </div>

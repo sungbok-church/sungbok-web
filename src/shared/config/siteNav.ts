@@ -99,8 +99,9 @@ export const findChild = (pathname: string): NavChild | undefined => {
 const LEGACY_REDIRECTS = [
   { source: '/worship-video', destination: '/worship/sunday' },
   { source: '/map', destination: '/location' },
-  // 예배 안내(예배 시간표)는 찾아오시는 길로 옮겼다(2026-11-12) — 예배 메뉴는 영상만
-  { source: '/worship/guide', destination: '/location' },
+  // 예배 안내(예배 시간표)는 찾아오시는 길로 옮겼다(2026-11-12) — 예배 메뉴는 영상만.
+  // 그 페이지는 지도가 먼저라 시간표 자리(#worship-times)로 보낸다
+  { source: '/worship/guide', destination: '/location#worship-times' },
 ] as const;
 
 export const buildRedirects = () => [

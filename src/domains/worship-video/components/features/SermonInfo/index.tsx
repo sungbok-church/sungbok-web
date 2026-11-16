@@ -14,6 +14,7 @@ import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProf
 import { sermonPath, type VideoPage } from '@/domains/worship-video/config/worshipPages';
 import type { SheetLink } from '@/domains/resources/api/sheetLinks';
 import { YoutubeIcon } from '@/shared/components/brand/YoutubeIcon';
+import { StatusToast } from '@/shared/components/features/StatusToast';
 import { useCopyLink } from '@/shared/lib/hooks/useCopyLink';
 import { isPlainClick } from '@/shared/lib/isPlainClick';
 import { cn } from '@/shared/lib/utils';
@@ -303,17 +304,8 @@ export const SermonInfo = ({ page, sermon, older, newer, navRef, sheets }: Props
         itemClassName={cn(OUTLINE_BTN, 'text-label min-h-11 gap-1.5 px-2.5 whitespace-nowrap')}
       />
 
-      {/* 링크 복사 결과 — 알림 영역은 늘 두고 문구만 끼운다(화면낭독기가 변화를 읽는다) */}
-      <div
-        role="status"
-        className="pointer-events-none fixed inset-x-4 bottom-6 z-50 flex justify-center"
-      >
-        {message && (
-          <span className="bg-b1-text text-b1-surface text-body-sm rounded-lg px-5 py-3 text-center shadow-md">
-            {message}
-          </span>
-        )}
-      </div>
+      {/* 링크 복사 결과 */}
+      <StatusToast message={message} />
     </div>
   );
 };

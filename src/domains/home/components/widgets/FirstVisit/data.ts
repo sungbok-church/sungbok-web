@@ -2,11 +2,14 @@
 // 등록절차·5주 과정은 교회 제공 실제 자료. SECTION 의 eyebrow/heading/lead 는 사실 진술 placeholder —
 // 최종 문구는 교회 확인 필요. 홈 섹션은 단순 안내, 상세 절차는 등록·문의 패널('새가족 과정 안내')에서.
 
+import { CHURCH_LOCATION } from '@/shared/config/church';
+
 export const SECTION = {
   eyebrow: '● NEW FAMILY',
   headingShort: '처음 오신 분께',
   lead: '등록부터 교구 편성까지, 새가족이 교회에 정착하는 과정을 안내합니다.',
   ctaLabel: '새가족 등록·문의',
+  directionsLabel: '오시는 길',
 };
 
 // 등록절차 6단계 — 패널 '새가족 과정 안내'에서 펼쳐 보여줌.
@@ -99,6 +102,6 @@ export const DONE = {
 };
 
 export const CONTACT = {
-  phone: '02-2245-5840',
+  phone: CHURCH_LOCATION.phone,
   email: 'sungbok1979@naver.com',
 };

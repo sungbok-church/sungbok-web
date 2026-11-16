@@ -3,7 +3,6 @@ import { ChurchNews } from '@/domains/home/components/widgets/ChurchNews';
 import { FirstVisit } from '@/domains/home/components/widgets/FirstVisit';
 import { HomeLead } from '@/domains/home/components/widgets/HomeLead';
 import { LiveStage } from '@/domains/home/components/widgets/LiveStage';
-import { LocationMap } from '@/domains/home/components/widgets/LocationMap';
 import { NextGeneration } from '@/domains/home/components/widgets/NextGeneration';
 import { NoticeReel, NoticeReelSkeleton } from '@/domains/home/components/widgets/NoticeReel';
 import { HomeVideoWarmup } from '@/domains/home/components/widgets/HomeVideoWarmup';
@@ -63,8 +62,8 @@ export default function Home() {
         </div>
         {/* 교회 소식 — 좌 헤드라인 + 우 카드 뉴스 */}
         <ChurchNews />
-        <LocationMap />
-        {/* 처음 오신 분께 (새신자) — 풀블리드 + 스크롤 고정 배경 + 등록·문의 플로팅 패널 */}
+        {/* 처음 오신 분께 (새신자) — 풀블리드 + 스크롤 고정 배경 + 등록·문의 플로팅 패널.
+            지도 섹션은 찾아오시는 길 페이지로 옮겼다(ADR 0015) — 여기에는 주소 한 줄과 그 페이지 링크만 둔다. */}
         <FirstVisit />
       </div>
     </>

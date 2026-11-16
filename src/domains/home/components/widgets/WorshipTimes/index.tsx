@@ -14,7 +14,7 @@ export const WorshipTimes = () => {
           eyebrow="● WORSHIP"
           action={
             <Link
-              href="/location#worship-times"
+              href="/location"
               className="b1-link text-b1-sub text-body font-medium no-underline"
             >
               찾아오시는 길
