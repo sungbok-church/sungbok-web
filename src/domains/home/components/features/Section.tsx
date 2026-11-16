@@ -2,7 +2,7 @@ import { cn } from '@/shared/lib/utils';
 import type { PropsWithChildren } from 'react';
 
 interface Props {
-  /** nav 앵커용 id (예: 'worship', 'location') */
+  /** nav 앵커용 id (예: 'worship') */
   id?: string;
   /** 바깥 섹션에 적용할 클래스 — 배경 띠/보더 등 풀폭 요소용 */
   className?: string;
@@ -15,7 +15,7 @@ interface Props {
  */
 export const Section = ({ id, className, children }: PropsWithChildren<Props>) => {
   return (
-    // 앵커(#worship·#location)로 오면 섹션 위 여백(py)만큼 헤더 아래가 비어 보인다 — 여백 대부분을 헤더 뒤로
+    // 앵커(#worship)로 오면 섹션 위 여백(py)만큼 헤더 아래가 비어 보인다 — 여백 대부분을 헤더 뒤로
     // 넘겨 제목이 헤더 32px 아래에 오게 한다(Lenis·네이티브 모두 scroll-margin-top 을 읽는다)
     <section
       id={id}

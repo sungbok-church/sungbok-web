@@ -136,7 +136,7 @@ export const HomeHero = ({ copyClassName }: { copyClassName?: string } = {}) => 
             <ArrowRight size={14} strokeWidth={2.5} />
           </Link>
           <Link
-            href="#location"
+            href="/location"
             className="text-b1-text hover:border-b-b1-text text-label inline-flex items-center border-b-2 border-transparent px-2 py-3 font-semibold transition-colors"
           >
             오시는 길

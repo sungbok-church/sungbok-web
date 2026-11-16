@@ -152,7 +152,7 @@ shadcn 부품(`src/shared/components/ui/*`)은 `bg-primary`, `border-input` 같�
 - [src/domains/home/components/widgets/HomeHero](../../src/domains/home/components/widgets/HomeHero) — 환영 도트, 메인 CTA
 - [src/domains/home/components/widgets/WorshipTimes](../../src/domains/home/components/widgets/WorshipTimes) — 예배 시간 큰 숫자
 - [src/domains/home/components/widgets/VisitorAndNews](../../src/domains/home/components/widgets/VisitorAndNews) — 방문자 카드 배경, NEW 뱃지
-- [src/domains/home/components/widgets/LocationMap](../../src/domains/home/components/widgets/LocationMap) — 아이브로우, 핀 아이콘, 길찾기 버튼
+- [src/domains/location/components/widgets/Directions](../../src/domains/location/components/widgets/Directions) — 핀·정보 아이콘, «네이버 지도» 버튼
 
 ## 변경 시 주의
 

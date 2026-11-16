@@ -12,7 +12,7 @@
 - 히어로 문구·버튼에는 시작 지연이나 숨김 상태를 두지 않는다. 사진은 브라우저가 준비하는 대로 표시하고, 기존 스크롤 변형·사진 띠·배경 모션은 유지한다.
 - `HomeLead` 사진 띠의 `sizes`는 행 높이(svh)와 종횡비로 계산한다. 히어로·변형 레이어·착지 사진은 같은 `HERO_IMAGE_SIZES`·화질을 써서 같은 응답을 재사용한다.
 - 홈 영상 피드 조회는 요청 시작과 함께 진행한다. 홈 전체가 조회를 기다리는 대신 영상 두 섹션만 `Suspense`로 나눠 완료되는 대로 표시한다. 조회 실패는 그 영역의 기존 클라이언트 조회로 이어가며 첫 화면을 오류로 바꾸지 않는다.
-- 유튜브 IFrame API는 첫 문서 로드 후 여유 시간에 준비한다(`HomeVideoWarmup`). 구글 지도(약 1.8MB)는 그 자리가 **실제로 화면에 들어왔을 때** 만든다(`useNearViewport(ref, '0px')`) — 브라우저가 새로고침 때 스크롤 위치를 되돌리면서 화면 밖 임베드를 받느라 로딩이 3~4초 돌던 것을 막는다(2026-11-14 실측). 그 전에는 썸네일·포스터·자리표시가 보인다.
+- 유튜브 IFrame API는 첫 문서 로드 후 여유 시간에 준비한다(`HomeVideoWarmup`). 그 전에는 썸네일·포스터가 보인다. (구글 지도는 홈에 없다 — 로딩 규칙은 [location.md](location.md).)
 - 유튜브 플레이어(라이브·광고 릴·턴테이블)는 **두 단계**다 (2026-11-14): 피드 데이터 자체는 3KB 로 홈 HTML 에 미리 실려 있어 느린 원인이 아니었고, 기다림은 플레이어 코드(약 1.1MB)와 영상 스트림(재생 8초에 약 2MB)이었다.
   - 미리 만들기 — 자리 한 화면 앞(`'100% 0px'`)에서 플레이어를 만든다. 단 페이지 첫 로딩(window load, `usePageLoaded`)이 끝난 뒤에만 — 새로고침이 스크롤을 되돌려 근처에서 열려도 첫 화면과 회선을 다투지 않게. 자리가 이미 화면 안이면 바로 만든다.
   - 재생 — 라이브·광고 릴은 멈춘 채(`autoplay: false`) 만들어 두고, 자리가 실제로 화면에 들어오면 `playVideo()` 한다 — 화면 밖에서 영상 스트림은 받지 않는다. 광고 릴 포스터는 재생을 건 뒤에만 걷는다(멈춘 플레이어의 재생 버튼 화면이 드러나지 않게). 턴테이블 임베드도 멈춘 채(`autoplay=0`) 붙이고 화면에 들어오면 `playVideo` 명령을 보낸다(준비 신호가 8초 넘게 없으면 화면 안에서 자동재생 주소로 다시 붙인다). 회전·파동 루프는 화면에 들어왔을 때 돈다. 소리를 켠 상태면 무음으로 재생을 건 뒤 소리를 켠다(제스처 없는 소리 재생은 막힐 수 있음).
@@ -46,7 +46,7 @@
 | 4   | RecentSermons    | [RecentSermons](../../src/domains/home/components/widgets/RecentSermons/index.tsx)       | 유지 + placeholder 카드 교체           |
 | 5   | NextGeneration   | [NextGeneration](../../src/domains/home/components/widgets/NextGeneration/index.tsx)     | 별자리 8부서, 폰에서는 숨김            |
 | 6   | VisitorAndNews   | [VisitorAndNews](../../src/domains/home/components/widgets/VisitorAndNews/index.tsx)     | 유지 + 좌:우 60:40                     |
-| 7   | LocationMap      | [LocationMap](../../src/domains/home/components/widgets/LocationMap/index.tsx)           | 유지 + "주소 복사" 추가                |
+| 7   | (지도 없음)      | —                                                                                        | `/location` 에만 둔다 — [location.md](location.md), [ADR 0015](../decisions/0015-location-map-to-location-page.md) |
 
 조립 위치: [src/app/page.tsx](../../src/app/page.tsx)
 
@@ -61,7 +61,7 @@
 | **인터랙션**      | 최상단: 문구 화면 중앙·전경 숨김. 스크롤 시 문구가 좌측 도킹 + 전경이 우측에서 등장(opacity 0→1)·선명(scale 1.08→1). transform/opacity 만. `prefers-reduced-motion` 이면 트랙 없이 정적 최종상태(100vh). |
 | **카피**          | eyebrow "대한예수교장로회 성복교회" + 키네틱 그라데 타이틀 "삶에 기쁨과 소망을 주는 교회"(기쁨·소망 흐르는 그라데, 본문 딥인디고 `#2a3556`) + 글래스 칩 "주일예배 오전 11:30 · 1~5부".                   |
 | **Primary CTA**   | "이번 주 예배 시간" (`#worship` 앵커)                                                                                                                                                                  |
-| **Secondary CTA** | "오시는 길" (`#location` 앵커)                                                                                                                                                                         |
+| **Secondary CTA** | "오시는 길" (`/location` — 찾아오시는 길 페이지, ADR 0015) |
 | **상태**          | 잠정 적용 — 추가 시안 비교 예정(프리뷰 `src/app/hero-preview/`, `HomeHero/_variants/` 유지). 확정 시 색 토큰화(`globals.css` + `color-palette.md`) + ADR 0004 기록.                                     |
 
 > 시안 비교 경위: 메시 배경+키네틱 카피(A) + 우측 전경 블리드(C)를 결합한 DockSlide(B). 구 v2(Bleed+Blur+KenBurns)는 [ADR 0003](../decisions/0003-hero-v2-bleed-blur-kenburns.md), 구 v8(문열림)은 폐기.
@@ -74,7 +74,7 @@
 2. **전경은 첫 프레임 숨김 → 스크롤 등장** — 애니 분기에서 전경 초기 `opacity:0`, rAF 가 `e` 로 `opacity 0→1` · `translateX 44%→0` · `scale 1.08→1`. 좌측 경계는 `mask-image`(linear, 좌측 transparent)로 메시에 자연 페이드(하드 경계·문열림 금지).
 3. **transform/opacity·mask 만 애니메이트** — `filter:blur()` 애니·clip-path 스크럽 금지(잔카). 메시 블롭은 `transform`만(블러는 정적).
 4. **reduced-motion = 정적 최종상태** — `prefers-reduced-motion` 이면 200vh 트랙·rAF 없이 **100vh 정적**(카피 좌측 + 전경 노출)으로 렌더. 스크롤 연동을 끄되 빈 화면/데드 스크롤이 안 생기게 최종상태를 보일 것.
-5. **CTA 앵커 유지** — `이번 주 예배 시간`=`#worship`(WorshipTimes `id`), `오시는 길`=`#location`(LocationMap `id`). Lenis `anchors.offset:-80`(`_provider.tsx`)로 헤더 보정.
+5. **CTA 연결 유지** — `이번 주 예배 시간`=`#worship`(WorshipTimes `id`, 헤더 보정은 전역 `scroll-padding-top`), `오시는 길`=`/location`(지도는 그 페이지에만 있다 — ADR 0015).
 6. **이미지 `sizes` 반응형** — `<Photo sizes="(max-width:768px) 96vw, 74vw" preload />`. 화질은 크기 파일을 만들 때 정한다(`scripts/photo-variants.mjs`, ADR 0013)(좁은 뷰포트 업스케일 흐림 방지).
 
 > 전역 스무딩은 Lenis(`_provider.tsx` `ReactLenis root`)가 관리하며 B는 Lenis 를 stop/start 하지 않는다(인트로 하이재킹 없음).
@@ -98,7 +98,7 @@
 | **콘텐츠**        | • 1~4부 카드 4개 (현재 데이터 유지)<br>• 4개 시간을 동등하게 보여주고 사용자가 스스로 선택. 추천 뱃지·"부담 없이" 류 멘트 배제.<br>• "예배 약 70분" 정도는 단정한 사실 라벨로 카드에 삽입 가능 (4개 부수 시간 동일 여부 확인 필요). |
 | **타이포·톤**     | 시간은 b1-mono. 카드 4개 동등 비중.                                                                                                                                                                                                 |
 | **Primary CTA**   | "전체 예배 안내" (`/worship-video`)                                                                                                                                                                                                 |
-| **Secondary CTA** | "오시는 길" (`#location`)                                                                                                                                                                                                           |
+| **Secondary CTA** | "오시는 길" (`/location`) |
 | **성공 지표**     | 4개 카드 클릭/포커스 분포, Primary CTA 클릭률                                                                                                                                                                                       |
 
 ### 4. RecentSermons
@@ -137,16 +137,9 @@
 | **Secondary CTA** | "소식 더 보기" (`/news`)                                                                                                                                                                                                |
 | **성공 지표**     | `tel:`/`mailto:` 클릭률                                                                                                                                                                                                 |
 
-### 7. LocationMap
+### 7. 지도 — 홈에 두지 않는다
 
-| 항목              | 내용                                                                                                                                                                                                                         |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **목적**          | "지금 결정 → 어떻게 가지?" 마지막 행동 도구.                                                                                                                                                                                 |
-| **콘텐츠**        | • Google Maps 임베드 (현재 유지)<br>• PARKING / TRANSIT / CONTACT 3카드 (현재 유지)<br>• "주소 복사" 버튼 추가 — 모바일 사용자가 본인 지도앱으로 옮기는 가장 빠른 행동.<br>• 도착 시나리오 멘트("정문에 안내 위원" 등) 배제. |
-| **타이포·톤**     | 헤더 "찾아오시는 길" 유지. 지도 16:10 + 우측 카드 정렬.                                                                                                                                                                      |
-| **Primary CTA**   | "네이버 지도로 길찾기"                                                                                                                                                                                                       |
-| **Secondary CTA** | "주소 복사" / "전화 문의"                                                                                                                                                                                                    |
-| **성공 지표**     | **외부 지도 링크 클릭률 = 사실상 전환 이벤트** (오프라인 방문 의도의 가장 강한 신호)                                                                                                                                         |
+지도·주소 복사·주차·대중교통은 `/location` 에만 있다([location.md](location.md), [ADR 0015](../decisions/0015-location-map-to-location-page.md)). 홈에는 «처음 오신 분께»(FirstVisit) 카드의 주소 한 줄과 «오시는 길» 링크, 히어로·«이번 주 예배» 의 링크가 있고 모두 `/location` 으로 간다. 주소 값은 `src/shared/config/church.ts`.
 
 ## 히어로 인터랙티브 — 종결
 
@@ -164,7 +157,7 @@
 | RecentSermons    | 메인 영상 위, 서브 카드 아래. 첫 프레임 썸네일 품질 중요(자동재생 제한 대비).                                                                 |
 | NextGeneration   | 숨김(별자리는 넓은 화면 전용, 기획 요구 8). 폰 대체 화면은 미착수.                                                                            |
 | VisitorAndNews   | 1열 스택 (방문 안내 위 / 소식 아래).                                                                                                          |
-| LocationMap      | 지도 4:3 압축. 지도 위 "지도 앱으로 열기" 버튼 우선.                                                                                          |
+| (지도)           | 홈에 없음 — [location.md](location.md) 참조. |
 
 **글로벌 모바일 룰**:
 
@@ -213,7 +206,6 @@
 - [src/domains/home/components/widgets/WorshipTimes/index.tsx](../../src/domains/home/components/widgets/WorshipTimes/index.tsx)
 - [src/domains/home/components/widgets/RecentSermons/index.tsx](../../src/domains/home/components/widgets/RecentSermons/index.tsx)
 - [src/domains/home/components/widgets/VisitorAndNews/index.tsx](../../src/domains/home/components/widgets/VisitorAndNews/index.tsx)
-- [src/domains/home/components/widgets/LocationMap/index.tsx](../../src/domains/home/components/widgets/LocationMap/index.tsx)
 
 신설 예정:
 

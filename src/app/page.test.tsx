@@ -30,7 +30,6 @@ vi.mock('@/domains/home/components/widgets/HomeVideoWarmup', () => ({
 }));
 vi.mock('@/domains/home/components/widgets/ChurchNews', () => ({ ChurchNews: () => null }));
 vi.mock('@/domains/home/components/widgets/FirstVisit', () => ({ FirstVisit: () => null }));
-vi.mock('@/domains/home/components/widgets/LocationMap', () => ({ LocationMap: () => null }));
 vi.mock('@/domains/home/components/widgets/NextGeneration', () => ({ NextGeneration: () => null }));
 vi.mock('@/domains/home/components/widgets/RecentSermons/TurntableStage', () => ({
   TurntableStage: () => null,
