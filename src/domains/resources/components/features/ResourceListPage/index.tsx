@@ -205,17 +205,12 @@ export const ResourceListPage = ({ section, resources }: Props) => {
       </div>
 
       {rows.length > 0 ? (
-        <>
-          <div className="border-b1-border text-b1-sub text-caption flex items-center justify-between gap-5 border-b pb-2.5">
-            <span>자료 제목</span>
-            <span>원본 내려받기</span>
-          </div>
-          <ul ref={listRef} className="m-0 list-none p-0">
-            {rows.map(r => (
-              <Row key={r.id} section={section} resource={r} />
-            ))}
-          </ul>
-        </>
+        // 표 머리(«자료 제목 / 원본 내려받기»)는 두지 않는다 — 줄마다 제목과 내려받기 아이콘이 스스로 설명한다
+        <ul ref={listRef} className="border-b1-border m-0 list-none border-t p-0">
+          {rows.map(r => (
+            <Row key={r.id} section={section} resource={r} />
+          ))}
+        </ul>
       ) : (
         <EmptyState
           title="찾으시는 자료가 없습니다."
