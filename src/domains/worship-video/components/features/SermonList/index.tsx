@@ -7,6 +7,7 @@ import {
   highlightParts,
   listRows,
   sermonTag,
+  yearLabel,
 } from '@/domains/worship-video/api/sermonList';
 import {
   rememberListScroll,
@@ -189,7 +190,8 @@ export const SermonList = ({ page, sermons, series }: Props) => {
                 />
                 <span className="grid min-w-0 gap-0.5">
                   <span className="text-b1-accent text-caption font-bold">
-                    {sermonTag(v)} · {dateLabel(v)}
+                    {/* 제목이 곧 날짜인 영상(주일광고)은 제목에 없는 연도만 */}
+                    {profile.dateInTitle ? yearLabel(v.date) : `${sermonTag(v)} · ${dateLabel(v)}`}
                   </span>
                   <b className="text-b1-text text-body-sm line-clamp-2 leading-snug font-bold">
                     <Highlight text={v.title} q={q} />

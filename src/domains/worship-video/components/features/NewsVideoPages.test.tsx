@@ -88,11 +88,20 @@ describe('주일광고 목록(/news/announcements) — 예배와 같은 영상 �
   it('가장 최근 광고 한 편을 크게 — 머리표·시청 버튼은 주일광고의 말로, 주소는 /news 아래', () => {
     open();
     expect(screen.getByText('최근 주일광고')).toBeInTheDocument();
-    expect(screen.getByText('2026.10.25 · 주일')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '광고 영상 시청하기' })).toHaveAttribute(
       'href',
       '/news/announcements/ad1025'
     );
+  });
+
+  it('제목이 곧 날짜라 날짜를 따로 적지 않는다 — 큰 카드에는 날짜 줄이 없고, 목록 줄에는 연도만', () => {
+    open();
+    expect(screen.queryByText(/2026\.10\.25/)).toBeNull();
+    const rows = within(list()).getAllByRole('listitem');
+    expect(within(rows[0]).getByText('2026년')).toBeInTheDocument();
+    expect(within(rows[0]).queryByText(/2026\.10\.18/)).toBeNull();
+    expect(within(rows[0]).getByText('10월 18일 주일 광고')).toBeInTheDocument();
+    expect(within(rows.at(-1)!).getByText('2025년')).toBeInTheDocument();
   });
 
   it('칩은 연도 — 고르면 그 해의 광고만', () => {
@@ -167,6 +176,9 @@ describe('주일광고 한 편(/news/announcements/영상id) — 예배와 같�
     expect(within(side).getAllByRole('listitem')).toHaveLength(4);
     expect(within(side).queryByRole('button', { name: /전체/ })).toBeNull();
     expect(within(side).getByText('현재 영상')).toBeInTheDocument();
+    // 옆 목록도 제목이 날짜라 연도만 적는다
+    expect(within(side).queryByText(/2026\.10\.18/)).toBeNull();
+    expect(within(side).getAllByText('2026년')).toHaveLength(3);
   });
 
   it('목록에 없는 영상이면 찾을 수 없다고 알리고 주일광고 목록으로 보낸다', () => {

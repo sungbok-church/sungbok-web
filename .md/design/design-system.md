@@ -72,6 +72,6 @@
 |---|---|---|
 | 클래스 묶음 `FOCUS`·`PILL`·`OUTLINE_BTN`·`ARROW_BTN`·`HIT_34/36` | `src/shared/components/ui/controlStyles.ts` | 알약(34px)·테두리 버튼·포커스 링. 보이는 크기가 44px 보다 작으면 `HIT_*` 로 누르는 영역을 넓힌다(1024 미만) |
 | `ChipRow` — «전체» + 분류 칩 한 줄 | `src/shared/components/features/ChipRow` | 넘치면 옆으로 넘기고 태블릿·PC 는 화살표. 설교 시리즈·주일광고 연도·자료 분류 |
-| `ViewerControls` — `PageStepper`·`ZoomControls`·`Segmented`·`ToolButton` | `src/shared/components/features/ViewerControls` | 쪽·장 넘김, 확대 100~300%(`lib/zoomSteps`), 고정 선택 버튼(44px). 끝에서는 `disabled` 대신 `aria-disabled`(포커스가 빠지지 않게) |
+| `ViewerControls` — `PageStepper`·`ZoomControls`·`Segmented`·`ToolButton` | `src/shared/components/features/ViewerControls` | 쪽·장 넘김, 확대 100~300%(`lib/zoomSteps`), 고정 선택 버튼(44px). 휴대폰에서는 버튼 폭을 36px 로 줄여(누르는 영역은 가상 영역으로 44px) 쪽 넘김과 확대가 한 줄에 들어간다 — 360px 미만에서는 배율 숫자를 접는다. 끝에서는 `disabled` 대신 `aria-disabled`(포커스가 빠지지 않게) |
 
 **shadcn CLI 주의**: `pnpm dlx shadcn@latest add …` 가 `import { cn } from "cn"` 로 생성하고 엉뚱한 npm 패키지 `cn` 을 설치한 적이 있다(2026-11-05). 추가 뒤 import 를 `@/shared/lib/utils` 로 고치고, `dark:` 유틸과 `next-themes` 를 지운다.

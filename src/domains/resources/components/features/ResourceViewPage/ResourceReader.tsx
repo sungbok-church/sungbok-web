@@ -63,7 +63,8 @@ export const ResourceReader = ({ title, pages, page, onPage, hasFile }: Props) =
 
   return (
     <>
-      <div className="border-b1-border flex flex-wrap items-center justify-between gap-x-2 gap-y-2 border-b px-2.5 py-2.5 max-[359px]:justify-center md:px-4">
+      {/* 쪽 넘김과 확대는 휴대폰에서도 한 줄 — 부품이 좁은 화면에 맞춰 줄어든다(ViewerControls) */}
+      <div className="border-b1-border flex items-center justify-between gap-2 border-b px-2.5 py-2.5 md:px-4">
         <PageStepper noun="쪽" index={page} count={count} onChange={onPage} />
         <ZoomControls zoom={zoom} onZoom={zoomTo} />
       </div>

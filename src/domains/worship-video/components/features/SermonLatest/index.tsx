@@ -67,10 +67,13 @@ export const SermonLatest = ({ page, sermon }: Props) => {
             <span aria-hidden className="size-[7px] rounded-full bg-current" />
             {profile.latest}
           </p>
-          <p className="text-b1-sub text-caption tabular-nums">
-            {dateLabel(sermon)}
-            {day && ` · ${day}`}
-          </p>
+          {/* 제목이 곧 날짜인 영상(주일광고)은 날짜를 한 번 더 적지 않는다 */}
+          {!profile.dateInTitle && (
+            <p className="text-b1-sub text-caption tabular-nums">
+              {dateLabel(sermon)}
+              {day && ` · ${day}`}
+            </p>
+          )}
         </div>
         <h2
           id={headId}

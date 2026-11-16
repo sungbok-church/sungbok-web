@@ -6,6 +6,7 @@ import {
   seriesByYear,
   seriesSermons,
   topSeries,
+  yearLabel,
 } from '@/domains/worship-video/api/sermonList';
 import type { Sermon, SermonSeries } from '@/domains/worship-video/api/worshipVideo.types';
 import { ARROW_BTN, FOCUS, HIT_34, PILL } from '@/shared/components/ui/controlStyles';
@@ -53,7 +54,7 @@ export const SermonSidebar = ({
   const chipsRef = useRef<HTMLDivElement>(null);
   const reduced = usePrefersReducedMotion();
   // 회차가 없는 영상(주일광고·성복의 뜰)은 묶음을 가르지 않고 전체를 날짜순으로 — 칩과 고르기 상자가 없다
-  const { flat, item, videoNoun } = VIDEO_PAGE_PROFILE[page];
+  const { flat, item, videoNoun, dateInTitle } = VIDEO_PAGE_PROFILE[page];
   const episodes = flat ? sermons : seriesSermons(sermons, seriesName);
 
   // 시리즈나 재생 영상이 바뀌면 회차 줄을 재생 중인 편(없으면 처음)으로, 칩 줄을 고른 칩으로 맞춘다.
@@ -252,7 +253,7 @@ export const SermonSidebar = ({
                   </b>
                   <small className="text-b1-sub text-caption tabular-nums">
                     {x.no !== undefined ? `${x.no}편 · ` : x.occasion ? `${x.occasion} · ` : ''}
-                    {dateLabel(x)}
+                    {dateInTitle ? yearLabel(x.date) : dateLabel(x)}
                   </small>
                 </span>
               </Link>
