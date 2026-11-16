@@ -18,6 +18,11 @@ export type VideoPageProfile = {
   /** 날짜로도 찾는다(«10.25») — 주일마다 올리는 영상용 */
   searchDate: boolean;
   /**
+   * 제목이 곧 날짜다(«11월 15일 주일 광고»). 날짜를 한 번 더 적으면 같은 말이 겹쳐 보여서, 큰 카드에는 날짜 줄을
+   * 두지 않고 목록 줄에는 제목에 없는 연도만 적는다.
+   */
+  dateInTitle: boolean;
+  /**
    * true 면 한 편 페이지의 옆 목록과 이전·다음이 묶음(시리즈)으로 나뉘지 않고 전체 날짜순이다 —
    * 회차가 없는 영상(주일광고·행사 영상)용.
    */
@@ -34,6 +39,7 @@ export const VIDEO_PAGE_PROFILE: Record<VideoPage, VideoPageProfile> = {
     chips: 'series',
     chipsLabel: '시리즈',
     searchDate: false,
+    dateInTitle: false,
     flat: false,
   },
   announcements: {
@@ -45,6 +51,7 @@ export const VIDEO_PAGE_PROFILE: Record<VideoPage, VideoPageProfile> = {
     chips: 'year',
     chipsLabel: '연도',
     searchDate: true,
+    dateInTitle: true,
     flat: true,
   },
   garden: {
@@ -56,6 +63,7 @@ export const VIDEO_PAGE_PROFILE: Record<VideoPage, VideoPageProfile> = {
     chips: 'series',
     chipsLabel: '분류',
     searchDate: true,
+    dateInTitle: false,
     flat: true,
   },
 };

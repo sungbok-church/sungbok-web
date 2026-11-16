@@ -15,6 +15,7 @@ import {
   sortSermons,
   topSeries,
   weekdayLabel,
+  yearLabel,
 } from './sermonList';
 import { SINGLES } from './sermonParse';
 import type { Sermon } from './worshipVideo.types';
@@ -295,6 +296,12 @@ describe('weekdayLabel', () => {
 
   it('날짜 모양이 아니면 빈 문자열', () => {
     expect(weekdayLabel('nope')).toBe('');
+  });
+});
+
+describe('yearLabel', () => {
+  it('달력 날짜의 연도 — «2026년»', () => {
+    expect(yearLabel('2026-10-25')).toBe('2026년');
   });
 });
 

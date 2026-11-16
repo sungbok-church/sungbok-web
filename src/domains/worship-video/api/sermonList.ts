@@ -30,9 +30,12 @@ export type ListOptions = {
   searchDate?: boolean;
 };
 
+/** 달력 날짜(YYYY-MM-DD)의 연도 — «2026년». 연도 칩과, 제목이 곧 날짜인 영상(주일광고)의 줄 표시에 쓴다. */
+export const yearLabel = (date: string): string => `${date.slice(0, 4)}년`;
+
 /** 그 영상이 속한 칩 이름 */
 const chipOf = (s: Sermon, chips: ListOptions['chips']) =>
-  chips === 'year' ? `${s.date.slice(0, 4)}년` : s.series;
+  chips === 'year' ? yearLabel(s.date) : s.series;
 
 const searchText = (s: Sermon, withDate?: boolean) =>
   [

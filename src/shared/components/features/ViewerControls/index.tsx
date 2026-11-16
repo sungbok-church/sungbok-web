@@ -8,10 +8,11 @@ import type { ReactNode } from 'react';
 
 // 열람기의 조작 부품 — 자료실 문서 열람기와 주보·앨범의 «크게 보기» 가 같이 쓴다.
 
-// 도구 버튼 — 보이는 크기는 40×40, 누르는 영역은 1024 미만에서 가상 영역으로 44×44(DESIGN.md §7).
-// 가상 영역은 테두리 안쪽에서 잰다(테두리 1px 을 더해 사방 3px).
+// 도구 버튼 — 보이는 크기는 휴대폰 36×40 · 태블릿부터 40×40, 누르는 영역은 1024 미만에서 가상 영역으로 44×44 이상(DESIGN.md §7).
+// 휴대폰에서 쪽 넘김과 확대가 한 줄에 들어가야 해서 폭을 줄였다(두 줄로 넘어가면 도구 줄이 화면을 차지한다).
+// 가상 영역은 테두리 안쪽에서 잰다(테두리 1px 을 더해 위아래 3px, 옆은 휴대폰 5px · 태블릿 3px).
 const TOOL_HIT =
-  "relative max-lg:before:absolute max-lg:before:-inset-[3px] max-lg:before:content-['']";
+  "relative max-lg:before:absolute max-lg:before:-inset-y-[3px] max-lg:before:-inset-x-[5px] md:max-lg:before:-inset-x-[3px] max-lg:before:content-['']";
 export const TOOL_BTN = cn(
   'border-b1-border bg-b1-surface text-b1-text hover:bg-b1-accent-soft duration-fast grid h-10 shrink-0 place-items-center rounded-md border transition-colors',
   'aria-disabled:hover:bg-b1-surface aria-disabled:cursor-default aria-disabled:opacity-40',
@@ -38,7 +39,7 @@ export const ToolButton = ({
     aria-label={label}
     aria-disabled={off}
     onClick={() => !off && onClick()}
-    className={cn(TOOL_BTN, FOCUS, 'w-10')}
+    className={cn(TOOL_BTN, FOCUS, 'w-9 md:w-10')}
   >
     {children}
   </button>
@@ -63,14 +64,14 @@ export const PageStepper = ({
   <div
     role="group"
     aria-label={`${noun} 넘김`}
-    className={cn('flex items-center gap-1.5', className)}
+    className={cn('flex items-center gap-1 md:gap-1.5', className)}
   >
     <ToolButton label={`이전 ${noun}`} off={index <= 0} onClick={() => onChange(index - 1)}>
       <ChevronLeft aria-hidden className="size-[17px]" />
     </ToolButton>
     <span
       aria-live="polite"
-      className="text-b1-text text-caption min-w-12 text-center whitespace-nowrap tabular-nums"
+      className="text-b1-text text-caption min-w-9 text-center whitespace-nowrap tabular-nums md:min-w-12"
     >
       <span className="sr-only">{noun} </span>
       {index + 1} / {count}
@@ -92,13 +93,18 @@ export const ZoomControls = ({
   onZoom: (zoom: number) => void;
   className?: string;
 }) => (
-  <div role="group" aria-label="확대" className={cn('flex items-center gap-1.5', className)}>
+  <div
+    role="group"
+    aria-label="확대"
+    className={cn('flex items-center gap-1 md:gap-1.5', className)}
+  >
     <ToolButton label="축소" off={zoom <= ZOOM_FIT} onClick={() => onZoom(stepZoom(zoom, -1))}>
       <Minus aria-hidden className="size-4" />
     </ToolButton>
     <span
       aria-live="polite"
-      className="text-b1-text text-caption min-w-11 text-center whitespace-nowrap tabular-nums"
+      // 아주 좁은 화면(360 미만)에서는 배율 숫자를 접는다 — 버튼 넷이 한 줄에 들어가게
+      className="text-b1-text text-caption min-w-10 text-center whitespace-nowrap tabular-nums max-[359px]:sr-only md:min-w-11"
     >
       <span className="sr-only">배율 </span>
       {zoomLabel(zoom)}
@@ -110,7 +116,7 @@ export const ZoomControls = ({
       type="button"
       aria-label="창에 맞춤"
       onClick={() => onZoom(ZOOM_FIT)}
-      className={cn(TOOL_BTN, FOCUS, 'text-caption px-3 whitespace-nowrap')}
+      className={cn(TOOL_BTN, FOCUS, 'text-caption px-2.5 whitespace-nowrap md:px-3')}
     >
       맞춤
     </button>
