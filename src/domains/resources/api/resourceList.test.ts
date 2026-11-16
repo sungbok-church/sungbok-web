@@ -10,7 +10,6 @@ import {
   findResources,
   groupLabel,
   NO_YEAR,
-  pageCountLabel,
   videoLinkLabel,
 } from './resourceList';
 
@@ -226,13 +225,6 @@ describe('표시 문구', () => {
     expect(dateLabel(SUNDAY[0])).toBe('2026.10.25');
     expect(dateLabel(doc({ id: 'x', year: '2025' }))).toBe('2025년');
     expect(dateLabel(doc({ id: 'y' }))).toBe('');
-  });
-
-  it('쪽 수 — 문서는 «2쪽», 이미지로만 제공되는 자료는 «2장», 미리보기가 없으면 빈 문자열. 확장자·용량은 어디에도 없다', () => {
-    expect(pageCountLabel(SUNDAY[0])).toBe('2쪽');
-    expect(pageCountLabel(SEASONAL[1])).toBe('2쪽');
-    expect(pageCountLabel(SEASONAL[3])).toBe('2장');
-    expect(pageCountLabel(SEASONAL[4])).toBe('');
   });
 
   it('결과 수 앞의 말 — 검색 중이면 «검색 결과», 칩만 골랐으면 칩 이름, 조건이 없으면 «전체»', () => {

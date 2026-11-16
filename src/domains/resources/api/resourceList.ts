@@ -59,10 +59,6 @@ export const groupLabel = (r: Resource): string =>
 export const dateLabel = (r: Resource): string =>
   r.date ? r.date.replaceAll('-', '.') : r.year ? `${r.year}년` : '';
 
-/** 쪽 수 — 문서는 «2쪽», 첨부 없이 이미지로만 제공되는 자료는 «2장». 미리보기가 없으면 ''. */
-export const pageCountLabel = (r: Resource): string =>
-  r.pages.length ? `${r.pages.length}${r.file ? '쪽' : '장'}` : '';
-
 /** 결과 수(«N개») 앞에 붙는 말 — 검색 중이면 «검색 결과», 칩만 골랐으면 그 칩 이름, 조건이 없으면 «전체». */
 export const countLabel = (query: ResourceQuery, options: readonly FilterOption[]): string => {
   if (query.q.trim()) return '검색 결과';
