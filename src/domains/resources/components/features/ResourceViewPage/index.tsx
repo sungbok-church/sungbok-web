@@ -5,7 +5,6 @@ import {
   dateLabel,
   downloadTarget,
   groupLabel,
-  pageCountLabel,
   videoLinkLabel,
 } from '@/domains/resources/api/resourceList';
 import {
@@ -38,7 +37,7 @@ const PRIMARY_BTN =
   'bg-b1-accent text-b1-surface hover:bg-b1-accent/90 duration-fast inline-flex items-center justify-center gap-2 rounded-md font-bold transition-colors';
 
 /**
- * 문서 열람 페이지(/resources/분류/자료id) — «자료 목록» 돌아가기(한 번만) · 머리(묶음·제목·날짜·본문·쪽 수) ·
+ * 문서 열람 페이지(/resources/분류/자료id) — «자료 목록» 돌아가기(한 번만) · 머리(묶음·제목·날짜·본문) ·
  * 동작(내려받기·설교 영상 보기) · 열람기. 확장자·용량은 적지 않는다(A안).
  * 자료의 실제 형태대로 그린다: 미리보기가 있으면 열람기, 없으면(한글 파일) 내려받아 보라는 안내.
  * 원본 파일이 없는 자료(이미지로만 제공)에는 «내려받기» 를 만들지 않고 보고 있는 쪽을 저장하는 «이미지 저장» 을 둔다.
@@ -49,7 +48,7 @@ export const ResourceViewPage = ({ resource: r, videoLinks }: Props) => {
   const lenis = useLenis(); // 사이트 스크롤은 Lenis 가 맡는다(_provider)
   const [page, setPage] = useState(0);
   const download = downloadTarget(r, page);
-  const meta = [dateLabel(r), r.passage, pageCountLabel(r)].filter(Boolean);
+  const meta = [dateLabel(r), r.passage].filter(Boolean);
   const notice = r.pages.length === 0 ? noPreviewNotice(r.file?.kind) : undefined;
 
   // 목록에서 눌러 넘어온 문서인지 — 들어올 때 한 번 정하고 표시는 지운다: 지우지 않으면 뒤로·앞으로 가기로

@@ -7,7 +7,6 @@ import {
   filterOptions,
   findResources,
   groupLabel,
-  pageCountLabel,
 } from '@/domains/resources/api/resourceList';
 import {
   rememberListLeave,
@@ -43,7 +42,6 @@ const SORTS = [
  */
 const Row = ({ section, resource: r }: { section: ResourceSection; resource: Resource }) => {
   const date = dateLabel(r);
-  const pages = pageCountLabel(r);
   const Icon = r.file ? FileText : ImageIcon;
   return (
     <li className="border-b1-border grid grid-cols-[minmax(0,1fr)_44px] items-center gap-2 border-b md:gap-5">
@@ -77,12 +75,7 @@ const Row = ({ section, resource: r }: { section: ResourceSection; resource: Res
           <h3 className="text-b1-text group-hover:text-b1-accent text-body md:text-title duration-fast leading-normal font-semibold wrap-anywhere transition-colors">
             {r.title}
           </h3>
-          {(r.passage || pages) && (
-            <p className="text-b1-sub text-caption flex flex-wrap gap-x-2.5 gap-y-0.5">
-              {r.passage && <span>{r.passage}</span>}
-              {pages && <span>{pages}</span>}
-            </p>
-          )}
+          {r.passage && <p className="text-b1-sub text-caption">{r.passage}</p>}
         </div>
       </Link>
       {r.file && (
