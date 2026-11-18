@@ -5,7 +5,7 @@
 | 페이지 | 주소 | 내용 |
 |---|---|---|
 | 자료 목록 | `/resources/sunday-sermon` · `series-sermon` · `seasonal-sermon` | 「자료 찾기」 검색 · 분류 칩 · 결과 수와 정렬 · 글 중심 목록(A안 «빠른 목록형») |
-| 문서 열람 | `/resources/<분류>/<자료id>` | 「자료 목록」 돌아가기 · 제목과 메타 · 내려받기 · 설교 영상 보기 · 열람기(쪽 넘김·확대) |
+| 문서 열람 | `/resources/<분류>/<자료id>` | 「자료 목록」 돌아가기 · 제목과 메타 · 내려받기 · 설교 영상 보기 · 열람기(쪽 넘김 · «크게 보기») |
 
 > 결정 배경: [ADR 0014](../decisions/0014-content-repository-and-video-id-link.md). 시안은 A·B·C 세 안이었고 A안으로 확정(2026-11-13).
 
@@ -53,7 +53,9 @@ data/resourcesSeed.ts ──▶ api/resourceRepository ──┬─▶ widgets/R
 | `api/resourceInput.ts` | 관리자 등록 값의 검증(zod) + 유튜브 주소 → 영상 id |
 | `config/resourceSections.ts` | 세 분류 ↔ 주소. 사이트 메뉴와 같아야 한다(테스트가 잠근다) |
 
-분류 칩 줄(`ChipRow`)과 열람기의 쪽 넘김·확대 부품(`ViewerControls`)은 `src/shared/components/features/` 의 것을 예배 영상·교회소식과 같이 쓴다. 확대 단계 계산은 `src/shared/lib/zoomSteps.ts`.
+분류 칩 줄(`ChipRow`), 쪽 넘김 부품(`ViewerControls`), «크게 보기» 뷰어(`ImageViewer`)는 `src/shared/components/features/` 의 것을 예배 영상·교회소식과 같이 쓴다.
+
+**열람기는 주보·교회앨범과 조작이 같다**(2026-11-18): 페이지 안에서는 창 폭에 맞춘 크기로만 보여 주고, 확대(100~300%)는 «크게 보기» 에서 한다. 종이를 눌러도 열린다. 뷰어에서 넘긴 쪽은 닫은 뒤에도 그대로다. 뷰어의 «이미지 저장» 은 원본 파일이 없는 자료에만 둔다(머리의 버튼과 같은 규칙 — 원본이 있으면 저장은 «내려받기» 하나). 전에는 페이지 안의 창에서 확대까지 했다.
 
 파일은 `public/files/resources/<id>.pdf|hwp`, 미리보기 쪽은 `public/files/resources/pages/<id>-<n>.webp`.
 

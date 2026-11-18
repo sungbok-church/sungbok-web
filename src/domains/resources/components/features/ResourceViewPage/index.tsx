@@ -5,6 +5,7 @@ import {
   dateLabel,
   downloadTarget,
   groupLabel,
+  pageImageName,
   videoLinkLabel,
 } from '@/domains/resources/api/resourceList';
 import {
@@ -38,7 +39,7 @@ const PRIMARY_BTN =
 
 /**
  * 문서 열람 페이지(/resources/분류/자료id) — «자료 목록» 돌아가기(한 번만) · 머리(묶음·제목·날짜·본문) ·
- * 동작(내려받기·설교 영상 보기) · 열람기. 확장자·용량은 적지 않는다(A안).
+ * 동작(내려받기·설교 영상 보기) · 열람기(쪽 넘김 · «크게 보기»). 확장자·용량은 적지 않는다(A안).
  * 자료의 실제 형태대로 그린다: 미리보기가 있으면 열람기, 없으면(한글 파일) 내려받아 보라는 안내.
  * 원본 파일이 없는 자료(이미지로만 제공)에는 «내려받기» 를 만들지 않고 보고 있는 쪽을 저장하는 «이미지 저장» 을 둔다.
  */
@@ -176,6 +177,8 @@ export const ResourceViewPage = ({ resource: r, videoLinks }: Props) => {
             page={page}
             onPage={setPage}
             hasFile={Boolean(r.file)}
+            // 원본 파일이 없는 자료만 «크게 보기» 에 «이미지 저장» 을 둔다(머리의 버튼과 같은 규칙)
+            saveName={r.file ? undefined : i => pageImageName(r, i)}
           />
         )}
       </article>

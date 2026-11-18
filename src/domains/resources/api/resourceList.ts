@@ -140,10 +140,17 @@ export const downloadTarget = (r: Resource, pageIndex = 0): DownloadTarget | und
   const page = r.pages[index];
   if (!page) return undefined;
   const ext = /\.(\w+)$/.exec(page.src)?.[1] ?? 'webp';
-  // 파일 이름에 쓸 수 없는 글자(윈도우 기준)는 빈칸으로
+  return { kind: 'image', href: page.src, name: `${pageImageName(r, index)}.${ext}` };
+};
+
+/**
+ * 쪽 그림을 저장할 때의 이름(확장자 없이) — «제목 쪽번호». 열람 화면의 «이미지 저장» 과 «크게 보기» 가 같이 쓴다.
+ * 파일 이름에 쓸 수 없는 글자(윈도우 기준)는 빈칸으로 바꾼다.
+ */
+export const pageImageName = (r: Pick<Resource, 'title'>, pageIndex: number): string => {
   const title = r.title
     .replace(/[\\/:*?"<>|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return { kind: 'image', href: page.src, name: `${title} ${index + 1}.${ext}` };
+  return `${title} ${pageIndex + 1}`;
 };
