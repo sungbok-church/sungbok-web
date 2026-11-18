@@ -120,8 +120,8 @@ describe('buildRedirects', () => {
 });
 
 // 메뉴 항목 ↔ 라우트 파일 정합성. 메뉴에만 추가하고 page.tsx 를 빠뜨리면 드롭다운이 404 로 간다.
-describe('라우트 정합성 (siteNav ↔ src/app)', () => {
-  const appDir = join(process.cwd(), 'src/app');
+describe('라우트 정합성 (siteNav ↔ src/app/(site))', () => {
+  const appDir = join(process.cwd(), 'src/app/(site)');
   const pages = sections.flatMap(s =>
     s.children?.length
       ? s.children.map(

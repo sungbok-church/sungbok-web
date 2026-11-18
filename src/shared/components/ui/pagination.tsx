@@ -60,6 +60,8 @@ function PaginationLink({ className, isActive, size = 'icon', ...props }: Pagina
           variant: isActive ? 'outline' : 'ghost',
           size,
         }),
+        // 버튼 부품은 shadcn 원본 크기(32px)다 — 이 부품은 공개 사이트용이라 칸 크기를 여기서 44px 로 못박는다(터치 기준)
+        size === 'icon' ? 'size-11' : 'h-11 px-5 has-[>svg]:px-4',
         FOCUS_RING,
         // 휴대폰은 칸이 간격 없이 붙는다 — 포커스 받은 칸을 위에 그려 링이 옆 칸에 덮이지 않게
         'relative cursor-pointer focus-visible:z-10',
@@ -117,6 +119,7 @@ function PaginationJump({ className, ...props }: React.ComponentProps<'button'>)
       aria-label="페이지 건너뛰기"
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'icon' }),
+        'size-11', // 공개 사이트용 — 44px(위 PaginationLink 와 같은 이유)
         FOCUS_RING,
         // 휴대폰은 칸이 간격 없이 붙는다 — 포커스 받은 칸을 위에 그려 링이 옆 칸에 덮이지 않게
         'relative cursor-pointer focus-visible:z-10',

@@ -48,7 +48,7 @@
 | 6   | VisitorAndNews   | [VisitorAndNews](../../src/domains/home/components/widgets/VisitorAndNews/index.tsx)     | 유지 + 좌:우 60:40                     |
 | 7   | (지도 없음)      | —                                                                                        | `/location` 에만 둔다 — [location.md](location.md), [ADR 0015](../decisions/0015-location-map-to-location-page.md) |
 
-조립 위치: [src/app/page.tsx](../../src/app/page.tsx)
+조립 위치: [src/app/(site)/page.tsx](../../src/app/(site)/page.tsx)
 
 ## 섹션 사양
 
@@ -198,7 +198,7 @@
 
 조립:
 
-- [src/app/page.tsx](../../src/app/page.tsx) — 섹션 순서 재배열, PastorWelcome 추가
+- [src/app/(site)/page.tsx](../../src/app/(site)/page.tsx) — 섹션 순서 재배열, PastorWelcome 추가
 
 수정 대상:
 

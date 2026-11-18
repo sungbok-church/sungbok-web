@@ -1,4 +1,4 @@
-import { DesignShowcase } from '@/app/design/_sections/DesignShowcase';
+import { DesignShowcase } from './_sections/DesignShowcase';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 

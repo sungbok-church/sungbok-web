@@ -13,7 +13,7 @@ import { cn } from '@/shared/lib/utils';
 import { ZOOM_FIT } from '@/shared/lib/zoomSteps';
 import { Download, X } from 'lucide-react';
 import Image from 'next/image';
-import { Dialog } from 'radix-ui';
+import { Dialog } from '@base-ui/react/dialog';
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 /** 주보의 보기 방식(한 면·양면, 왼쪽·오른쪽) — 주보를 열 때만 넘긴다. 뷰어에서 바꾼 것은 본문 화면에도 남는다. */
@@ -61,8 +61,8 @@ export const ImageViewer = ({
 }: Props) => {
   const [zoom, setZoom] = useState(ZOOM_FIT);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // 뷰어를 연 버튼 — 닫히면 그리로 포커스를 돌려놓는다. Radix 는 Dialog.Trigger 로 열었을 때만 돌려놓는데,
-  // 이 뷰어는 여는 곳이 여럿(«크게 보기» 버튼·종이 그림)이라 열릴 때 포커스가 있던 곳을 적어 둔다.
+  // 뷰어를 연 버튼 — 닫히면 그리로 포커스를 돌려놓는다. 이 뷰어는 Dialog.Trigger 없이 여는 곳이 여럿
+  // («크게 보기» 버튼·종이 그림)이라, 열릴 때 포커스가 있던 곳을 적어 두었다가 finalFocus 로 넘긴다.
   const openerRef = useRef<HTMLElement | null>(null);
   // 범위를 벗어난 장 번호(다른 항목으로 바뀐 뒤 남은 번호)는 첫 장으로 본다 — 그림·표시·저장 이름이 같은 장을 가리키게
   const at = images[index] ? index : 0;
@@ -104,23 +104,23 @@ export const ImageViewer = ({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay
+        <Dialog.Backdrop
           data-lenis-prevent
-          className="bg-b1-text/70 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 fixed inset-0 z-[60] motion-reduce:animate-none"
+          className="bg-b1-text/70 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 fixed inset-0 z-[60] motion-reduce:animate-none"
         />
-        <Dialog.Content
+        <Dialog.Popup
           data-lenis-prevent
-          aria-describedby={undefined}
           onKeyDown={onKeyDown}
-          onOpenAutoFocus={() => {
-            // 이 시점의 포커스는 아직 뷰어를 연 버튼에 있다
-            openerRef.current = document.activeElement as HTMLElement | null;
+          initialFocus={() => {
+            // 이 시점의 포커스는 아직 뷰어를 연 버튼에 있다 — 적어 두고, 뷰어 안 포커스는 기본 동작에 맡긴다.
+            // Safari 는 버튼을 눌러도 포커스를 주지 않아 body 가 잡힌다 — body 를 넘기면 닫을 때 페이지의
+            // 첫 링크로 포커스가 튄다. 그때는 비워 두어 Base UI 의 기본 동작에 맡긴다.
+            const el = document.activeElement;
+            openerRef.current = el instanceof HTMLElement && el !== document.body ? el : null;
+            return true;
           }}
-          onCloseAutoFocus={e => {
-            e.preventDefault();
-            openerRef.current?.focus({ preventScroll: true });
-          }}
-          className="bg-b1-placeholder data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 fixed inset-0 z-[60] flex flex-col overflow-hidden shadow-lg outline-hidden motion-reduce:animate-none md:inset-[18px] md:mx-auto md:max-w-[1400px] md:rounded-2xl"
+          finalFocus={openerRef}
+          className="bg-b1-placeholder data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 fixed inset-0 z-[60] flex flex-col overflow-hidden shadow-lg outline-hidden motion-reduce:animate-none md:inset-[18px] md:mx-auto md:max-w-[1400px] md:rounded-2xl"
         >
           <header className="border-b1-border bg-b1-surface flex shrink-0 items-center justify-between gap-3 border-b px-3 py-3 md:px-5">
             <div className="min-w-0">
@@ -228,7 +228,7 @@ export const ImageViewer = ({
               className="max-md:w-full max-md:justify-center"
             />
           </footer>
-        </Dialog.Content>
+        </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
   );

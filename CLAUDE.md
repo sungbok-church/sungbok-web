@@ -41,6 +41,16 @@ Next.js 15 (App Router) + TypeScript + Tailwind CSS 4 기반 교회 웹사이트
 ### 중요 의사결정 기록
 스택 전환, 팔레트 교체, 라우팅 구조 변경 등 되돌리기 어려운 결정은 `.md/decisions/` 에 ADR(Architecture Decision Record) 형식으로 기록하세요. 양식과 번호 컨벤션은 [.md/README.md](.md/README.md) 참조.
 
+### shadcn 부품 작업 (관리자 화면)
+관리자(`/admin`)는 shadcn 부품(base-nova · Base UI)을 원본 그대로 쓴다([ADR 0016](.md/decisions/0016-admin-ui-follows-shadcn.md) · [0018](.md/decisions/0018-ui-primitives-base-ui.md)). 부품을 쓰거나 더할 때는 **`shadcn` 스킬**([.claude/skills/shadcn](.claude/skills/shadcn/SKILL.md))의 규칙을 따른다 — 스킬에 적힌 방식이 권장 방식이고, 다르게 할 이유가 있으면 먼저 묻는다. 예: 폼은 `FieldGroup` + `Field`, 안내 상자는 `Alert`, 빈 목록은 `Empty`, 알림은 `toast`, 기다리는 버튼은 `Spinner`, 여는 버튼은 `render` 속성(링크로 그리면 `nativeButton={false}`), 항목은 그룹 안에, 부품의 색·글자를 `className` 으로 덮어쓰지 않는다, 부품 안 아이콘에 크기를 주지 않는다. 스킬은 `skills-lock.json` 으로 고정돼 있고 `pnpm dlx skills@latest update` 로 갱신한다(파일을 손으로 고치지 않는다).
+
+이 프로젝트에서만 지키는 것:
+- **받기 전에 본다.** `pnpm dlx shadcn@latest add <이름> --dry-run` 으로 덮어쓸 파일을 확인하고 `--view` 로 내용을 본다. 이미 있는 부품을 `--overwrite` 하지 않는다.
+- **`cn` 은 두 가지다.** shadcn 원본 부품은 원본대로 `cn` 패키지에서 가져온다(`import { cn } from 'cn'` — 받은 파일을 고치지 않는다). 이 사이트가 만든 코드(화면 · 공개 사이트 부품)는 `@/shared/lib/utils` 의 `cn` 을 쓴다 — 이 사이트의 글자 크기 토큰(`text-body-sm` 등)을 아는 판이다.
+- **머리 주석을 단다.** 파일 첫머리에 «shadcn/ui 부품(base-nova · Base UI) 원본 — … 원본과 다른 곳: …» 을 적는다. `design:lint` 가 이 주석이 있는 `ui` 부품을 건너뛴다. 원본을 고쳤으면 그 주석에 무엇을 고쳤는지 적는다.
+- **`globals.css` 의 `@import 'shadcn/tailwind.css'` 를 지우지 않는다.** 원본 부품의 상태 모양(`data-active:` · `data-horizontal:` 등)이 여기서 정의된다 — 빠지면 오류 없이 모양만 깨진다.
+- **공개 사이트는 대상이 아니다.** 공개 화면은 [DESIGN.md](DESIGN.md) 의 바(터치 44px · 입력칸 16px · B1 토큰)를 그대로 따른다.
+
 ## 코딩 컨벤션
 
 - **패키지 매니저**: pnpm

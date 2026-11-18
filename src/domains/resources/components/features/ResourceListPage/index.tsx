@@ -17,7 +17,7 @@ import {
 import { resourcePath } from '@/domains/resources/config/resourceSections';
 import { FOCUS, HIT_36, OUTLINE_BTN } from '@/shared/components/ui/controlStyles';
 import { ChipRow } from '@/shared/components/features/ChipRow';
-import { EmptyState } from '@/shared/components/ui/empty-state';
+import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { isPlainClick } from '@/shared/lib/isPlainClick';
 import { cn } from '@/shared/lib/utils';
 import { Download, FileText, Image as ImageIcon, Search } from 'lucide-react';
@@ -212,10 +212,13 @@ export const ResourceListPage = ({ section, resources }: Props) => {
           ))}
         </ul>
       ) : (
-        <EmptyState
-          title="찾으시는 자료가 없습니다."
-          className="bg-b1-surface"
-          action={
+        <Empty className="bg-card border">
+          <EmptyHeader>
+            <EmptyTitle role="heading" aria-level={3}>
+              찾으시는 자료가 없습니다.
+            </EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
             <button
               type="button"
               onClick={() => {
@@ -227,8 +230,8 @@ export const ResourceListPage = ({ section, resources }: Props) => {
             >
               검색 조건 초기화
             </button>
-          }
-        />
+          </EmptyContent>
+        </Empty>
       )}
     </section>
   );

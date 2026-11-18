@@ -29,7 +29,7 @@
 ### 디렉토리 구조
 
 ```
-src/app/<name>-preview/page.tsx            # 'use client' — 실제 페이지 재현 + 슬롯 교체 + 고정 탭바
+src/app/(site)/<name>-preview/page.tsx            # 'use client' — 실제 페이지 재현 + 슬롯 교체 + 고정 탭바
 src/domains/<domain>/components/widgets/<Widget>/_variants/
 ├── index.ts        # 레지스트리: [{ id, label, title, desc, C }] — 0번 = 현재 구현 컴포넌트
 ├── data.ts         # 공유 목업/자산 상수 (영상 src·메타·이미지)
@@ -37,7 +37,7 @@ src/domains/<domain>/components/widgets/<Widget>/_variants/
 └── (공유 헬퍼)      # AmbientVideo.tsx · useScrollProgress.ts 등
 ```
 
-- 변형 컴포넌트는 **대상 위젯 옆 `_variants/`** 에 둔다. 프리뷰 라우트는 `src/app/<name>-preview/`.
+- 변형 컴포넌트는 **대상 위젯 옆 `_variants/`** 에 둔다. 프리뷰 라우트는 `src/app/(site)/<name>-preview/`.
 
 ### `page.tsx` 핵심
 
@@ -114,7 +114,7 @@ B=~/.claude/skills/gstack/browse/dist/browse
 
 - 승자 1안을 본 위젯(`<Widget>/index.tsx`)에 이식.
 - **승격 마일스톤 — 라이브 디자인 감사**: 이식 직후 루트 [DESIGN.md](../../DESIGN.md) 를 기준으로 gstack `/design-review` 를 **수동** 실행해 정식 위젯의 런타임 모션·대비·반응형을 점검한다. (clean-tree 요구·자가커밋 때문에 Stop 자동화엔 못 들어가므로 이 시점에 수동으로. 소스 기반 `/design-qa` 로는 못 잡는 런타임 결함 확정용.)
-- `src/app/<name>-preview/` 라우트와 `_variants/` 폴더를 **통째로 삭제**. 임시 자산·stand-in도 함께 제거.
+- `src/app/(site)/<name>-preview/` 라우트와 `_variants/` 폴더를 **통째로 삭제**. 임시 자산·stand-in도 함께 제거.
 - 임시물은 레포에 커밋하지 않는다(승자 이식분만 커밋).
 
 ---

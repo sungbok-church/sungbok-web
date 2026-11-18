@@ -16,11 +16,26 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { EmptyState } from '@/shared/components/ui/empty-state';
-import { FormField } from '@/shared/components/ui/form-field';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/shared/components/ui/empty';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/shared/components/ui/field';
 import { ImageDropzone, type DropzoneImage } from '@/shared/components/ui/image-dropzone';
 import { Input } from '@/shared/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
@@ -28,6 +43,7 @@ import { ResponsiveList } from '@/shared/components/ui/responsive-list';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -80,9 +96,25 @@ const TYPE_SCALE = [
   ['text-eyebrow', '● WORSHIP'],
 ] as const;
 
+// Base UI 의 Select 에 넘기는 항목 — 값이 null 인 첫 항목이 «고르기 전» 에 보이는 문구다
+const DEPARTMENT_ITEMS: { label: string; value: string | null }[] = [
+  { label: '부서 선택', value: null },
+  ...['영아부', '유치부', '유년부', '초등부', '중등부', '고등부', '청년부', '영어예배부'].map(
+    d => ({
+      label: d,
+      value: d,
+    })
+  ),
+];
+
 const BULLETINS = [
   { id: '1', title: '2026년 11월 9일 주보', date: '2026-11-07', status: '공개' },
-  { id: '2', title: '2026년 11월 2일 주보 — 추수감사주일 특별 순서 포함', date: '2026-10-31', status: '공개' },
+  {
+    id: '2',
+    title: '2026년 11월 2일 주보 — 추수감사주일 특별 순서 포함',
+    date: '2026-10-31',
+    status: '공개',
+  },
   { id: '3', title: '2026년 11월 16일 주보', date: '—', status: '임시 저장' },
 ];
 
@@ -184,59 +216,81 @@ export const DesignShowcase = () => {
             <TabsTrigger value="seasonal">가정·명절·절기 설교 시트지</TabsTrigger>
             <TabsTrigger value="friday">금요 생수의 강·월삭예배</TabsTrigger>
           </TabsList>
-          <TabsContent value="sunday" className="text-body text-b1-sub pt-4">
-            탭이 화면보다 길면 탭 줄만 옆으로 스크롤됩니다.
+          <TabsContent value="sunday">
+            <p className="text-muted-foreground pt-4">
+              화살표 키로 탭을 옮기고 Enter 나 Space 로 고릅니다(Base UI 기본 동작).
+            </p>
           </TabsContent>
         </Tabs>
       </Section>
 
       <Section id="form" title="입력">
-        <div className="grid max-w-xl grid-cols-1 gap-6">
-          <FormField label="제목" htmlFor="d-title" help="주보 목록에 보이는 이름입니다" required>
-            <Input id="d-title" placeholder="2026년 11월 9일 주보" />
-          </FormField>
-          <FormField label="부서" htmlFor="d-dept" error="부서를 골라 주세요">
-            <Select>
-              <SelectTrigger id="d-dept" className="w-full">
-                <SelectValue placeholder="부서 선택" />
+        {/* 폼의 틀은 FieldGroup + Field(.claude/skills/shadcn/rules/forms.md) */}
+        <FieldGroup className="max-w-xl">
+          <Field>
+            <FieldLabel htmlFor="d-title">제목</FieldLabel>
+            <Input id="d-title" placeholder="2026년 11월 9일 주보" required />
+            <FieldDescription>주보 목록에 보이는 이름입니다</FieldDescription>
+          </Field>
+          <Field data-invalid>
+            <FieldLabel htmlFor="d-dept">부서</FieldLabel>
+            {/* Base UI 의 Select 는 items 를 받는다 — 값이 null 인 항목이 «고르기 전» 문구다 */}
+            <Select items={DEPARTMENT_ITEMS}>
+              <SelectTrigger id="d-dept" className="w-full" aria-invalid>
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {['영아부', '유치부', '유년부', '초등부', '중등부', '고등부', '청년부', '영어예배부'].map(d => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {DEPARTMENT_ITEMS.map(item => (
+                    <SelectItem key={item.label} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
-          </FormField>
-          <FormField label="광고 본문" htmlFor="d-body">
+            <FieldError>부서를 골라 주세요</FieldError>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="d-body">광고 본문</FieldLabel>
             <Textarea id="d-body" rows={4} placeholder="■ 예배와 소식" />
-          </FormField>
-          <div className="flex flex-col gap-4">
-            <label className="text-body flex items-center gap-3">
-              <Checkbox /> 홈 화면에 함께 보이기
-            </label>
-            <label className="text-body flex items-center gap-3">
-              <Switch /> 긴급 공지 띠 켜기
-            </label>
-            <RadioGroup defaultValue="now" className="gap-4">
-              <label className="text-body flex items-center gap-3">
-                <RadioGroupItem value="now" /> 바로 공개
-              </label>
-              <label className="text-body flex items-center gap-3">
-                <RadioGroupItem value="later" /> 예약 공개
-              </label>
+          </Field>
+          <Field orientation="horizontal">
+            <Checkbox id="d-home" />
+            <FieldLabel htmlFor="d-home" className="font-normal">
+              홈 화면에 함께 보이기
+            </FieldLabel>
+          </Field>
+          <Field orientation="horizontal">
+            <Switch id="d-urgent" />
+            <FieldLabel htmlFor="d-urgent" className="font-normal">
+              긴급 공지 띠 켜기
+            </FieldLabel>
+          </Field>
+          <FieldSet>
+            <FieldLegend variant="label">공개 시점</FieldLegend>
+            <RadioGroup defaultValue="now">
+              <Field orientation="horizontal">
+                <RadioGroupItem id="d-now" value="now" />
+                <FieldLabel htmlFor="d-now" className="font-normal">
+                  바로 공개
+                </FieldLabel>
+              </Field>
+              <Field orientation="horizontal">
+                <RadioGroupItem id="d-later" value="later" />
+                <FieldLabel htmlFor="d-later" className="font-normal">
+                  예약 공개
+                </FieldLabel>
+              </Field>
             </RadioGroup>
-          </div>
-        </div>
+          </FieldSet>
+        </FieldGroup>
       </Section>
 
       <Section id="overlay" title="겹침">
         <div className="flex flex-wrap gap-3">
           <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline">대화상자 열기</Button>
-            </DialogTrigger>
+            <DialogTrigger render={<Button variant="outline" />}>대화상자 열기</DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>주보를 삭제할까요?</DialogTitle>
@@ -249,9 +303,7 @@ export const DesignShowcase = () => {
             </DialogContent>
           </Dialog>
           <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline">시트 열기 (아래)</Button>
-            </SheetTrigger>
+            <SheetTrigger render={<Button variant="outline" />}>시트 열기 (아래)</SheetTrigger>
             <SheetContent side="bottom">
               <SheetHeader>
                 <SheetTitle>사진 정렬</SheetTitle>
@@ -260,13 +312,13 @@ export const DesignShowcase = () => {
             </SheetContent>
           </Sheet>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">메뉴</Button>
-            </DropdownMenuTrigger>
+            <DropdownMenuTrigger render={<Button variant="outline" />}>메뉴</DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem>수정</DropdownMenuItem>
-              <DropdownMenuItem>복제</DropdownMenuItem>
-              <DropdownMenuItem>삭제</DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuItem>수정</DropdownMenuItem>
+                <DropdownMenuItem>복제</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive">삭제</DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -282,7 +334,9 @@ export const DesignShowcase = () => {
             {
               key: 'status',
               header: '상태',
-              cell: b => <Badge variant={b.status === '공개' ? 'accent' : 'neutral'}>{b.status}</Badge>,
+              cell: b => (
+                <Badge variant={b.status === '공개' ? 'accent' : 'neutral'}>{b.status}</Badge>
+              ),
             },
           ]}
           card={b => (
@@ -293,11 +347,15 @@ export const DesignShowcase = () => {
             </div>
           )}
         />
-        <EmptyState
-          title="아직 올린 앨범이 없습니다"
-          description="행사 사진을 묶어 앨범으로 올릴 수 있습니다."
-          action={<Button>앨범 만들기</Button>}
-        />
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>아직 올린 앨범이 없습니다</EmptyTitle>
+            <EmptyDescription>행사 사진을 묶어 앨범으로 올릴 수 있습니다.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button>앨범 만들기</Button>
+          </EmptyContent>
+        </Empty>
         <div className="flex items-center gap-3">
           <Avatar>
             <AvatarFallback>이진</AvatarFallback>
@@ -314,7 +372,10 @@ export const DesignShowcase = () => {
           onAddFiles={files =>
             setImages(prev => [
               ...prev,
-              ...files.map(f => ({ id: `${f.name}-${f.lastModified}`, previewUrl: URL.createObjectURL(f) })),
+              ...files.map(f => ({
+                id: `${f.name}-${f.lastModified}`,
+                previewUrl: URL.createObjectURL(f),
+              })),
             ])
           }
         />
@@ -322,7 +383,9 @@ export const DesignShowcase = () => {
 
       <Section id="responsive" title="반응형 기준">
         <ul className="text-body text-b1-sub m-0 flex flex-col gap-2 pl-5">
-          <li>확인 폭 375 · 768 · 1280 (헤더는 1024도) — <Code>pnpm design:audit</Code></li>
+          <li>
+            확인 폭 375 · 768 · 1280 (헤더는 1024도) — <Code>pnpm design:audit</Code>
+          </li>
           <li>터치 영역 44×44px 이상 (1024 미만 폭)</li>
           <li>한글 13px · 본문 16px · 입력칸 16px 이상</li>
           <li>가로 넘침 0</li>

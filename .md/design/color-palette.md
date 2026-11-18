@@ -142,6 +142,12 @@ shadcn 부품(`src/shared/components/ui/*`)은 `bg-primary`, `border-input` 같�
 | `border`, `input` | `b1-border` |
 | `ring` | `b1-accent` |
 | `destructive` | `b1-danger` |
+| `sidebar` / `sidebar-foreground` (관리자 왼쪽 메뉴의 면·글자) | `b1-surface` / `b1-text` |
+| `sidebar-primary` / `sidebar-primary-foreground` (교회 표시, 지금 메뉴의 글자) | `b1-accent` / `#ffffff` |
+| `sidebar-accent` / `sidebar-accent-foreground` (올려놓음·지금 메뉴의 면) | `b1-accent-soft` / `b1-text` |
+| `sidebar-border`, `sidebar-ring` | `b1-border`, `b1-accent` |
+
+`sidebar-*` 는 [ui/sidebar](../../src/shared/components/ui/sidebar.tsx)(shadcn sidebar 부품)와 그것을 조립하는 관리자 틀(`AdminShell`)만 쓴다.
 
 ## 영향받는 컴포넌트
 

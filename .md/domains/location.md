@@ -11,7 +11,7 @@
 | 1 | 오시는 길 | [Directions](../../src/domains/location/components/widgets/Directions/index.tsx) |
 | 2 | 예배 시간(`#worship-times`) | [WorshipTimesTable](../../src/domains/home/components/widgets/WorshipTimes/WorshipTimesTable.tsx) — 홈 «이번 주 예배» 와 같은 부품 |
 
-조립: [src/app/location/page.tsx](../../src/app/location/page.tsx). 홈에서 오는 링크(히어로 «오시는 길», «이번 주 예배» 의 «찾아오시는 길», «처음 오신 분께» 의 «오시는 길»)는 모두 페이지 맨 위(`/location`)로 온다 — 예배 시간표는 홈에 같은 표가 있다. 시간표로 바로 가는 주소는 `/location#worship-times`.
+조립: [src/app/(site)/location/page.tsx](../../src/app/(site)/location/page.tsx). 홈에서 오는 링크(히어로 «오시는 길», «이번 주 예배» 의 «찾아오시는 길», «처음 오신 분께» 의 «오시는 길»)는 모두 페이지 맨 위(`/location`)로 온다 — 예배 시간표는 홈에 같은 표가 있다. 시간표로 바로 가는 주소는 `/location#worship-times`.
 
 ## 오시는 길 화면 규칙
 

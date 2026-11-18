@@ -44,7 +44,8 @@ jobs:
           done
           # 대문자 전용. GitHub Secret 조회는 대소문자를 구분하지 않아 'vercel_token' 도 VERCEL_TOKEN 을 읽으므로 소문자를 아예 거부한다.
           [[ "$NAME" =~ ^[A-Z_][A-Z0-9_]*$ ]] || { echo "::error::Invalid variable name '$NAME' (uppercase A-Z, 0-9, _ only)"; exit 1; }
-          case "$NAME" in VERCEL_*|GITHUB_*) echo "::error::'$NAME' is a control secret, not an app variable"; exit 1;; esac
+          # DB 변경 적용용 Secret(apply-db-migrations.yml)도 거부한다 — DB 비밀번호가 Vercel 환경변수로 들어가지 않게.
+          case "$NAME" in VERCEL_*|GITHUB_*|SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD|SUPABASE_PROJECT_ID) echo "::error::'$NAME' is a control secret, not an app variable"; exit 1;; esac
           [ -n "$VALUE" ] || { echo "::error::Secret '$NAME' is empty or not registered in this repo"; exit 1; }
           # Vercel CLI(`vercel env add --force`)가 아니라 REST API 를 직접 부른다. CLI 도 내부에서 이 엔드포인트를 upsert=true 로
           # 부르지만, 그 전에 GET /v2/user 를 먼저 호출하고 팀 범위 토큰은 거기서 404 가 나 "Could not retrieve Project Settings" 로

@@ -1,7 +1,7 @@
 /**
  * 사이트 네비게이션 단일 소스.
  * 독(DockNav) 드롭다운 · 모바일 SideMenu · 섹션 레이아웃(SectionShell) · next.config redirect 가 전부 여기서 파생된다.
- * 항목을 추가하면 `src/app/{section}/{child}/page.tsx` 도 함께 만들어야 한다 — siteNav.test.ts 가 잠근다.
+ * 항목을 추가하면 `src/app/(site)/{section}/{child}/page.tsx` 도 함께 만들어야 한다 — siteNav.test.ts 가 잠근다.
  * 근거: .md/specs/2026-10-10-site-nav-skeleton-design.md §2 · ADR 0004
  */
 export type NavChild = { readonly label: string; readonly slug: string };
