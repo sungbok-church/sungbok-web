@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+/* shadcn 원본 부품이 기대는 변형·유틸(data-open · data-active · data-horizontal · no-scrollbar · shimmer 등)의 정의 —
+   shadcn 이 패키지로 배포하는 공식 파일이다. 빼면 구분선·탭·메뉴의 상태 모양이 조용히 깨진다(ADR 0018). */
+@import 'shadcn/tailwind.css';
+
+/* shadcn 부품의 `dark:` 클래스는 `.dark` 가 붙었을 때만 켠다. 이 줄이 없으면 Tailwind 기본값(기기의 다크 설정)을 따라
+   부품만 어두운 값으로 바뀐다 — 이 사이트는 아직 다크 모드를 켜지 않는다(ADR 0017 — 켤 때 `.dark` 값 한 벌을 더한다). */
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -46,6 +53,15 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* 관리자 왼쪽 메뉴(ui/sidebar) 전용 의미 토큰 */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -125,6 +141,15 @@
   --border: var(--color-b1-border);
   --input: var(--color-b1-border);
   --ring: var(--color-b1-accent);
+  /* 관리자 왼쪽 메뉴 — 흰 면 위에 본문 색 글자, 지금 메뉴·올려놓음은 옅은 브랜드 면 */
+  --sidebar: var(--color-b1-surface);
+  --sidebar-foreground: var(--color-b1-text);
+  --sidebar-primary: var(--color-b1-accent);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-b1-accent-soft);
+  --sidebar-accent-foreground: var(--color-b1-text);
+  --sidebar-border: var(--color-b1-border);
+  --sidebar-ring: var(--color-b1-accent);
 }
 
 @layer base {
@@ -304,11 +329,29 @@
   animation: b1-hero-scroll-drop 1.8s ease-in-out infinite;
 }
 
-/* 겹침 부품(Dialog·Sheet·DropdownMenu 등 Radix data-state) — 움직임 줄이기 설정이면 즉시 열고 닫는다(DESIGN.md §3) */
+/* 겹침 부품(Dialog·Sheet·DropdownMenu 등 Base UI 의 data-open · data-closed · 들고 나는 순간의 data-*-style) —
+   움직임 줄이기 설정이면 즉시 열고 닫는다(DESIGN.md §3). data-state 는 그 값을 직접 쓰는 곳(sidebar 등)을 위해 남긴다 */
 @media (prefers-reduced-motion: reduce) {
+  [data-open],
+  [data-closed],
+  [data-starting-style],
+  [data-ending-style],
   [data-state='open'],
   [data-state='closed'] {
     animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* 관리자 왼쪽 메뉴(ui/sidebar)는 data-state 가 expanded · collapsed 라 위 선택자에 걸리지 않는다 —
+     접고 펼치는 폭 전환을 여기서 끈다(부품은 shadcn 원본 그대로 둔다, ADR 0016) */
+  [data-slot^='sidebar'] {
+    transition-duration: 0.01ms !important;
+  }
+  /* 스피너(ui/spinner)는 계속 도는 움직임이다 — 멈춘 아이콘으로 둔다(글자 «…중» 이 상태를 알린다) */
+  [data-slot='spinner'] {
+    animation: none !important;
+  }
+  /* 알림(ui/toast)은 data-open 이 없어 위 선택자에 걸리지 않는다 */
+  [data-slot^='toast'] {
     transition-duration: 0.01ms !important;
   }
 }

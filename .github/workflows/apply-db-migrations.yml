@@ -1,0 +1,65 @@
+# DB 변경 파일(supabase/migrations)을 운영 Supabase 프로젝트에 적용 (수동 실행)
+#
+# DB 구조는 레포의 변경 파일로만 바꾼다(대시보드에서 손으로 만들지 않는다).
+# 변경 파일이 main 에 들어간 뒤 Actions 탭 → "Apply DB migrations" → Run workflow 로 실행한다.
+#
+# - 기본은 미리 보기다(apply 를 켜지 않으면 적용할 변경 파일 목록만 보여 주고 끝난다).
+#   목록을 확인한 뒤 apply 를 켜서 다시 실행하면 실제로 적용한다.
+# - preview 배포도 운영 DB 를 본다. 그래서 변경 파일은 코드보다 먼저 적용하고,
+#   먼저 적용해도 지금 코드가 깨지지 않게 «추가 → 코드 배포 → 제거» 순서로 쓴다.
+# - 필요한 Secret 2개: SUPABASE_ACCESS_TOKEN(Supabase 계정 토큰) · SUPABASE_PROJECT_ID(프로젝트 ref).
+#   DB 비밀번호는 필요 없다 — CLI 가 계정 토큰으로 임시 로그인 역할을 만들어 접속한다(2026-11-18 미리 보기로 확인).
+#   이 값들은 Vercel 로 보내지 않는다(sync-vercel-env.yml 이 거부한다).
+# - CLI 버전은 package.json 의 supabase 와 같게 둔다 — 버전을 올릴 때 두 곳을 함께 고친다.
+# - 절차·셋업은 .md/workflow/deploy-and-env.md 참조.
+
+name: Apply DB migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: '실제로 적용한다(끄면 적용할 목록만 본다)'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apply-db-migrations
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Check secrets
+        run: |
+          set -euo pipefail
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID; do
+            [ -n "${!v:-}" ] || { echo "::error::Secret '$v' is missing"; exit 1; }
+          done
+
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.1.0
+
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Preview (dry run)
+        run: supabase db push --remote --dry-run
+
+      - name: Apply
+        if: ${{ inputs.apply }}
+        run: supabase db push --remote --yes
+
+      - name: Migration history
+        run: supabase migration list --remote

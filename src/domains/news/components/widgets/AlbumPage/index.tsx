@@ -5,7 +5,7 @@ import type { Album } from '@/domains/news/api/news.types';
 import { idFromPath, syncAddress } from '@/domains/news/api/syncAddress';
 import { ImageViewer } from '@/domains/news/components/features/ImageViewer';
 import { FOCUS, HIT_34, OUTLINE_BTN, PILL } from '@/shared/components/ui/controlStyles';
-import { EmptyState } from '@/shared/components/ui/empty-state';
+import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { useMediaQuery } from '@/shared/lib/hooks/useMediaQuery';
 import { usePrefersReducedMotion } from '@/shared/lib/hooks/usePrefersReducedMotion';
 import { cn } from '@/shared/lib/utils';
@@ -277,10 +277,13 @@ export const AlbumPage = ({ albums, basePath }: Props) => {
               />
             </>
           ) : (
-            <EmptyState
-              title="찾으시는 기록이 없습니다."
-              className="bg-b1-surface"
-              action={
+            <Empty className="bg-card border">
+              <EmptyHeader>
+                <EmptyTitle role="heading" aria-level={3}>
+                  찾으시는 기록이 없습니다.
+                </EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
                 <button
                   type="button"
                   onClick={() => {
@@ -292,8 +295,8 @@ export const AlbumPage = ({ albums, basePath }: Props) => {
                 >
                   전체 기록 보기
                 </button>
-              }
-            />
+              </EmptyContent>
+            </Empty>
           )}
         </div>
       </div>

@@ -7,6 +7,8 @@
 
 > 위치 주의: 프로젝트의 다른 문서는 모두 `.md/` 아래 있지만, 이 파일만 **루트에 둔 의도적 예외**다 — gstack이 루트 이름 고정으로만 탐색하기 때문. 토큰 수치 표는 여기 복제하지 말고 [.md/design/color-palette.md](.md/design/color-palette.md) 를 정본으로 본다.
 
+> **적용 범위**: 이 바는 공개 사이트 기준이다. 관리자(`/admin` — `src/app/admin/**` · `src/domains/admin/**`)와 shadcn 원본 부품(`src/shared/components/ui` 에서 파일 머리에 «shadcn/ui … 원본» 주석이 있는 것)은 shadcn 원본을 따른다([ADR 0016](.md/decisions/0016-admin-ui-follows-shadcn.md) · [0018](.md/decisions/0018-ui-primitives-base-ui.md)) — §3 의 레이아웃 속성 애니메이션 금지, §4 의 한글 13px 미만 금지, §7 의 터치 영역 44px·기준 폭은 **채점하지 않는다**. 관리자에도 채점하는 것: §1 색 하드코딩 금지, §2 카피 톤, §3 의 `prefers-reduced-motion` 가드, §5 접근성(대비·포커스·대체 텍스트), 가로 넘침 0.
+
 채점 표기: 🔴 must-fix(바 위반) · 🟡 should-fix · 🔵 nit. 위반은 `파일:라인 — 문제 / 고칠 방향` 형태로.
 
 ---

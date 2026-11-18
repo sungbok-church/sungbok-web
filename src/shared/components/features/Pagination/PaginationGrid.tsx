@@ -19,12 +19,10 @@ export const PaginationGrid = ({ items = [], className }: PaginationGridProps) =
     <div className={cn('grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4', className)}>
       {items.map(item => (
         <Tooltip key={item.key}>
-          <TooltipTrigger asChild>
-            <div className="flex flex-col gap-2">
-              <div>{item.thumbnail}</div>
-              <div className="text-sm font-medium">{item.title}</div>
-              <div className="text-sm text-gray-500">{item.description}</div>
-            </div>
+          <TooltipTrigger render={<div className="flex flex-col gap-2" />}>
+            <div>{item.thumbnail}</div>
+            <div className="text-sm font-medium">{item.title}</div>
+            <div className="text-sm text-gray-500">{item.description}</div>
           </TooltipTrigger>
           <TooltipContent side={'bottom'} sideOffset={-35}>
             {item.title}

@@ -55,19 +55,37 @@
 - `YOUTUBE_API_KEY`(서버 전용, `NEXT_PUBLIC_` 없음) 는 **각자** Google Cloud 콘솔에서 발급한다(무료, YouTube Data API v3 활성화 → 사용자 인증 정보 › API 키). 운영 키를 로컬로 돌리지 않는다.
 - `NEXT_PUBLIC_YOUTUBE_CHANNEL_ID` 는 공개 값이고 코드에 같은 fallback 이 있다.
 - `vercel link`·`vercel env pull` 은 쓰지 않는다(`.vercel/` 없음).
+- **관리자(`/admin`)는 로컬 Supabase 로 개발한다.** `pnpm db:start` 가 podman(또는 Docker)으로 DB·로그인·REST 만 띄운다(스튜디오·Storage 등은 뺐다 — `package.json` 의 `db:start`). `pnpm supabase status -o env` 의 `API_URL` · `PUBLISHABLE_KEY` 를 `.env.local` 의 `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 에 넣는다(로컬 전용 값). 로그인 계정은 `node scripts/dev-admin-user.mjs <비밀번호>` 로 만든다(`admin@local.test`). 끝나면 `pnpm db:stop`.
+- 운영 프로젝트의 값을 `.env.local` 에 넣지 않는다 — 개발 중에 운영 DB 를 건드리게 된다. 운영에 붙여 확인해야 할 때만 `.env.production.local` 에 넣고 `pnpm build && pnpm start` 로 본다.
+- 두 값이 없어도 공개 사이트는 빌드되고 열린다. `/admin` 은 로그인 화면에 «설정되지 않았습니다» 를 보여 준다.
 
 ## 5. 규칙
 
 - **레포는 공개로 유지한다.** 비공개 조직 레포는 Hobby 로 배포할 수 없다.
 - **fork 에서 온 PR 의 Vercel 배포를 승인하지 않는다.** 승인하면 그 코드가 preview 환경변수(유튜브 키)를 읽을 수 있다. 협업자는 fork 가 아니라 조직 레포의 브랜치에서 작업한다.
-- 레포 Secrets 에는 Vercel 환경변수와 제어용 3개만 둔다. 제어용 이름(`VERCEL_*`)은 워크플로우가 앱 변수로 받지 않는다.
+- 레포 Secrets 에는 Vercel 환경변수와 제어용 5개만 둔다: Vercel 동기화용 3개(`VERCEL_TOKEN` · `VERCEL_ORG_ID` · `VERCEL_PROJECT_ID`)와 DB 변경 적용용 2개(`SUPABASE_ACCESS_TOKEN` · `SUPABASE_PROJECT_ID`). 제어용 이름은 워크플로우가 앱 변수로 받지 않는다 — DB 비밀번호가 Vercel 환경변수로 들어가지 않는다.
+- Supabase 의 만능 키(secret key)와 프로젝트 주소를 코드·문서·로그에 적지 않는다. 주소는 환경변수로만 받는다(프로젝트를 교회 계정으로 옮길 수 있어야 한다).
 - Vercel 대시보드에서 환경변수를 직접 고치지 않는다. 정본은 Secrets 다.
 - 협업자가 빠지면 Vercel 토큰을 재발급하고 `VERCEL_TOKEN` 을 교체한다. 토큰은 소유자 팀 전체 범위라, 레포 Admin 은 사실상 그 권한을 갖는다.
 
-## 6. 알려진 제약
+## 6. DB 변경 적용
+
+DB 구조(표 · enum · 권한 · 트리거 · 초기 행)는 레포의 `supabase/migrations/*.sql` 로만 바꾼다. 대시보드에서 손으로 만들지 않는다 — 프로젝트를 옮기거나 넘겨받는 사람이 같은 DB 를 다시 만들 수 있어야 한다.
+
+1. 변경 파일을 만든다: `pnpm supabase migration new <이름> < /dev/null`(입력을 주지 않으면 명령이 기다린다) → `supabase/migrations/<시각>_<이름>.sql` 에 SQL 을 쓴다.
+2. 로컬에서 확인한다: `pnpm db:reset`(모든 변경 파일을 처음부터 다시 적용) → `pnpm db:types`(`src/shared/api/supabase/database.types.ts` 를 다시 만든다) → `pnpm typecheck`. enum 이 화면의 TS 타입과 어긋나면 `enumParity.test.ts` 에서 걸린다.
+3. main 에 들어간 뒤 Actions › **Apply DB migrations** › Run workflow. 처음에는 `apply` 를 끄고 실행해 적용될 목록을 보고, 맞으면 `apply` 를 켜서 다시 실행한다.
+
+- **코드보다 먼저 적용한다.** production 과 preview 가 같은 운영 DB 를 보므로, 변경 파일은 먼저 적용해도 지금 코드가 깨지지 않게 쓴다: 칸·표를 **추가** → 코드 배포 → 안 쓰는 것 **제거**(다음 변경 파일).
+- 이미 적용된 변경 파일은 고치지 않는다. 고칠 것이 있으면 새 변경 파일을 쓴다.
+- 필요한 Secret: `SUPABASE_ACCESS_TOKEN`(Supabase 계정 › Access Tokens) · `SUPABASE_PROJECT_ID`(프로젝트 ref). DB 비밀번호는 필요 없다 — CLI 가 계정 토큰으로 임시 로그인 역할을 만들어 접속한다(2026-11-18, `link` → `db push --remote --dry-run` 을 운영 프로젝트에 돌려 확인). 토큰이 계정 전체 권한이므로 프로젝트를 교회 계정으로 옮기면 그 계정의 토큰으로 바꾼다.
+- CLI 버전은 `package.json` 의 `supabase` 와 워크플로우의 `version` 두 곳에 같은 값으로 고정돼 있다.
+- 운영 프로젝트의 가입 차단(Authentication › Sign In / Providers › 새 사용자 가입 허용 끄기)은 대시보드 설정이 정본이다. `supabase/config.toml` 의 `enable_signup = false` 는 로컬 스택용이다.
+
+## 7. 알려진 제약
 
 - 삭제 동기화 없음. Secrets 에서 지운 변수는 Vercel 에서 소유자가 지운다.
 - production·preview 에 같은 값이 들어간다. 환경별로 달라야 하는 변수가 생기면 접미사 규약(예: `X_PREVIEW`)으로 워크플로우를 확장한다.
 - 첫 동기화 때 대시보드에서 만든 3-타깃(production·preview·development) 레코드가 어떻게 재편되는지는 문서가 명시하지 않는다. 체크리스트 10번에서 기록.
 - 유튜브 키는 서버 전용이다(`import "server-only"`, ADR 0010). 브라우저 번들에 실리지 않으므로 Google Cloud 에서 "YouTube Data API v3 만 허용" 제한을 걸 수 있다. HTTP 리퍼러 제한은 서버 호출이라 걸지 않는다.
-- 관리자·백엔드(ADR 0008, Supabase)가 들어오면 변수가 늘어난다(예: `SUPABASE_URL`, 서비스 키). 이 워크플로우는 이름을 가리지 않으니 같은 절차로 동기화한다. ADR 0008 은 Vercel 계정을 교회 명의로 두기로 했는데, 그때는 제어용 Secret 3개(`VERCEL_TOKEN`·`VERCEL_ORG_ID`·`VERCEL_PROJECT_ID`)만 새 계정 것으로 바꾸면 된다. 이 구조는 Vercel 계정이 누구 것이든 같다.
+- 관리자·백엔드(ADR 0008, Supabase)의 앱 변수는 `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 다(만능 키는 필요해지는 패키지에서 추가). 같은 절차로 동기화한다. ADR 0008 은 Vercel 계정을 교회 명의로 두기로 했는데, 그때는 제어용 Secret 3개(`VERCEL_TOKEN`·`VERCEL_ORG_ID`·`VERCEL_PROJECT_ID`)만 새 계정 것으로 바꾸면 된다. 이 구조는 Vercel 계정이 누구 것이든 같다.

@@ -5,3 +5,7 @@ package-lock.json
 yarn.lock
 README.md
 src/assets/photoVariants.generated.ts
+src/shared/api/supabase/database.types.ts
+
+# shadcn 스킬(상위 저장소의 파일 그대로 — 포맷하면 skills-lock.json 의 해시와 어긋난다)
+.claude/skills/shadcn

@@ -21,7 +21,7 @@ import { useMediaQuery } from '@/shared/lib/hooks/useMediaQuery';
 import { cn } from '@/shared/lib/utils';
 import { BookOpen, ChevronDown, ChevronRight, Maximize2, X } from 'lucide-react';
 import Image from 'next/image';
-import { Dialog } from 'radix-ui';
+import { Dialog } from '@base-ui/react/dialog';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -293,22 +293,18 @@ export const BulletinPage = ({ issues, basePath }: Props) => {
         </div>
       </div>
 
-      {/* 휴대폰 바텀시트 — 연도 탭 + 월별 목록. 고르면 닫히고 포커스는 연 버튼으로 돌아간다(Radix) */}
+      {/* 휴대폰 바텀시트 — 연도 탭 + 월별 목록. 고르면 닫히고 포커스는 연 버튼으로 돌아간다(Base UI Dialog) */}
       <Dialog.Root open={pickerOpen} onOpenChange={setPickerOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay
+          <Dialog.Backdrop
             data-lenis-prevent
-            className="bg-b1-text/50 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 fixed inset-0 z-[60] motion-reduce:animate-none"
+            className="bg-b1-text/50 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 fixed inset-0 z-[60] motion-reduce:animate-none"
           />
-          <Dialog.Content
+          <Dialog.Popup
             data-lenis-prevent
-            aria-describedby={undefined}
-            onCloseAutoFocus={e => {
-              // 고른 뒤에도 «다른 주보 보기» 로 — 이어서 또 고를 수 있게
-              e.preventDefault();
-              pickerTriggerRef.current?.focus({ preventScroll: true });
-            }}
-            className="bg-b1-surface data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom fixed inset-x-0 bottom-0 z-[60] flex max-h-[82dvh] flex-col rounded-t-2xl pb-[env(safe-area-inset-bottom)] shadow-lg outline-hidden motion-reduce:animate-none"
+            // 고른 뒤에도 «다른 주보 보기» 로 — 이어서 또 고를 수 있게
+            finalFocus={pickerTriggerRef}
+            className="bg-b1-surface data-open:animate-in data-open:slide-in-from-bottom data-closed:animate-out data-closed:slide-out-to-bottom fixed inset-x-0 bottom-0 z-[60] flex max-h-[82dvh] flex-col rounded-t-2xl pb-[env(safe-area-inset-bottom)] shadow-lg outline-hidden motion-reduce:animate-none"
           >
             <header className="border-b1-border flex shrink-0 items-center justify-between gap-4 border-b py-2.5 pr-2.5 pl-4">
               <Dialog.Title className="text-b1-text text-h3 font-bold tracking-[-0.02em]">
@@ -360,7 +356,7 @@ export const BulletinPage = ({ issues, basePath }: Props) => {
                 roomy
               />
             </div>
-          </Dialog.Content>
+          </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
 

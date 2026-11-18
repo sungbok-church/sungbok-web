@@ -11,6 +11,7 @@
 │   ├── color-palette.md
 │   └── design-system.md
 ├── domains/                        # 도메인별 상세 (살아있는 문서)
+│   ├── admin.md
 │   ├── home.md
 │   ├── location.md
 │   ├── news.md
@@ -32,7 +33,9 @@
 │   ├── 2026-11-05-design-system-plan.md
 │   ├── 2026-11-10-github-org-env-sync-design.md
 │   ├── 2026-11-10-github-org-env-sync-plan.md
-│   └── 2026-11-12-worship-sermon-g-plan.md
+│   ├── 2026-11-12-worship-sermon-g-plan.md
+│   ├── 2026-11-17-admin-design.md
+│   └── 2026-11-17-admin-p1-setup-plan.md
 └── decisions/                      # 의사결정 기록 (ADR — 불변)
     ├── 0001-sky-palette.md
     ├── 0002-home-ia-and-tone.md
@@ -48,7 +51,10 @@
     ├── 0012-date-temporal-and-admin-libraries.md
     ├── 0013-photo-size-variants-prebuilt.md
     ├── 0014-content-repository-and-video-id-link.md
-    └── 0015-location-map-to-location-page.md
+    ├── 0015-location-map-to-location-page.md
+    ├── 0016-admin-ui-follows-shadcn.md
+    ├── 0017-admin-reference-next-starter-and-tanstack-form.md
+    └── 0018-ui-primitives-base-ui.md
 ```
 
 향후 추가될 카테고리(빈 폴더는 미리 만들지 않음):
@@ -78,6 +84,7 @@
 
 ### Domains
 
+- [admin.md](domains/admin.md) — 관리자(`/admin`)에 **지금 있는 것**: 로그인 흐름(proxy 는 `/admin/*` 만 · `getClaims()` · `next` 는 `/admin` 안 경로만), 관리자 틀, Supabase 연결(환경변수·서버 클라이언트·DB 타입·enum 일치 검사), 가입 차단, 공개 쪽과의 lint 경계. 전체 설계는 specs 의 admin-design
 - [home.md](domains/home.md) — 홈(`/`) 페이지의 섹션 IA·섹션별 사양·CTA·모바일 적응·미결 사항(지도는 홈에 없다 — location.md)
 - [location.md](domains/location.md) — 찾아오시는 길(`/location`): 오시는 길(지도·주소 복사·네이버/카카오 지도·주차·대중교통·전화) + 예배 시간표, 화면 규칙, 값의 위치(`shared/config/church.ts`), 교회 확인이 필요한 문구
 - [news.md](domains/news.md) — 교회소식(`/news/*`): 주일광고·성복의 뜰은 예배와 같은 영상 화면(등록한 게시글의 유튜브 영상 id), 주보 B안 «바로 읽기»(연도별 접이식 목록·휴대폰 바텀시트·한 면/양면), 교회앨범 C안 «목록 + 미리보기», 공용 «크게 보기» 뷰어, 관리자 연동 때 바꿀 곳
@@ -105,6 +112,7 @@
 - [2026-11-05-design-system-design.md](specs/2026-11-05-design-system-design.md) — 작업 패키지 1: 디자인 시스템 + 모바일·태블릿 보완. 토큰 2계층(B1 원시 → shadcn 의미), 타이포 스케일·그림자·모션 토큰, 공용 부품 세트, `/design` 견본(dev 전용), 반응형 기준(375/768/1280·터치 44px·한글 최소 13px), `design:lint` 확장 + `design:audit`. 2026-11-05 실측 문제 목록 포함. **구현 완료(2026-11-05)**. 구현 계획: [-plan.md](specs/2026-11-05-design-system-plan.md) (12 태스크 — audit 도구·기준 캡처 → 토큰 → 폰트 → 부품 → `/design` → 글자 이전 → 반응형 보완 → lint 확장 → 문서·ADR 0009)
 - [2026-11-10-github-org-env-sync-design.md](specs/2026-11-10-github-org-env-sync-design.md) — 레포를 GitHub Organization 으로 이전하고 환경변수 정본을 GitHub Secrets 로 둔다. Actions 는 Secrets→Vercel 동기화만(수동), 배포는 Vercel Git 자동 유지. 협업자가 본인 없이 운영 변수 추가·변경 가능. **승인·구현 완료(2026-11-10), 셋업 검증 대기**. 계획: [-plan.md](specs/2026-11-10-github-org-env-sync-plan.md)
 - [2026-11-12-worship-sermon-g-plan.md](specs/2026-11-12-worship-sermon-g-plan.md) — 주일예배 설교 영상 G안 구현 계획: 페이지 안 플레이어·유튜브식 설명란·「설교 목록」(제목의 시리즈로 자동 분류)·검색. 페이지↔재생목록은 코드 설정, 유튜브에 올리기만 하면 반영. 화면 배치는 2026-11-13 에 목록·설교 한 편 두 페이지로 바뀜(worship-video.md)
+- [2026-11-17-admin-design.md](specs/2026-11-17-admin-design.md) — 관리자(`/admin`) 설계: 그룹 + 메뉴·기능 권한(RLS 로 차단), 메뉴는 데이터(관리자·홈페이지 메뉴의 사용 여부·이름·순서, 추가만 배포), enum 과 공통코드 구분, 휴지통/비활성/완전 삭제 규칙, 칸 단위 변경 이력(DB 트리거), 브라우저 직접 올리기, 파일은 공통 표 둘(묶음 `file_lists` · 파일 `files`), 공개 화면은 저장소 `load` 만 교체, 새가족 자체 폼. 1차 = 주보·주일광고·성복의 뜰·교회앨범·설교 시트지·홈 히어로(사진·유튜브)·다음세대 부서(소개 글·담당자·사진 — 지금 값을 DB 로)·새가족. 작업 패키지 8개. **승인(2026-11-17), 구현 전**. 패키지 1 계획: [-p1-setup-plan.md](specs/2026-11-17-admin-p1-setup-plan.md) (8 태스크 — `(site)` 묶음 분리 → Supabase 연결 → DB 변경 파일 체계 → 로그인 판정 → proxy·세션 → 로그인 화면·관리자 틀 → lint 경계 → 전체 검증. 개발은 로컬 Supabase(podman))
 
 ### Decisions
 
@@ -119,10 +127,13 @@
 - [0009-design-system-tokens-responsive.md](decisions/0009-design-system-tokens-responsive.md) — 2026-11-05 — 디자인 시스템: B1 원시→shadcn 의미 토큰 2계층, 글자 크기 10단계(한글 최소 13px), 폰트 직접 제공(외부 요청 0), 반응형 기준(375/768/1280·lg 헤더·터치 44px), design:lint 확장 + design:audit
 - [0010-next16-node26-perf-baseline.md](decisions/0010-next16-node26-perf-baseline.md) — 2026-11-09 — Next 16·Node 26 업그레이드 + 성능 기준선: 유튜브는 서버 fetch 하나로(gapi·googleapis·axios 제거), 사진은 WebP 사전 변환(17.8MB→3.1MB), 폰트는 같은 출처, 무거운 임베드는 화면 근처에서, Vercel 서울 리전. (0008·0009 는 develop 쪽 ADR 이 쓰고 있어 건너뜀)
 - [0011-github-org-and-env-source.md](decisions/0011-github-org-and-env-source.md) — 2026-11-10 — 레포를 GitHub Organization 으로 이전, 환경변수 정본 = GitHub Secrets, Actions 는 Secrets→Vercel 덮어쓰기 동기화만(변수 1개씩), 배포는 Vercel Git 자동 유지, 레포 공개 유지. Pro·공용 계정·.env 커밋·Actions 전면 배포 탈락. 상태: 셋업 검증 대기
-- [0012-date-temporal-and-admin-libraries.md](decisions/0012-date-temporal-and-admin-libraries.md) — 2026-11-12 — 날짜는 UTC 로 주고받고 표시할 때만 Asia/Seoul. 서버는 Temporal(Node 26), 홈페이지 화면은 Intl(Safari·iOS 에 Temporal 없음) — ESLint 로 강제, 관리자 영역만 예외. date-fns·dayjs 탈락. zod 채택·유튜브 응답 검증 적용, react-hook-form·TanStack Table 채택(관리자 착수 때 설치), motion·react-youtube 보류, react-intersection-observer 탈락. Radix 통합·lodash 제거
+- [0012-date-temporal-and-admin-libraries.md](decisions/0012-date-temporal-and-admin-libraries.md) — 2026-11-12 — 날짜는 UTC 로 주고받고 표시할 때만 Asia/Seoul. 서버는 Temporal(Node 26), 홈페이지 화면은 Intl(Safari·iOS 에 Temporal 없음) — ESLint 로 강제, 관리자 영역만 예외. date-fns·dayjs 탈락. zod 채택·유튜브 응답 검증 적용, react-hook-form·TanStack Table 채택(관리자 착수 때 설치), motion·react-youtube 보류, react-intersection-observer 탈락. Radix 통합·lodash 제거 **폼 라이브러리 부분은 ADR 0017 이 대체**(TanStack Form)
 - [0013-photo-size-variants-prebuilt.md](decisions/0013-photo-size-variants-prebuilt.md) — 2026-11-14 — 접속 시점 `/_next/image` 변환을 쓰지 않는다 — 레포 사진은 화면 폭별 크기 파일까지 미리 만들어 `<Photo>` 로 쓴다(빠뜨리면 빌드 실패). 유튜브 썸네일은 유튜브의 크기별 주소로 직접(WebP 우선). 붓글씨체는 쓰는 글자만 담은 파일 하나. ADR 0010 의 «폭별 변환 유지»·«화질 허용 목록»을 바꿈
 - [0014-content-repository-and-video-id-link.md](decisions/0014-content-repository-and-video-id-link.md) — 2026-11-16 — 자료실·교회소식의 공개 화면은 저장소 계층으로만 읽는다(지금은 시드, 관리자·DB 가 생기면 load 만 교체). 자료와 설교 영상은 유튜브 영상 id 로만 잇고(다대다) 연결은 자료 쪽에 한 번만. 주일광고·성복의 뜰은 예배의 영상 화면을 쓰되 출처는 등록한 게시글. 제목·재생목록으로 잇기, 시드 직접 import, 가짜 관리자 화면 탈락
 - [0015-location-map-to-location-page.md](decisions/0015-location-map-to-location-page.md) — 2026-11-16 — 지도·주소·주차·대중교통은 홈에서 빼고 찾아오시는 길(`/location`)에만 둔다. 홈에는 «처음 오신 분께» 의 주소 한 줄과 링크만. 히어로 «오시는 길» 은 `/location` 으로. ADR 0002 의 7섹션 IA 중 7번(LocationMap)을 바꿈. 양쪽에 같은 섹션, 홈에 얇은 띠 탈락
+- [0016-admin-ui-follows-shadcn.md](decisions/0016-admin-ui-follows-shadcn.md) — 2026-11-18 — 관리자(`/admin`)는 shadcn admin 의 부품·배치·글자 크기·터치 영역·좁은 화면 기준(`md`)·모션을 원본 그대로 쓰고 색만 B1 팔레트로 바꾼다. 공개 사이트의 디자인 바(한글 13px·터치 44px·폭 애니메이션 금지)는 관리자에 적용하지 않는다(색 토큰·포커스·대비·reduced-motion·문구 톤은 적용)
+- [0017-admin-reference-next-starter-and-tanstack-form.md](decisions/0017-admin-reference-next-starter-and-tanstack-form.md) — 2026-11-18 — 관리자의 참고 대상은 `next-shadcn-dashboard-starter`(구조·화면 패턴만, 통째로 들이지 않음). 폼은 TanStack Form(ADR 0012 의 react-hook-form 대체), UI 기반은 Radix 유지(→ 0018 이 대체), 명령 팔레트·칸반·차트는 필요해질 때, 다크 모드는 나중에 켤 수 있게 관리자 화면은 의미 토큰만 쓴다
+- [0018-ui-primitives-base-ui.md](decisions/0018-ui-primitives-base-ui.md) — 2026-11-18 — UI 기반을 Radix 에서 Base UI 로(`radix-ui` 제거). shadcn 부품 25개는 base-nova 원본 그대로(다른 점은 파일 머리 주석), `design:lint` 는 원본을 검사하지 않음, `dark:` 는 `.dark` 일 때만. 공개 화면의 «크게 보기»·주보 고르기 시트도 Base UI Dialog 로
 
 ## 컨벤션
 
@@ -176,11 +187,12 @@
 | [src/app/globals.css](../src/app/globals.css) 의 팔레트 토큰 | [design/color-palette.md](design/color-palette.md) |
 | [src/app/globals.css](../src/app/globals.css) 의 글자 크기·그림자·모션 토큰, [src/shared/components/ui/](../src/shared/components/ui/) 부품 | [design/design-system.md](design/design-system.md) + `/design` 견본 |
 | 디자인 바(토큰 규율·모션·a11y·카피 톤) 규칙 변경 | [../DESIGN.md](../DESIGN.md) |
-| [src/app/page.tsx](../src/app/page.tsx) 또는 [src/domains/home/](../src/domains/home/) 변경 | [domains/home.md](domains/home.md) |
-| [src/domains/location/](../src/domains/location/) · `src/app/location/` 변경 | [domains/location.md](domains/location.md) |
-| [src/domains/resources/](../src/domains/resources/) · `src/app/resources/` 변경 | [domains/resources.md](domains/resources.md) |
-| [src/domains/news/](../src/domains/news/) · `src/app/news/` 변경 | [domains/news.md](domains/news.md) |
+| [src/app/(site)/page.tsx](../src/app/(site)/page.tsx) 또는 [src/domains/home/](../src/domains/home/) 변경 | [domains/home.md](domains/home.md) |
+| [src/domains/location/](../src/domains/location/) · `src/app/(site)/location/` 변경 | [domains/location.md](domains/location.md) |
+| [src/domains/resources/](../src/domains/resources/) · `src/app/(site)/resources/` 변경 | [domains/resources.md](domains/resources.md) |
+| [src/domains/news/](../src/domains/news/) · `src/app/(site)/news/` 변경 | [domains/news.md](domains/news.md) |
 | [src/domains/worship-video/](../src/domains/worship-video/) 변경(영상 페이지 추가 포함) | [domains/worship-video.md](domains/worship-video.md) |
+| [src/domains/admin/](../src/domains/admin/) · `src/app/admin/` · `src/proxy.ts` · `src/shared/api/supabase/` · `supabase/` 변경 | [domains/admin.md](domains/admin.md) |
 | 도메인 추가/구조 변경 | `domains/<domain>.md` |
 | 라우팅·상태 관리·렌더링 전략 변경 | `architecture/*.md` *(향후)* |
 

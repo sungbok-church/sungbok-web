@@ -45,6 +45,12 @@ is_production() {
     */_variants/*|*-preview/*) return 1 ;;
     *.test.ts|*.test.tsx|*.spec.ts|*.spec.tsx|*.d.ts) return 1 ;;
   esac
+  # shadcn 원본 부품은 원본 그대로 둔다(ADR 0016 · 0018) — 원본에는 임의 둥글기·글자 크기가 들어 있다.
+  # 표시: src/shared/components/ui 의 파일 머리(앞 6줄)에 «shadcn/ui … 원본» 주석. 이 사이트가 만든 부품에는 그 주석이 없다.
+  case "$1" in
+    src/shared/components/ui/*)
+      if head -n 6 "$1" 2>/dev/null | grep -q 'shadcn/ui.*원본'; then return 1; fi ;;
+  esac
   return 0
 }
 

@@ -54,7 +54,7 @@ allowed-tools:
 상세 디렉토리 구조·`page.tsx` 슬롯 패턴은 정본 문서 B절을 따른다. 매번 어겨
 교정당하는 핵심만 다시 못박는다:
 
-- **위치**: 프리뷰는 `src/app/<name>-preview/page.tsx`(`'use client'`), 변형은
+- **위치**: 프리뷰는 `src/app/(site)/<name>-preview/page.tsx`(`'use client'` — `(site)` 묶음 안이어야 헤더·푸터가 붙는다), 변형은
   **대상 위젯 옆 `_variants/`**. registry **0번 = 현재 구현**(기본 선택·비교 기준).
 - **단독 ❌.** 실제 후속 섹션을 `page.tsx` 그대로 재현해 붙인다(등장·전환·여백을
   봐야 결정 가능). 섹션만 떼서 평가하지 않는다.
@@ -96,6 +96,6 @@ URL + 시안별 `?v=` 코드 + 한 줄 설명을 준다. 카피는 `feedback-cop
 ## 6. 확정 후 정리
 
 - 승자 1안을 본 위젯(`<Widget>/index.tsx`)에 이식.
-- `src/app/<name>-preview/` 라우트와 `_variants/` 폴더를 **통째로 삭제**. 임시
+- `src/app/(site)/<name>-preview/` 라우트와 `_variants/` 폴더를 **통째로 삭제**. 임시
   자산·stand-in 도 함께 제거. **승자 이식분만** 커밋(임시물은 커밋하지 않는다).
 - git 스테이징·커밋은 **사용자가 명시적으로 지시할 때만** (프로젝트 git 규칙).

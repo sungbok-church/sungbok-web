@@ -1,6 +1,3 @@
-import { AppProvider } from '@/app/_provider';
-import { Footer } from '@/shared/components/layout/Footer';
-import { Header } from '@/shared/components/layout/Header';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata } from 'next';
 // 폰트는 외부 CDN 없이 우리 도메인에서 제공한다(ADR 0009). 둘 다 unicode-range 조각이라 쓰인 글자만 받는다.
@@ -33,12 +30,8 @@ export default function RootLayout({
         suppressHydrationWarning
         className="bg-b1-bg text-b1-text flex min-h-dvh flex-col font-sans antialiased"
       >
-        <AppProvider>
-          <Header />
-          {/* 본문이 짧아도 푸터가 바닥에 붙도록 남는 높이를 main 이 차지한다(body = flex-col min-h-dvh) */}
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </AppProvider>
+        {/* 헤더·푸터는 묶음마다 다르다 — 공개 사이트는 (site)/layout.tsx, 관리자는 admin/layout.tsx */}
+        {children}
         {/* 실제 방문자 폰의 첫 화면·LCP 측정(Vercel 대시보드 Speed Insights). 배포 환경에서만 수집한다. */}
         <SpeedInsights />
       </body>
