@@ -3,7 +3,7 @@
 import { albumCategories, albumMeta, filterAlbums } from '@/domains/news/api/albumList';
 import type { Album } from '@/domains/news/api/news.types';
 import { idFromPath, syncAddress } from '@/domains/news/api/syncAddress';
-import { ImageViewer } from '@/domains/news/components/features/ImageViewer';
+import { ImageViewer } from '@/shared/components/features/ImageViewer';
 import { FOCUS, HIT_34, OUTLINE_BTN, PILL } from '@/shared/components/ui/controlStyles';
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { useMediaQuery } from '@/shared/lib/hooks/useMediaQuery';

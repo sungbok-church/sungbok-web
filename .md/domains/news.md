@@ -38,7 +38,7 @@
 
 ## «크게 보기» 뷰어
 
-주보와 앨범이 같이 쓴다(`features/ImageViewer`). 장 넘김(←/→ 키) · 확대 100~300%(50% 단위, «맞춤») · 주보일 때만 한 면/양면·왼쪽/오른쪽. Esc · 바깥 · 닫기 버튼으로 닫고, 닫히면 **연 버튼으로 포커스가 돌아간다**(Base UI Dialog 의 `finalFocus` 에 연 버튼을 넘긴다 — 여는 곳이 여럿이라 뷰어가 직접 적어 둔다). 휴대폰은 화면 전체.
+주보 · 앨범 · 자료실 설교 시트지가 같이 쓴다(공용 `src/shared/components/features/ImageViewer`). 장 넘김(←/→ 키) · 확대 100~300%(50% 단위, «맞춤») · 주보일 때만 한 면/양면·왼쪽/오른쪽. Esc · 바깥 · 닫기 버튼으로 닫고, 닫히면 **연 버튼으로 포커스가 돌아간다**(Base UI Dialog 의 `finalFocus` 에 연 버튼을 넘긴다 — 여는 곳이 여럿이라 뷰어가 직접 적어 둔다). 휴대폰은 화면 전체.
 
 ## 구조
 
@@ -51,7 +51,7 @@
 | `api/syncAddress.ts` | 페이지 이동 없이 주소 맞추기(`syncAddress`)와 주소에서 고른 항목 읽기(`idFromPath`) |
 | `data/*Seed.ts` | 기존 사이트 게시판을 전부 옮긴 시드(2026-11-16): 주일광고 87편 · 성복의 뜰 30편 · 주보 90호(2025-03-02 ~ 2026-11-15) · 앨범 4건 |
 | `components/widgets/BulletinPage` · `AlbumPage` | 주보·앨범 화면 |
-| `components/features/ImageViewer` · `SpreadImage` | 뷰어, 양면 그림. 장 넘김·확대·선택 버튼은 공용 `shared/components/features/ViewerControls` |
+| 공용 `shared/components/features/ImageViewer`(`index.tsx` · `SpreadImage.tsx`) | 뷰어, 양면 그림 — 자료실도 쓰게 되어 news 에서 공용으로 옮겼다. 장 넘김·확대·선택 버튼은 공용 `shared/components/features/ViewerControls` |
 
 그림은 `public/files/bulletin/<날짜>-<n>.webp`, `public/files/album/<id>-<n>.webp`.
 

@@ -1,7 +1,10 @@
 'use client';
 
-import type { NewsImage } from '@/domains/news/api/news.types';
-import { SpreadImage, type SpreadSide } from '@/domains/news/components/features/SpreadImage';
+import {
+  SpreadImage,
+  type SpreadSide,
+  type ViewerImage,
+} from '@/shared/components/features/ImageViewer/SpreadImage';
 import {
   PageStepper,
   Segmented,
@@ -29,13 +32,16 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   title: string;
   subtitle: string;
-  images: readonly NewsImage[];
+  images: readonly ViewerImage[];
   /** 보고 있는 장(0 부터) — 부르는 쪽이 들고 있다(닫아도 본문 화면이 같은 장에 있다) */
   index: number;
   onIndex: (index: number) => void;
   alt: (index: number) => string;
-  /** «이미지 저장» 의 파일 이름(확장자 없이 — 확장자는 그림 주소의 것을 붙인다) */
-  downloadName: (index: number) => string;
+  /** «이미지 저장» 의 파일 이름(확장자 없이 — 확장자는 그림 주소의 것을 붙인다). 주지 않으면 버튼을 그리지 않는다
+   *  (원본 파일을 따로 내려받는 시트지 — 저장하는 길이 둘이 되지 않게) */
+  downloadName?: (index: number) => string;
+  /** 넘기는 단위의 이름 — 주보·앨범은 «장»(기본), 문서는 «쪽» */
+  noun?: string;
   spread?: ViewerSpread;
 }
 
@@ -43,7 +49,7 @@ interface Props {
 const BASE_WIDTH = { spread: 1100, half: 650, single: 760 };
 
 /**
- * «크게 보기» — 주보와 교회앨범이 같이 쓰는 뷰어. 화면을 거의 채우는 대화상자에서 장을 넘기고(←/→ 키) 확대(100~300%)한다.
+ * «크게 보기» — 주보 · 교회앨범 · 설교 시트지가 같이 쓰는 뷰어. 화면을 거의 채우는 대화상자에서 장을 넘기고(←/→ 키) 확대(100~300%)한다.
  * 닫기: Esc · 바깥 · 닫기 버튼. 닫히면 열었던 버튼으로 포커스가 돌아간다.
  * 안쪽 스크롤은 브라우저 기본으로 — 사이트 부드러운 스크롤(Lenis)이 휠·터치를 가져가지 않게(data-lenis-prevent).
  */
@@ -57,6 +63,7 @@ export const ImageViewer = ({
   onIndex,
   alt,
   downloadName,
+  noun = '장',
   spread,
 }: Props) => {
   const [zoom, setZoom] = useState(ZOOM_FIT);
@@ -131,18 +138,20 @@ export const ImageViewer = ({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {/* 휴대폰에서는 숨긴다 — 그림을 길게 눌러 저장하는 쪽이 익숙하고, 머리 줄이 좁다 */}
-              <a
-                href={image.src}
-                download={`${downloadName(at)}.${/\.(\w+)$/.exec(image.src)?.[1] ?? 'webp'}`}
-                className={cn(
-                  OUTLINE_BTN,
-                  FOCUS,
-                  'text-label hidden min-h-11 px-3.5 md:inline-flex'
-                )}
-              >
-                <Download aria-hidden className="size-4" />
-                이미지 저장
-              </a>
+              {downloadName && (
+                <a
+                  href={image.src}
+                  download={`${downloadName(at)}.${/\.(\w+)$/.exec(image.src)?.[1] ?? 'webp'}`}
+                  className={cn(
+                    OUTLINE_BTN,
+                    FOCUS,
+                    'text-label hidden min-h-11 px-3.5 md:inline-flex'
+                  )}
+                >
+                  <Download aria-hidden className="size-4" />
+                  이미지 저장
+                </a>
+              )}
               <Dialog.Close
                 aria-label="크게 보기 닫기"
                 className={cn(TOOL_BTN, FOCUS, 'size-11 max-lg:before:content-none')}
@@ -191,7 +200,7 @@ export const ImageViewer = ({
 
           <footer className="border-b1-border bg-b1-surface flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2.5 border-t px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] md:px-5">
             <PageStepper
-              noun="장"
+              noun={noun}
               unit="장"
               index={at}
               count={images.length}

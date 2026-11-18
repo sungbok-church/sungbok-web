@@ -6,6 +6,7 @@ import {
   dateLabel,
   documentTitle,
   downloadTarget,
+  pageImageName,
   filterOptions,
   findResources,
   groupLabel,
@@ -273,5 +274,16 @@ describe('downloadTarget — 내려받을 것', () => {
 
   it('파일도 그림도 없으면 undefined', () => {
     expect(downloadTarget(doc({ id: 'none', file: undefined, pages: [] }))).toBeUndefined();
+  });
+});
+
+describe('pageImageName — «크게 보기» 에서 쪽 그림을 저장할 때의 이름(확장자 없이)', () => {
+  it('제목 + 쪽 번호 — 열람 화면의 «이미지 저장» 과 같은 이름', () => {
+    expect(pageImageName(SEASONAL[3], 1)).toBe('설 명절 순서지 2');
+    expect(downloadTarget(SEASONAL[3], 1)?.name).toBe(`${pageImageName(SEASONAL[3], 1)}.webp`);
+  });
+
+  it('파일 이름에 쓸 수 없는 글자는 빈칸으로', () => {
+    expect(pageImageName(doc({ id: 'x', title: '성찬: 은혜/응답?' }), 0)).toBe('성찬 은혜 응답 1');
   });
 });

@@ -1,14 +1,16 @@
-import type { NewsImage } from '@/domains/news/api/news.types';
 import { cn } from '@/shared/lib/utils';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
+
+/** 뷰어가 받는 그림 한 장 — 주소와 원본 크기(주보·앨범의 그림, 시트지의 미리보기 쪽이 모두 이 모양이다) */
+export type ViewerImage = { src: string; width: number; height: number };
 
 export type SpreadSide = 'left' | 'right';
 /** half: 한 면, spread: 양면, auto: 고르기 전 — 휴대폰은 한 면, 태블릿부터 양면(CSS 로 가른다) */
 export type SpreadView = 'half' | 'spread' | 'auto';
 
 interface Props {
-  image: NewsImage;
+  image: ViewerImage;
   alt: string;
   view: SpreadView;
   side: SpreadSide;

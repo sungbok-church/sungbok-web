@@ -8,12 +8,12 @@ import {
 } from '@/domains/news/api/bulletinList';
 import type { BulletinIssue } from '@/domains/news/api/news.types';
 import { idFromPath, syncAddress } from '@/domains/news/api/syncAddress';
-import { ImageViewer } from '@/domains/news/components/features/ImageViewer';
+import { ImageViewer } from '@/shared/components/features/ImageViewer';
 import {
   SpreadImage,
   type SpreadSide,
   type SpreadView,
-} from '@/domains/news/components/features/SpreadImage';
+} from '@/shared/components/features/ImageViewer/SpreadImage';
 import { IssueList } from '@/domains/news/components/widgets/BulletinPage/IssueList';
 import { FOCUS, OUTLINE_BTN, PILL } from '@/shared/components/ui/controlStyles';
 import { PageStepper, Segmented } from '@/shared/components/features/ViewerControls';
