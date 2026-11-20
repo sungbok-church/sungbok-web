@@ -4,16 +4,17 @@ import { renderToReadableStream } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { prefetch } = vi.hoisted(() => ({
-  prefetch: { calls: 0, run: () => Promise.resolve({ queries: [] as [], mutations: [] as [] }) },
+  prefetch: { calls: 0, run: (): Promise<unknown> => Promise.resolve(undefined) },
 }));
-vi.mock('@/domains/home/api/homeVideoPrefetch.server', () => ({
-  prefetchHomeVideo: () => {
+vi.mock('server-only', () => ({}));
+vi.mock('@/domains/home/api/homeVideoCache.server', () => ({
+  loadHomeVideoFeed: () => {
     prefetch.calls++;
     return prefetch.run();
   },
 }));
-vi.mock('@tanstack/react-query', () => ({
-  HydrationBoundary: ({ children }: { children: ReactNode }) => <Fragment>{children}</Fragment>,
+vi.mock('@/domains/home/api/useHomeVideoFeed', () => ({
+  HomeVideoFeedProvider: ({ children }: { children: ReactNode }) => <Fragment>{children}</Fragment>,
 }));
 vi.mock('@/domains/home/components/widgets/HomeLead', () => ({
   HomeLead: () => <h1>hero-ready</h1>,
@@ -42,12 +43,12 @@ import Home from './page';
 
 beforeEach(() => {
   prefetch.calls = 0;
-  prefetch.run = () => Promise.resolve({ queries: [], mutations: [] });
+  prefetch.run = () => Promise.resolve(undefined);
 });
 
 describe('홈 첫 화면과 영상 준비 분리', () => {
   it('영상 조회가 끝나기 전에 첫 화면을 스트리밍하고, 준비되면 영상 영역을 이어 보낸다', async () => {
-    let resolve!: (value: { queries: []; mutations: [] }) => void;
+    let resolve!: (value: unknown) => void;
     prefetch.run = () =>
       new Promise(r => {
         resolve = r;
@@ -69,7 +70,7 @@ describe('홈 첫 화면과 영상 준비 분리', () => {
       expect(first).toContain('hero-ready');
       expect(first).toContain('worship-ready');
       expect(first).not.toContain('live-ready');
-      resolve({ queries: [], mutations: [] });
+      resolve(undefined);
       let rest = '';
       for (;;) {
         const chunk = await reader.read();
@@ -80,7 +81,7 @@ describe('홈 첫 화면과 영상 준비 분리', () => {
       expect(rest).toContain('notices-ready');
     } finally {
       clearTimeout(timeout);
-      resolve({ queries: [], mutations: [] });
+      resolve(undefined);
       controller.abort();
     }
   });

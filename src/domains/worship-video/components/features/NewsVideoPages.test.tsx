@@ -6,10 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { clearPlayIntent } from '@/domains/worship-video/api/playIntent';
 import { resetSermonListState } from '@/domains/worship-video/api/sermonListState';
-import {
-  sermonDescriptionQueryKey,
-  sermonLibraryQueryKey,
-} from '@/domains/worship-video/api/worshipVideoQueries';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import type { VideoPage } from '@/domains/worship-video/config/worshipPages';
 
@@ -69,10 +65,9 @@ const GARDEN: Sermon[] = [
   video('g0930', '2026-09-30', { title: '리모델링', series: '교회소식', dateFrom: 'upload' }),
 ];
 
-const withData = (page: VideoPage, list: Sermon[], ui: ReactNode) => {
+// 서버가 받은 목록 · 설명은 props 로 넘어온다(화면 부품의 sermons · description) — 여기서는 그 목록을 넘겨 그린다
+const withData = (_page: VideoPage, _list: Sermon[], ui: ReactNode) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(sermonLibraryQueryKey(page), list);
-  for (const s of list) client.setQueryData(sermonDescriptionQueryKey(page, s.id), '');
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 };
 
@@ -82,7 +77,8 @@ beforeEach(() => {
 });
 
 describe('주일광고 목록(/news/announcements) — 예배와 같은 영상 목록 화면', () => {
-  const open = () => withData('announcements', ADS, <SermonListPage page="announcements" />);
+  const open = () =>
+    withData('announcements', ADS, <SermonListPage page="announcements" sermons={ADS} />);
   const list = () => screen.getByRole('region', { name: '주일광고 목록' });
 
   it('가장 최근 광고 한 편을 크게 — 머리표·시청 버튼은 주일광고의 말로, 주소는 /news 아래', () => {
@@ -130,7 +126,7 @@ describe('주일광고 목록(/news/announcements) — 예배와 같은 영상 �
 
 describe('성복의 뜰 목록(/news/garden)', () => {
   it('칩은 분류(부흥집회·교회소식), 업로드 날짜를 쓴 영상은 «업로드» 로 표시', () => {
-    withData('garden', GARDEN, <SermonListPage page="garden" />);
+    withData('garden', GARDEN, <SermonListPage page="garden" sermons={GARDEN} />);
     const list = screen.getByRole('region', { name: '영상 목록' });
     const chips = within(list).getByRole('group', { name: '분류' });
     expect(
@@ -148,7 +144,11 @@ describe('성복의 뜰 목록(/news/garden)', () => {
 
 describe('주일광고 한 편(/news/announcements/영상id) — 예배와 같은 시청 화면', () => {
   const open = (id: string) =>
-    withData('announcements', ADS, <SermonWatchPage page="announcements" videoId={id} />);
+    withData(
+      'announcements',
+      ADS,
+      <SermonWatchPage page="announcements" videoId={id} sermons={ADS} description="" />
+    );
 
   it('유튜브 플레이어와 이전·목록·다음 — 묶음 없이 전체 날짜순으로 넘긴다', () => {
     open('ad1018');
@@ -215,7 +215,13 @@ describe('영상 화면의 «설교 시트지» 카드 — 자료실과 같은 �
     withData(
       'sunday',
       SUNDAY,
-      <SermonWatchPage page="sunday" videoId="YYW0D6JNrGQ" sheets={sheets} />
+      <SermonWatchPage
+        page="sunday"
+        videoId="YYW0D6JNrGQ"
+        sheets={sheets}
+        sermons={SUNDAY}
+        description=""
+      />
     );
     const card = screen.getByRole('link', { name: /주일 설교 시트지/ });
     expect(card).toHaveAttribute('href', '/resources/sunday-sermon/0404-40');
@@ -227,7 +233,17 @@ describe('영상 화면의 «설교 시트지» 카드 — 자료실과 같은 �
   });
 
   it('연결된 자료가 없으면 카드를 그리지 않는다', () => {
-    withData('sunday', SUNDAY, <SermonWatchPage page="sunday" videoId="Gi008JHTF5U" sheets={[]} />);
+    withData(
+      'sunday',
+      SUNDAY,
+      <SermonWatchPage
+        page="sunday"
+        videoId="Gi008JHTF5U"
+        sheets={[]}
+        sermons={SUNDAY}
+        description=""
+      />
+    );
     expect(screen.queryByRole('link', { name: /시트지/ })).toBeNull();
     expect(screen.queryByText('보기')).toBeNull();
   });

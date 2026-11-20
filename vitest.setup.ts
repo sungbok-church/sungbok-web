@@ -1,4 +1,13 @@
 import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
+
+// 'use cache' 는 Next 서버(cacheComponents) 안에서만 동작한다 — 테스트에서는 캐시 수명 · 태그 지정(cacheLife · cacheTag)이
+// 아무 일도 하지 않게 한다(그대로 부르면 «cacheComponents 설정에서만 쓸 수 있다» 고 던진다). 값을 확인하는 테스트는 vi.mocked 로 본다.
+vi.mock('next/cache', async importOriginal => ({
+  ...(await importOriginal<typeof import('next/cache')>()),
+  cacheLife: vi.fn(),
+  cacheTag: vi.fn(),
+}));
 
 // jsdom 미구현 브라우저 API 폴리필 — 스크롤/관찰 기반 컴포넌트
 // (useScrollFadeIn / useNearViewport / Reveal 등)가 테스트에서 크래시 없이 돌도록 하네스 레벨에서 제공한다.

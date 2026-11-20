@@ -43,7 +43,7 @@
 - 네 칸을 다 채우면 마지막 칸은 직분과 상관없이 설교자로 읽는다(초청 설교자 「홍길동 집사」, 「성복교회 이요셉 목사」).
 - 시리즈 안의 순서(회차 목록·이전/다음 편)는 날짜가 아니라 **회차 번호**로 정한다. 단편 설교는 단편끼리 날짜 순.
 - 설정에 없는 재생목록(예배 찬양, 장별 마태복음 등)은 어디에도 나오지 않는다.
-- 반영 시점: 유튜브 응답 1시간 캐시 + 페이지 10분 재생성 → 올린 뒤 **최대 약 1시간 10분**.
+- 반영 시점: 유튜브 응답 1시간 캐시 + 영상 목록 서버 캐시 10분 확인(`'use cache'`, [ADR 0024](../decisions/0024-cache-components.md)) → 올린 뒤 **최대 약 1시간 10분**.
 
 ## 페이지·앱 복귀
 
@@ -56,12 +56,14 @@
 ```
 유튜브 playlistItems(snippet,contentDetails) ──1시간 Data Cache──▶ worshipVideo.server.ts
    제목·설명 읽기(sermonParse) → Sermon[] (최신순) + 설명 본문(Map)
+   서버 캐시('use cache', 10분마다 확인 · 만료 없음 · 실패는 값으로 1분 — ADR 0024)
         │
-        ├─ 목록 페이지(ISR 10분)   : widgets/SermonLibrary → prefetchSermonLibrary → 목록 전체를 HTML 에
-        ├─ 설교 한 편(ISR 10분)    : widgets/SermonWatch   → prefetchSermonWatch   → 목록 전체 + 그 설교의 설명
-        │      빌드 때는 만들지 않고 처음 열릴 때 만든다. 목록에 없는 영상 id 는 404(`[videoId]/not-found.tsx`).
-        │      유튜브를 못 받아도 던지지 않는다 — 처음 열리는 설교는 «직전 성공본» 이 없어 던지면 오류 화면이 된다.
-        │      못 받은 것은 화면이 /api 로 받는다
+        ├─ 목록 페이지   : widgets/SermonLibrary → loadForPage → SermonListPage(sermons) — 목록 전체를 HTML 에
+        ├─ 설교 한 편    : widgets/SermonWatch   → loadForPage → SermonWatchPage(sermons, description)
+        │      빌드 때는 최신 한 편만 만들고(oneBuildParam) 나머지는 처음 열릴 때 만든다.
+        │      목록에 없는 영상 id 는 404(`[videoId]/not-found.tsx` → VideoNotFound). 처음 여는 없는 주소는 200 + noindex.
+        │      유튜브를 못 받아도 던지지 않는다 — 처음 열리는 설교는 «직전 페이지» 가 없어 던지면 오류 화면이 된다.
+        │      서버가 못 받았을 때만 화면이 브라우저에 붙은 뒤 /api 로 받는다(react-query)
         └─ Route Handler: /api/worship-video/library?page=   (서버가 못 실었을 때 화면이 받음)
                           /api/worship-video/description?page=&v=   (그 영상의 설명 — 목록에 있는 영상만)
 화면: 검색·시리즈·정렬·더보기·이전/다음은 받은 목록으로 화면에서(sermonList) — 유튜브를 다시 부르지 않는다
@@ -73,7 +75,7 @@
 | `api/sermonParse.ts` | 제목·설명 → 시리즈·회차·본문·설교자·설교일(순수) |
 | `api/sermonList.ts` | 정렬·검색(「12장」 → `12:`)·시리즈 묶기·이전/다음 편·목록 줄(`listRows`)·표시 문구(순수) |
 | `api/worshipVideo.server.ts` | 유튜브에서 모으기(서버 전용). 업로드 시각 → 한국 날짜는 여기서(Temporal, [ADR 0012](../decisions/0012-date-temporal-and-admin-libraries.md)) |
-| `api/useSermonLibrary.ts` | 화면 훅(목록·설명) |
+| `api/useSermonLibrary.ts` | 화면 훅(목록·설명) — 서버가 못 받았을 때만, 브라우저에 붙은 뒤에 쓴다 |
 | `api/sermonListState.ts` | 목록 페이지의 검색어·시리즈·정렬·보인 편수를 화면 밖(모듈)에 둔다 — 설교를 보고 돌아와도 그대로. 「목록」으로 돌아올 스크롤 자리도 여기 |
 | `api/playIntent.ts` | 설교 링크를 누를 때 다음 화면에 남기는 표시 — 「들어오자마자 재생」(설교 페이지가 읽고 지운다: 뒤로·앞으로 가기로 다시 들어오면 재생하지 않는다)과 「이전·다음 중 어느 쪽을 눌렀나」(새 화면이 같은 쪽 링크에 포커스를 되돌린다). 새 탭으로 여는 클릭(Cmd·Ctrl 등)은 남기지 않는다 |
 | `api/useYoutubePlayState.ts` | 유튜브 플레이어가 재생 중인지(postMessage, `enablejsapi=1`) — 「재생 중」 표시용 |

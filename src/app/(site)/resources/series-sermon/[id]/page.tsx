@@ -1,14 +1,15 @@
 import { documentTitle } from '@/domains/resources/api/resourceList';
 import { resourceRepository } from '@/domains/resources/api/resourceRepository';
 import ResourceDocument from '@/domains/resources/components/widgets/ResourceDocument';
+import { oneBuildParam } from '@/shared/lib/buildParams';
 import type { Metadata } from 'next';
 
 type Props = { params: Promise<{ id: string }> };
 
-// «설교 영상 보기» 의 주소를 예배 페이지 목록(유튜브, 1시간 캐시)에서 찾는다 — 예배 페이지와 같은 주기로 다시 만든다.
-export const revalidate = 600;
-// 빌드 때 만들지 않는다(빌드가 유튜브 응답에 묶이지 않게) — 처음 열릴 때 만들어 두고 그 뒤로는 저장된 것을 준다.
-export const generateStaticParams = () => [];
+// «설교 영상 보기» 의 주소를 예배 페이지 목록(서버 캐시, 10분마다 확인)에서 찾는다 — 그 목록이 바뀌면 다시 그린다(ADR 0024).
+// 빌드 때는 최신 자료 한 건만 만든다(Cache Components 는 빈 목록이 안 된다 — oneBuildParam). 나머지는 처음 열릴 때 만든다.
+export const generateStaticParams = () =>
+  oneBuildParam('id', async () => (await resourceRepository.list('series'))[0]?.id);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

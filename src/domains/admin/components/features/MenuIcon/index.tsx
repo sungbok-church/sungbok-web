@@ -1,0 +1,47 @@
+import {
+  BookOpenIcon,
+  BracesIcon,
+  FileTextIcon,
+  FilesIcon,
+  HistoryIcon,
+  ImageIcon,
+  ImagesIcon,
+  InboxIcon,
+  LayoutDashboardIcon,
+  ListTreeIcon,
+  MegaphoneIcon,
+  MonitorIcon,
+  NewspaperIcon,
+  SettingsIcon,
+  ShieldCheckIcon,
+  SproutIcon,
+  TagsIcon,
+  UserPlusIcon,
+  UsersIcon,
+  type LucideIcon,
+} from 'lucide-react';
+
+// 메뉴 key → 아이콘. 메뉴 목록은 서버가 DB 와 권한으로 만들어 넘기고, 아이콘은 화면 코드가 key 로 고른다.
+export const MENU_ICONS: Record<string, LucideIcon> = {
+  dashboard: LayoutDashboardIcon,
+  // 대메뉴(묶음)
+  content: FilesIcon,
+  'site-screens': MonitorIcon,
+  intake: InboxIcon,
+  system: SettingsIcon,
+  // 세부 메뉴
+  bulletin: NewspaperIcon,
+  announcements: MegaphoneIcon,
+  garden: BookOpenIcon,
+  album: ImagesIcon,
+  resources: FileTextIcon,
+  'home-hero': ImageIcon,
+  departments: SproutIcon,
+  newcomers: UserPlusIcon,
+  users: UsersIcon,
+  groups: ShieldCheckIcon,
+  menus: ListTreeIcon,
+  categories: TagsIcon,
+  codes: BracesIcon,
+  audit: HistoryIcon,
+};

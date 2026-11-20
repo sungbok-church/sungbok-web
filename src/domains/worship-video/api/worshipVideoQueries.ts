@@ -1,4 +1,4 @@
-// 예배 설교 쿼리 공용 모듈(순수) — 서버 미리 받기(worshipVideoPrefetch.server)와 화면 훅(useSermonLibrary)이 함께 쓴다.
+// 예배 설교 쿼리 공용 모듈(순수) — 화면 훅(useSermonLibrary)의 키와 응답 검사.
 // 'use client' 파일에 두면 서버에서는 실제 값이 아니라 클라이언트 참조로 바뀌어 키가 어긋난다 — 그래서 여기.
 import type { VideoPage } from '../config/worshipPages';
 import type { Sermon } from './worshipVideo.types';

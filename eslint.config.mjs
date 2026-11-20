@@ -68,7 +68,14 @@ const eslintConfig = defineConfig([
   // 잠그는 테스트: tests/lint/adminBoundary.test.ts
   {
     files: ['src/**/*.{js,jsx,mjs,ts,tsx}'],
-    ignores: ['src/domains/admin/**', 'src/app/admin/**', 'src/proxy.ts', 'src/proxy.test.ts'],
+    ignores: [
+      'src/domains/admin/**',
+      'src/app/admin/**',
+      'src/proxy.ts',
+      'src/proxy.test.ts',
+      // 명령 팔레트 부품은 cmdk 를 쓴다 — 부품 파일 자체는 풀고, 공개 코드가 이 부품을 가져오는 것은 아래에서 막는다
+      'src/shared/components/ui/command.tsx',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -86,9 +93,19 @@ const eslintConfig = defineConfig([
                 '@hookform/*',
                 '@tanstack/react-table',
                 '@supabase/*',
+                'cmdk',
               ],
               message:
                 '관리자 전용이다 — 방문자 번들에 실린다(ADR 0008). DB 는 @/shared/api/supabase 를 거쳐 서버에서 읽는다.',
+            },
+            {
+              // 만능 키 클라이언트는 관리자의 계정 만들기 · 비밀번호 초기화에만 쓴다(설계 6.1)
+              group: ['@/shared/api/supabase/adminClient.server', '**/adminClient.server'],
+              message: '만능 키(SUPABASE_SECRET_KEY) 클라이언트는 관리자 코드에서만 쓴다(설계 6.1).',
+            },
+            {
+              group: ['@/shared/components/ui/command'],
+              message: '명령 팔레트(cmdk)는 관리자 전용이다 — 방문자 번들에 실린다(ADR 0008).',
             },
           ],
         },

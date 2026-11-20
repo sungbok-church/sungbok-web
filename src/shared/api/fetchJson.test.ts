@@ -10,15 +10,39 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('fetchJson', () => {
-  it('성공하면 JSON 을 돌려준다', async () => {
-    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ a: 1 }) });
+  it('성공 응답 { ok: true, data } 에서 data 를 돌려준다', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, data: { a: 1 } }),
+    });
     await expect(fetchJson('/api/x')).resolves.toEqual({ a: 1 });
     expect(fetchMock).toHaveBeenCalledWith('/api/x');
   });
 
-  it('응답이 실패면 상태를 담은 HttpError', async () => {
-    fetchMock.mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
-    await expect(fetchJson('/api/x')).rejects.toMatchObject({ name: 'HttpError', status: 503 });
+  it('실패 응답이면 상태 · 오류(code · message)를 담은 HttpError', async () => {
+    const error = { code: 'SERVICE_UNAVAILABLE', message: '서버에 연결하지 못했습니다.' };
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ ok: false, error }),
+    });
+    await expect(fetchJson('/api/x')).rejects.toMatchObject({
+      name: 'HttpError',
+      status: 503,
+      error,
+    });
+  });
+
+  it('실패 응답의 본문이 우리 모양이 아니어도(게이트웨이 HTML 등) 상태만으로 HttpError', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 504,
+      json: async () => {
+        throw new SyntaxError('Unexpected token <');
+      },
+    });
+    await expect(fetchJson('/api/x')).rejects.toMatchObject({ name: 'HttpError', status: 504 });
   });
 
   it('본문을 받다가 끊기면(TypeError)도 NetworkError, 본문이 JSON 이 아니면(SyntaxError) 그대로', async () => {

@@ -1,6 +1,6 @@
 // pnpm db:types — 로컬 DB(pnpm db:start)의 public 스키마에서 TS 타입을 만든다.
-// 변경 파일(supabase/migrations)을 고친 뒤 `pnpm db:reset` → `pnpm db:types` 순서로 돌린다.
-// 운영 DB 가 아니라 로컬 DB 에서 만든다 — 타입의 정본은 레포의 변경 파일이다.
+// 정본(supabase/schemas/schema.sql)을 고치고 `pnpm db:sync` → `pnpm db:reset` → `pnpm db:types` 순서로 돌린다.
+// 운영 DB 가 아니라 로컬 DB 에서 만든다 — 타입의 정본은 레포의 schema.sql 이다.
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 

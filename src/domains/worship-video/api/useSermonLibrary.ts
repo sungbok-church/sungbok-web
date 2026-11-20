@@ -1,5 +1,5 @@
 // 예배 설교 훅 — 서버 Route Handler 에서 받는다(유튜브는 직접 부르지 않는다: 키·쿼터는 서버에만).
-// 서버가 미리 채워 둔 상태(worshipVideoPrefetch.server → HydrationBoundary)가 있으면 그대로 쓴다.
+// 서버가 받아 넘긴 목록 · 설명이 없을 때만 쓴다(빌드 중 유튜브 실패 등) — 보통은 서버가 props 로 넘겨 HTML 에 그린다(ADR 0024).
 // useQuery(서스펜스 아님): 서버 렌더 중에는 요청하지 않고, 실패한 쿼리는 다시 열 때(재마운트) 알아서 다시 받는다.
 'use client';
 

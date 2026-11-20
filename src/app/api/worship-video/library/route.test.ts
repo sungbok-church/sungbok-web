@@ -27,7 +27,7 @@ describe('GET /api/worship-video/library', () => {
   it('예배 페이지의 설교 목록을 돌려준다', async () => {
     const r = await GET(req('?page=sunday'));
     expect(r.status).toBe(200);
-    await expect(r.json()).resolves.toEqual([sermon]);
+    await expect(r.json()).resolves.toEqual({ ok: true, data: [sermon] });
     expect(fetchSermonLibrary).toHaveBeenCalledWith('sunday');
   });
 

@@ -1,6 +1,7 @@
 // 유튜브 실패를 우리 API(Route Handler) 응답 상태로 바꾼다 — 화면은 이 상태로 다시 시도할지 가른다(fetchJson.retryTransient).
 
 import 'server-only'; // 화면(클라이언트) 코드가 가져다 쓰면 빌드가 실패한다 — 키·쿼터는 서버에만
+import { errorResponse } from './result';
 import { YoutubeApiError, YoutubeNetworkError } from './youtubeApi.server';
 
 // 하루 쿼터 소진 — 다시 해도 같고 쿼터만 더 탄다(하루 단위로 풀린다).
@@ -21,12 +22,13 @@ export const upstreamStatus = (e: unknown): number => {
 };
 
 /**
- * Route Handler 의 catch 에서 그대로 돌려줄 응답. 원인은 서버 로그에만 남기고, 응답에는 짧은 코드만 싣는다 —
+ * Route Handler 의 catch 에서 그대로 돌려줄 응답(공용 실패 모양, ADR 0022). 원인은 서버 로그에만 남기고, 응답에는 오류 코드만 싣는다 —
  * 내부 오류 메시지(경로·코드 버그 내용)가 누구나 볼 수 있는 응답에 나가지 않게.
  */
 export const upstreamErrorResponse = (e: unknown) => {
   const status = upstreamStatus(e);
   console.error('[upstream]', status, e);
-  const error = status === 429 ? 'quota' : status === 503 ? 'unavailable' : 'upstream';
-  return Response.json({ error }, { status });
+  return errorResponse(
+    status === 429 ? 'QUOTA_EXCEEDED' : status === 503 ? 'SERVICE_UNAVAILABLE' : 'UPSTREAM_ERROR'
+  );
 };

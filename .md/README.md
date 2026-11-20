@@ -35,7 +35,8 @@
 │   ├── 2026-11-10-github-org-env-sync-plan.md
 │   ├── 2026-11-12-worship-sermon-g-plan.md
 │   ├── 2026-11-17-admin-design.md
-│   └── 2026-11-17-admin-p1-setup-plan.md
+│   ├── 2026-11-17-admin-p1-setup-plan.md
+│   └── 2026-11-19-admin-pa-foundation-plan.md
 └── decisions/                      # 의사결정 기록 (ADR — 불변)
     ├── 0001-sky-palette.md
     ├── 0002-home-ia-and-tone.md
@@ -54,7 +55,13 @@
     ├── 0015-location-map-to-location-page.md
     ├── 0016-admin-ui-follows-shadcn.md
     ├── 0017-admin-reference-next-starter-and-tanstack-form.md
-    └── 0018-ui-primitives-base-ui.md
+    ├── 0018-ui-primitives-base-ui.md
+    ├── 0019-db-schema-ssot-uuid-v7.md
+    ├── 0020-codes-uppercase-and-categories-split.md
+    ├── 0021-code-cache-strategy.md
+    ├── 0022-api-response-and-error-codes.md
+    ├── 0023-codes-read-without-cache.md
+    └── 0024-cache-components.md
 ```
 
 향후 추가될 카테고리(빈 폴더는 미리 만들지 않음):
@@ -72,7 +79,7 @@
 | `meetings/` | **불변 문서** — 회의 시점의 기록 | 회의 1건당 파일 1개, `YYYY-MM-DD-slug.md`. 결정·미결·액션을 상단에 요약. 여기서 나온 결정은 살아있는 문서/ADR에 반영하고 회의록 자체는 고치지 않음 |
 | `specs/` | **승인본** — 작업 패키지 1개의 설계(목적·성공 기준·구조·검증·범위 밖) | `YYYY-MM-DD-slug-design.md`. 구현 전 사용자 승인. 구현 중 확정되는 세부(시안 승자 등)는 해당 절에 반영하고 상태 필드를 갱신. 되돌리기 어려운 결정은 ADR로 분리 |
 | `decisions/` | **불변 문서** — 결정 시점의 기록 | 새 결정마다 새 파일 생성. 기존 ADR은 수정하지 않음(폐기 시 상태 필드만 변경) |
-| `architecture/` *(향후)* | 살아있는 문서 | 변경 시 기존 파일 업데이트 |
+| `architecture/` | 살아있는 문서 | 변경 시 기존 파일 업데이트 |
 
 ## 현재 문서 목록
 
@@ -84,6 +91,7 @@
 
 ### Domains
 
+- [architecture/api-response.md](architecture/api-response.md) — 요청 · 응답 모양(Server Action · Route Handler 공통)과 오류 코드 표(HTTP 상태 · 기본 문장 · 언제 · 사용자가 할 일). 정본은 `src/shared/api/result.ts` · `errorCodes.ts`
 - [admin.md](domains/admin.md) — 관리자(`/admin`)에 **지금 있는 것**: 로그인 흐름(proxy 는 `/admin/*` 만 · `getClaims()` · `next` 는 `/admin` 안 경로만), 관리자 틀, Supabase 연결(환경변수·서버 클라이언트·DB 타입·enum 일치 검사), 가입 차단, 공개 쪽과의 lint 경계. 전체 설계는 specs 의 admin-design
 - [home.md](domains/home.md) — 홈(`/`) 페이지의 섹션 IA·섹션별 사양·CTA·모바일 적응·미결 사항(지도는 홈에 없다 — location.md)
 - [location.md](domains/location.md) — 찾아오시는 길(`/location`): 오시는 길(지도·주소 복사·네이버/카카오 지도·주차·대중교통·전화) + 예배 시간표, 화면 규칙, 값의 위치(`shared/config/church.ts`), 교회 확인이 필요한 문구
@@ -112,7 +120,7 @@
 - [2026-11-05-design-system-design.md](specs/2026-11-05-design-system-design.md) — 작업 패키지 1: 디자인 시스템 + 모바일·태블릿 보완. 토큰 2계층(B1 원시 → shadcn 의미), 타이포 스케일·그림자·모션 토큰, 공용 부품 세트, `/design` 견본(dev 전용), 반응형 기준(375/768/1280·터치 44px·한글 최소 13px), `design:lint` 확장 + `design:audit`. 2026-11-05 실측 문제 목록 포함. **구현 완료(2026-11-05)**. 구현 계획: [-plan.md](specs/2026-11-05-design-system-plan.md) (12 태스크 — audit 도구·기준 캡처 → 토큰 → 폰트 → 부품 → `/design` → 글자 이전 → 반응형 보완 → lint 확장 → 문서·ADR 0009)
 - [2026-11-10-github-org-env-sync-design.md](specs/2026-11-10-github-org-env-sync-design.md) — 레포를 GitHub Organization 으로 이전하고 환경변수 정본을 GitHub Secrets 로 둔다. Actions 는 Secrets→Vercel 동기화만(수동), 배포는 Vercel Git 자동 유지. 협업자가 본인 없이 운영 변수 추가·변경 가능. **승인·구현 완료(2026-11-10), 셋업 검증 대기**. 계획: [-plan.md](specs/2026-11-10-github-org-env-sync-plan.md)
 - [2026-11-12-worship-sermon-g-plan.md](specs/2026-11-12-worship-sermon-g-plan.md) — 주일예배 설교 영상 G안 구현 계획: 페이지 안 플레이어·유튜브식 설명란·「설교 목록」(제목의 시리즈로 자동 분류)·검색. 페이지↔재생목록은 코드 설정, 유튜브에 올리기만 하면 반영. 화면 배치는 2026-11-13 에 목록·설교 한 편 두 페이지로 바뀜(worship-video.md)
-- [2026-11-17-admin-design.md](specs/2026-11-17-admin-design.md) — 관리자(`/admin`) 설계: 그룹 + 메뉴·기능 권한(RLS 로 차단), 메뉴는 데이터(관리자·홈페이지 메뉴의 사용 여부·이름·순서, 추가만 배포), enum 과 공통코드 구분, 휴지통/비활성/완전 삭제 규칙, 칸 단위 변경 이력(DB 트리거), 브라우저 직접 올리기, 파일은 공통 표 둘(묶음 `file_lists` · 파일 `files`), 공개 화면은 저장소 `load` 만 교체, 새가족 자체 폼. 1차 = 주보·주일광고·성복의 뜰·교회앨범·설교 시트지·홈 히어로(사진·유튜브)·다음세대 부서(소개 글·담당자·사진 — 지금 값을 DB 로)·새가족. 작업 패키지 8개. **승인(2026-11-17), 구현 전**. 패키지 1 계획: [-p1-setup-plan.md](specs/2026-11-17-admin-p1-setup-plan.md) (8 태스크 — `(site)` 묶음 분리 → Supabase 연결 → DB 변경 파일 체계 → 로그인 판정 → proxy·세션 → 로그인 화면·관리자 틀 → lint 경계 → 전체 검증. 개발은 로컬 Supabase(podman))
+- [2026-11-17-admin-design.md](specs/2026-11-17-admin-design.md) — 관리자(`/admin`) 설계: 그룹 + 메뉴·기능 권한(RLS 로 차단), 메뉴는 데이터(관리자·홈페이지 메뉴의 사용 여부·이름·순서, 추가만 배포), enum 과 공통코드 구분, 휴지통/비활성/완전 삭제 규칙, 칸 단위 변경 이력(DB 트리거), 브라우저 직접 올리기, 파일은 공통 표 둘(묶음 `file_lists` · 파일 `files`), 공개 화면은 저장소 `load` 만 교체, 새가족 자체 폼. 1차 = 주보·주일광고·성복의 뜰·교회앨범·설교 시트지·홈 히어로(사진·유튜브)·다음세대 부서(소개 글·담당자·사진 — 지금 값을 DB 로)·새가족. 작업 패키지는 2026-11-19 에 4개(A 기반 · B 콘텐츠 5종 · C 사이트 화면 + 새가족 · D 홈페이지 메뉴 + 정리)로 묶었다. **승인(2026-11-17), 패키지 A 구현(운영 적용 전)**. 패키지 1 계획: [-p1-setup-plan.md](specs/2026-11-17-admin-p1-setup-plan.md) (8 태스크 — `(site)` 묶음 분리 → Supabase 연결 → DB 변경 파일 체계 → 로그인 판정 → proxy·세션 → 로그인 화면·관리자 틀 → lint 경계 → 전체 검증. 개발은 로컬 Supabase(podman)). 패키지 A 계획: [-pa-foundation-plan.md](specs/2026-11-19-admin-pa-foundation-plan.md) (13 태스크 — 권한 맥락 · DB 메뉴 → 저장 결과 · 동시 수정 → 알림 · 확인 창 → 목록 틀 → 폼 틀 → CSP · 8시간 로그아웃 → 비밀번호 변경 → 사용자 → 그룹 · 권한 → 메뉴 · 코드 → 변경 이력 → 첫 화면 · ⌘K → 검증)
 
 ### Decisions
 
@@ -134,6 +142,12 @@
 - [0016-admin-ui-follows-shadcn.md](decisions/0016-admin-ui-follows-shadcn.md) — 2026-11-18 — 관리자(`/admin`)는 shadcn admin 의 부품·배치·글자 크기·터치 영역·좁은 화면 기준(`md`)·모션을 원본 그대로 쓰고 색만 B1 팔레트로 바꾼다. 공개 사이트의 디자인 바(한글 13px·터치 44px·폭 애니메이션 금지)는 관리자에 적용하지 않는다(색 토큰·포커스·대비·reduced-motion·문구 톤은 적용)
 - [0017-admin-reference-next-starter-and-tanstack-form.md](decisions/0017-admin-reference-next-starter-and-tanstack-form.md) — 2026-11-18 — 관리자의 참고 대상은 `next-shadcn-dashboard-starter`(구조·화면 패턴만, 통째로 들이지 않음). 폼은 TanStack Form(ADR 0012 의 react-hook-form 대체), UI 기반은 Radix 유지(→ 0018 이 대체), 명령 팔레트·칸반·차트는 필요해질 때, 다크 모드는 나중에 켤 수 있게 관리자 화면은 의미 토큰만 쓴다
 - [0018-ui-primitives-base-ui.md](decisions/0018-ui-primitives-base-ui.md) — 2026-11-18 — UI 기반을 Radix 에서 Base UI 로(`radix-ui` 제거). shadcn 부품 25개는 base-nova 원본 그대로(다른 점은 파일 머리 주석), `design:lint` 는 원본을 검사하지 않음, `dark:` 는 `.dark` 일 때만. 공개 화면의 «크게 보기»·주보 고르기 시트도 Base UI Dialog 로
+- [0019-db-schema-ssot-uuid-v7.md](decisions/0019-db-schema-ssot-uuid-v7.md) — 2026-11-19 — DB 구조의 정본은 `supabase/schemas/schema.sql`(구조) · `supabase/reference.sql`(초기 행) 두 파일, 변경 파일은 `pnpm db:sync` 가 만든다(선언형 스키마). id 는 uuid v7(`private.uuid_v7()` — Postgres 18 이 열리면 내장 함수로). 공개 주소는 id 와 따로, 인덱스는 조회마다, RLS 판정 함수 하나, GRANT 는 거두고 필요한 것만, `pnpm db:test`(pgTAP) · `pnpm db:advisors` 로 잠금
+- [0020-codes-uppercase-and-categories-split.md](decisions/0020-codes-uppercase-and-categories-split.md) — 2026-11-20 — 분류(콘텐츠 › 분류 관리, `categories`)와 공통코드(시스템 › 코드 관리, `codes`)를 나눈다. enum · 코드 값은 영문 대문자, 프로그램이 쓰는 값의 코드 묶음은 잠금(이름 · 순서만), 공개 사이트의 주소 · 화면 key 는 소문자 그대로
+- [0021-code-cache-strategy.md](decisions/0021-code-cache-strategy.md) — 2026-11-20 — 공통코드 · 분류는 서버 데이터 캐시(`unstable_cache`, 하루, 태그 `codes` · `categories`)에 두고, 고치는 Server Action 이 `updateTag` 로 바로 지운다. 클라이언트에는 선택지를 props 로. Next 16 + Vercel 의 캐시 층 정리. **ADR 0023 이 대체**
+- [0022-api-response-and-error-codes.md](decisions/0022-api-response-and-error-codes.md) — 2026-11-20 — 요청 · 응답 모양 하나(성공 `{ ok: true, data?, message? }` / 실패 `{ ok: false, error: { code, message, metadata?, fields? } }`), 오류 코드는 이름 방식(영문 대문자) 목록 하나를 서버 · 화면이 함께 쓰고 서버가 문장을 완성해 보낸다. 예상된 실패는 돌려주고 던지는 것은 버그뿐
+- [0023-codes-read-without-cache.md](decisions/0023-codes-read-without-cache.md) — 2026-11-20 — 공통코드 · 분류는 캐시하지 않고 그릴 때마다 DB 에서 읽는다(`React.cache` 로 한 요청 안에서만 중복 제거). 그냥 `'use cache'` 는 Vercel 서버마다 따로라 고친 값이 어긋나고, 공유 캐시(`use cache: remote`)는 과금 대상이라 뺐다. `updateTag` · 캐시 태그 제거. ADR 0021 대체
+- [0024-cache-components.md](decisions/0024-cache-components.md) — 2026-11-20 — 캐시를 Cache Components(`cacheComponents` · `partialPrefetching`, `'use cache'` + `cacheLife`) 한 방식으로. 페이지 `revalidate` 를 없애고 데이터 쪽에서(영상 10분 · 홈 60초, 만료 없음). 서버가 받아 props 로 넘겨 HTML 에 그린다(react-query 는 브라우저에 붙은 뒤에만). 캐시 안의 실패는 값으로(`settle` · `unwrap`, 1분) — 던지면 빌드가 멈춘다. 실패 규칙은 `loadForPage`. 상세는 빌드 때 한 주소만(`oneBuildParam`). 관리자는 요청마다 그려 nonce CSP 유지. 없는 영상은 `VideoNotFound` 한 부품(첫 방문 200 + noindex)
 
 ## 컨벤션
 

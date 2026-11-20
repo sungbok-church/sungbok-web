@@ -34,7 +34,7 @@ afterEach(() => {
 describe('signIn', () => {
   it('값이 빠지면 Supabase 를 부르지 않고 안내를 돌려준다', async () => {
     expect(await signIn({}, form({ email: '', password: '' }))).toEqual({
-      error: '이메일과 비밀번호를 입력해 주세요.',
+      error: expect.objectContaining({ message: '이메일과 비밀번호를 입력해 주세요.' }),
       email: '',
     });
     expect(auth.signInWithPassword).not.toHaveBeenCalled();
@@ -43,7 +43,7 @@ describe('signIn', () => {
   it('로그인이 거절되면 어느 쪽이 틀렸는지 말하지 않는다', async () => {
     auth.signInWithPassword.mockResolvedValue({ error: REJECTED });
     expect(await signIn({}, form({ email: 'a@b.kr', password: 'x' }))).toEqual({
-      error: '이메일 또는 비밀번호가 맞지 않습니다.',
+      error: expect.objectContaining({ message: '이메일 또는 비밀번호가 맞지 않습니다.' }),
       email: 'a@b.kr',
     });
     expect(redirect).not.toHaveBeenCalled();
@@ -73,7 +73,7 @@ describe('signIn', () => {
   it('환경변수가 없으면 Supabase 를 부르지 않고 설정 안내를 돌려준다', async () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
     expect(await signIn({}, form({ email: 'a@b.kr', password: 'x' }))).toEqual({
-      error: '관리자 로그인이 아직 설정되지 않았습니다.',
+      error: expect.objectContaining({ message: '관리자 로그인이 아직 설정되지 않았습니다.' }),
       email: 'a@b.kr',
     });
     expect(createSupabaseServerClient).not.toHaveBeenCalled();
@@ -90,7 +90,9 @@ describe('signIn', () => {
   ])('서버 장애·횟수 제한(%o)은 비밀번호 불일치로 알리지 않는다', async error => {
     auth.signInWithPassword.mockResolvedValue({ error });
     expect(await signIn({}, form({ email: 'a@b.kr', password: 'x' }))).toEqual({
-      error: '로그인 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+      error: expect.objectContaining({
+        message: '로그인 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+      }),
       email: 'a@b.kr',
     });
     expect(redirect).not.toHaveBeenCalled();
@@ -100,7 +102,7 @@ describe('signIn', () => {
     auth.signInWithPassword.mockResolvedValue({
       error: { name: 'AuthApiError', status: 400, code: 'user_banned' },
     });
-    expect((await signIn({}, form({ email: 'a@b.kr', password: 'x' }))).error).toBe(
+    expect((await signIn({}, form({ email: 'a@b.kr', password: 'x' }))).error?.message).toBe(
       '이메일 또는 비밀번호가 맞지 않습니다.'
     );
   });
@@ -108,7 +110,9 @@ describe('signIn', () => {
   it('Supabase 에 닿지 못해 던져도 잠시 뒤 다시 하라고 알린다', async () => {
     auth.signInWithPassword.mockRejectedValue(new Error('fetch failed'));
     expect(await signIn({}, form({ email: 'a@b.kr', password: 'x' }))).toEqual({
-      error: '로그인 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+      error: expect.objectContaining({
+        message: '로그인 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+      }),
       email: 'a@b.kr',
     });
   });

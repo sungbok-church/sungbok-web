@@ -17,6 +17,7 @@ import { YoutubeIcon } from '@/shared/components/brand/YoutubeIcon';
 import { StatusToast } from '@/shared/components/features/StatusToast';
 import { useCopyLink } from '@/shared/lib/hooks/useCopyLink';
 import { isPlainClick } from '@/shared/lib/isPlainClick';
+import { useIsClient } from '@/shared/lib/hooks/useIsClient';
 import { cn } from '@/shared/lib/utils';
 import {
   ArrowUpRight,
@@ -42,6 +43,8 @@ interface Props {
    * 연결된 공개 자료가 있을 때만 카드를 보이고, 카드는 자료실의 그 자료 열람 화면으로 간다(같은 창).
    */
   sheets?: readonly SheetLink[];
+  /** 서버가 받은 이 영상의 설명 — 없으면 화면이 /api 로 받는다 */
+  description?: string;
 }
 
 // 설명이 이보다 길면 접어 두고 «더보기» 를 둔다 — 3줄(line-clamp-3)을 넘길 만한 길이
@@ -49,8 +52,46 @@ const FOLD_LINES = 3;
 const FOLD_CHARS = 100;
 
 /** 유튜브 설명란 — 날짜 줄 + 본문 3줄, «더보기» 로 펼친다(유튜브 영상 아래 설명과 같은 방식). */
-const Description = ({ page, sermon }: Pick<Props, 'page' | 'sermon'>) => {
+const Description = ({
+  page,
+  sermon,
+  description,
+}: Pick<Props, 'page' | 'sermon' | 'description'>) => {
+  const isClient = useIsClient();
+  if (description !== undefined)
+    return <DescriptionView sermon={sermon} body={description} isPending={false} isError={false} />;
+  // 화면이 받는 경우는 브라우저에 붙은 뒤에만(react-query 는 미리 그리기에 쓸 수 없다) — 그전에는 받는 중 모양
+  if (!isClient)
+    return <DescriptionView sermon={sermon} body={undefined} isPending isError={false} />;
+  return <FetchedDescription page={page} sermon={sermon} />;
+};
+
+const FetchedDescription = ({ page, sermon }: Pick<Props, 'page' | 'sermon'>) => {
   const { data: body, isPending, isError, refetch } = useSermonDescription(page, sermon.id);
+  return (
+    <DescriptionView
+      sermon={sermon}
+      body={body}
+      isPending={isPending}
+      isError={isError}
+      onRetry={() => void refetch()}
+    />
+  );
+};
+
+const DescriptionView = ({
+  sermon,
+  body,
+  isPending,
+  isError,
+  onRetry,
+}: {
+  sermon: Sermon;
+  body: string | undefined;
+  isPending: boolean;
+  isError: boolean;
+  onRetry?: () => void;
+}) => {
   const [open, setOpen] = useState(false);
   const bodyId = useId();
   const lines = body ? body.split('\n') : [];
@@ -95,7 +136,7 @@ const Description = ({ page, sermon }: Pick<Props, 'page' | 'sermon'>) => {
           설명을 불러오지 못했습니다.
           <button
             type="button"
-            onClick={() => refetch()}
+            onClick={onRetry}
             className={cn(
               "text-b1-accent relative rounded underline underline-offset-4 before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']",
               FOCUS
@@ -207,7 +248,7 @@ const Actions = ({
  * 지금 영상의 제목·분류·이동(이전 · 목록 · 다음)·설명란·시트지·공유.
  * 링크 복사·유튜브에서 보기는 휴대폰에서는 설명·시트지 아래의 두 칸짜리 버튼, 태블릿부터는 분류 표시 옆의 작은 알약이다.
  */
-export const SermonInfo = ({ page, sermon, older, newer, navRef, sheets }: Props) => {
+export const SermonInfo = ({ page, sermon, older, newer, navRef, sheets, description }: Props) => {
   const { message, copy } = useCopyLink();
   // «이전»·«다음» 으로 넘어오면 설교 페이지가 새로 만들어져 누른 링크가 사라지고, 키보드 포커스가 문서 맨 위로 튄다.
   // 누른 쪽(playIntent 에 남겨 둔다)의 링크에 포커스를 되돌려 놓는다 — 이어서 넘길 수 있게. 그쪽이 끝 편이라
@@ -269,7 +310,7 @@ export const SermonInfo = ({ page, sermon, older, newer, navRef, sheets }: Props
         </nav>
       </div>
 
-      <Description key={sermon.id} page={page} sermon={sermon} />
+      <Description key={sermon.id} page={page} sermon={sermon} description={description} />
 
       {sheets && sheets.length > 0 && (
         // 자료가 여러 개면(주일 시트지 + 가정예배 순서지 등) 카드도 여러 개 — 분류 이름과 자료 제목으로 구분된다

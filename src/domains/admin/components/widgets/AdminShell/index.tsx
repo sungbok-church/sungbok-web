@@ -1,15 +1,20 @@
-import { ADMIN_NAV } from '@/domains/admin/api/adminNav';
+import type { AdminNavGroup } from '@/domains/admin/api/adminNav';
 import type { AdminUser } from '@/domains/admin/api/session.server';
 import { Separator } from '@/shared/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/shared/components/ui/sidebar';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import type { ReactNode } from 'react';
 
+import { CommandMenu } from '@/domains/admin/components/features/CommandMenu';
+
 import { AdminSidebar } from './AdminSidebar';
-import { HeaderTitle } from './HeaderTitle';
+import { HeaderBreadcrumbs } from './HeaderTitle';
 
 interface Props {
   user: AdminUser;
+  /** 왼쪽 메뉴 — 권한이 있는 화면만(서버가 DB 메뉴와 권한으로 만든다, adminContext.server) */
+  nav: AdminNavGroup[];
+  userName: string;
   /** 왼쪽 메뉴를 펼친 채로 시작할지 — 지난번에 접어 뒀으면 false(쿠키 `sidebar_state`) */
   defaultOpen?: boolean;
   children: ReactNode;
@@ -20,18 +25,24 @@ interface Props {
  * 색만 이 사이트의 팔레트다(ADR 0016). md(768) 이상은 접을 수 있는 왼쪽 메뉴, 그 아래는 시트.
  * 공개 사이트의 헤더·푸터·부드러운 스크롤은 없다.
  */
-export const AdminShell = ({ user, defaultOpen = true, children }: Props) => (
+export const AdminShell = ({ user, userName, nav, defaultOpen = true, children }: Props) => (
   // 접힌 메뉴에 올리면 이름이 바로 뜨게 한다 — 제공자가 없으면 Base UI 기본값(600ms 뒤)이 쓰인다
   <TooltipProvider>
     <SidebarProvider defaultOpen={defaultOpen}>
-      <AdminSidebar items={ADMIN_NAV} user={user} />
+      <AdminSidebar nav={nav} user={user} userName={userName} />
       <SidebarInset className="min-w-0">
-        <header className="bg-card flex h-12 shrink-0 items-center gap-1 border-b px-4 lg:gap-2 lg:px-6">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-          <HeaderTitle items={ADMIN_NAV} />
+        <header className="bg-card flex h-14 shrink-0 items-center gap-3 border-b px-3 md:px-4">
+          <div className="flex min-w-0 flex-1 items-center">
+            <SidebarTrigger />
+            <Separator
+              orientation="vertical"
+              className="mr-3 ml-1.5 data-vertical:h-4 data-vertical:self-center"
+            />
+            <HeaderBreadcrumbs nav={nav} />
+          </div>
+          <CommandMenu nav={nav} />
         </header>
-        <div className="flex min-w-0 flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   </TooltipProvider>

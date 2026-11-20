@@ -1,4 +1,4 @@
-// 홈 영상 피드 — 유튜브 Data API 호출·조합. 서버 전용 — `src/app/api/home-video/route.ts`(브라우저 폴링)와 `homeVideoPrefetch.server.ts`(홈 ISR 미리 채우기)만 import.
+// 홈 영상 피드 — 유튜브 Data API 호출·조합. 서버 전용 — `src/app/api/home-video/route.ts`(브라우저 폴링)와 `homeVideoCache.server.ts`(홈을 미리 그릴 때의 서버 캐시)만 import.
 // 클라이언트에서 부르면 쿼터가 방문자 수만큼 든다(스펙 §4). 호출 3회(playlistItems 2 + videos 1), 응답은 Next Data Cache 60초.
 
 import 'server-only'; // 화면(클라이언트) 코드가 가져다 쓰면 빌드가 실패한다 — 키·쿼터는 서버에만
@@ -134,6 +134,7 @@ const withAge = ({
 }: Awaited<ReturnType<typeof fetchFeed>>): HomeVideoFeedData => ({
   ...data,
   staleMs: Math.max(0, Date.now() - fetchedAt),
+  servedAt: Date.now(),
 });
 
 // Data Cache 는 200 만 저장한다 — 유튜브가 403/5xx·어긋난 모양을 내는 동안은 마지막 성공분으로 버틴다(stale-while-error).

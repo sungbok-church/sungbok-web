@@ -14,6 +14,8 @@ vi.mock('../config/worshipPages', () => ({
 const news = vi.hoisted(() => ({ videos: vi.fn() }));
 vi.mock('@/domains/news/api/newsRepository', () => ({ newsRepository: news }));
 
+import { cacheLife, cacheTag } from 'next/cache';
+
 import { YoutubeApiError, youtubeGet } from '@/shared/api/youtubeApi.server';
 
 import type { WorshipPage } from '../config/worshipPages';
@@ -262,5 +264,25 @@ describe('교회소식 영상(주일광고·성복의 뜰) — 등록한 게시�
     ]);
     expect((await fetchSermonLibrary('announcements')).map(x => x.date)).toEqual(['2026-10-25']);
     expect(await fetchSermonDescription('announcements', 'same')).toBe('앞 글');
+  });
+});
+
+describe('서버 캐시(ADR 0024)', () => {
+  it('영상 페이지마다 10분마다 다시 확인하고 만료는 두지 않는다 — 다시 받기가 실패해도 마지막 목록을 계속 쓴다', async () => {
+    get.mockResolvedValue({ items: [] } as never);
+    await fetchSermonLibrary('sunday');
+    expect(vi.mocked(cacheLife)).toHaveBeenCalledWith({ stale: 300, revalidate: 600 });
+    expect(vi.mocked(cacheLife).mock.calls[0][0]).not.toHaveProperty('expire');
+    expect(vi.mocked(cacheTag)).toHaveBeenCalledWith('video-page-sunday');
+  });
+
+  it('유튜브가 실패하면(쿼터 소진) 그 실패도 1분 캐시되고, 캐시 밖에서 원래 오류로 던진다 — 옛 목록은 fetch Data Cache 와 페이지 유지 규칙이 지킨다', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    get.mockRejectedValue(new YoutubeApiError('playlistItems', 403, 'quotaExceeded'));
+    vi.mocked(cacheLife).mockClear();
+    const error = await fetchSermonLibrary('sunday').catch(e => e);
+    expect(error).toBeInstanceOf(YoutubeApiError);
+    expect(error).toMatchObject({ status: 403, reason: 'quotaExceeded' });
+    expect(vi.mocked(cacheLife)).toHaveBeenCalledWith({ stale: 30, revalidate: 60 });
   });
 });

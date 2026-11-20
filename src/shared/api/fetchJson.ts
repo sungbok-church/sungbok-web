@@ -1,12 +1,26 @@
 // 브라우저에서 우리 API(Route Handler)를 부르는 공용 fetch — 실패 종류를 갈라 재시도 정책(retryTransient)에 넘긴다.
+// 응답은 공용 모양(ADR 0022): 성공 { ok: true, data } → data 를 돌려주고, 실패 { ok: false, error } → HttpError 로 던진다.
+import type { AppError } from './result';
 
-/** 응답은 받았지만 실패 상태(4xx·5xx). */
+/** 응답은 받았지만 실패 상태(4xx·5xx). error: 서버가 보낸 오류(우리 모양이 아니면 없음) */
 export class HttpError extends Error {
-  constructor(readonly status: number) {
-    super(`HTTP ${status}`);
+  constructor(
+    readonly status: number,
+    readonly error?: AppError
+  ) {
+    super(error?.message ?? `HTTP ${status}`);
     this.name = 'HttpError';
   }
 }
+
+const readError = async (r: Response): Promise<AppError | undefined> => {
+  try {
+    const body = (await r.json()) as { ok?: boolean; error?: AppError };
+    return body?.ok === false ? body.error : undefined;
+  } catch {
+    return undefined; // 게이트웨이 HTML 등 — 상태만으로 가른다
+  }
+};
 
 /** 응답을 아예 못 받음(망 끊김·DNS 등) — fetch 가 던진 오류를 감싼다. */
 export class NetworkError extends Error {
@@ -23,9 +37,10 @@ export const fetchJson = async <T>(url: string): Promise<T> => {
   } catch (e) {
     throw new NetworkError(e);
   }
-  if (!r.ok) throw new HttpError(r.status);
+  if (!r.ok) throw new HttpError(r.status, await readError(r));
   try {
-    return (await r.json()) as T;
+    const body = (await r.json()) as { ok: true; data: T };
+    return body.data;
   } catch (e) {
     // 본문을 받다가 연결이 끊기면 TypeError — 망 끊김이다. 본문이 JSON 이 아니면 SyntaxError(다시 해도 같다).
     if (e instanceof TypeError) throw new NetworkError(e);

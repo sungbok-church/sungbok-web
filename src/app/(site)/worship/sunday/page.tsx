@@ -2,10 +2,8 @@ import SermonLibrary from '@/domains/worship-video/components/widgets/SermonLibr
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = { title: '주일예배 | 성복교회' };
-// 페이지는 10분마다 다시 만든다. 유튜브 응답은 Data Cache 1시간이라 다시 만들어도 쿼터를 더 쓰지 않는다 —
-// 페이지와 데이터를 둘 다 1시간으로 두면 두 시계가 엇갈려 새 영상이 최대 약 2시간 늦게 보인다(지금은 약 1시간 10분).
-// 열어 둔 페이지는 자동 갱신하지 않는다 — 유튜브 쿼터를 아끼고, 다른 페이지에 갔다 오면 최신으로 보인다.
-export const revalidate = 600;
+// 미리 그려 두고, 영상 목록의 서버 캐시(worshipVideo.server — 10분마다 확인)가 바뀌면 다시 그린다(ADR 0024).
+// 새 영상은 늦어도 약 1시간 10분 안에 보인다. 열어 둔 페이지는 자동 갱신하지 않는다 — 다른 페이지에 갔다 오면 최신으로 보인다.
 
 // 설교 목록 — 최신 설교 한 편 + 검색·시리즈·정렬이 되는 목록. 설교를 누르면 그 설교 페이지(./[videoId])로 넘어간다.
 // 영상은 유튜브 «주일 예배 설교» 재생목록에서 온다(config/worshipPages). 옛 주소 /worship-video 와 홈 설교 링크가 여기로 온다.

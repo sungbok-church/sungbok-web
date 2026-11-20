@@ -11,7 +11,6 @@ import {
   takeListReturn,
 } from '@/domains/worship-video/api/sermonListState';
 import { SINGLES } from '@/domains/worship-video/api/sermonParse';
-import { sermonLibraryQueryKey } from '@/domains/worship-video/api/worshipVideoQueries';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 
 import { SermonListPage } from './index';
@@ -78,12 +77,12 @@ const LIB: Sermon[] = [
   sermon({ id: 'one', occasion: '송구영신예배', date: '2024-12-31', dateFrom: 'upload' }),
 ];
 
+// 서버가 받은 목록을 props 로 넘긴다(미리 그린 HTML 에 목록이 들어간다). null 이면 서버가 못 받은 경우 — 화면이 /api 로 받는다
 const renderPage = (sermons: Sermon[] | null = LIB) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  if (sermons) client.setQueryData(sermonLibraryQueryKey('sunday'), sermons);
   return render(
     <QueryClientProvider client={client}>
-      <SermonListPage page="sunday" />
+      <SermonListPage page="sunday" sermons={sermons ?? undefined} />
     </QueryClientProvider>
   );
 };
@@ -302,6 +301,23 @@ describe('SermonListPage — 돌아올 자리', () => {
       lenisScrollTo.mock.invocationCallOrder[0]
     );
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+describe('SermonListPage — 서버가 받은 목록', () => {
+  it('서버가 넘긴 목록은 react-query 없이 그린다 — 미리 그리기(빌드)에서 지금 시각을 읽지 않게', () => {
+    render(<SermonListPage page="sunday" sermons={LIB} />);
+    expect(screen.getByRole('region', { name: '제목 a20' })).toBeInTheDocument();
+    expect(rows()).toHaveLength(12);
+  });
+
+  it('서버가 못 받았으면(목록 없음) 화면이 /api 로 받아 그린다', async () => {
+    const fetchMock = vi.fn(async () => Response.json({ ok: true, data: LIB }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage(null);
+    expect(await screen.findByRole('region', { name: '제목 a20' })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/worship-video/library?page=sunday');
+    vi.unstubAllGlobals();
   });
 });
 

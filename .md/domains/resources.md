@@ -84,7 +84,7 @@ data/resourcesSeed.ts ──▶ api/resourceRepository ──┬─▶ widgets/R
 | 파일 | Supabase Storage. 원본과 미리보기 쪽 주소를 DB 에 적는다(`file.url` · `pages[].src`) |
 | 미리보기 | PDF 를 올릴 때 쪽 그림(WebP, 긴 변 1700px 안팎)을 만든다. 한글 파일은 미리보기를 따로 올리거나 없이 둔다 |
 | 저장소 | `resourceRepository` 의 `load` 를 DB 조회로 바꾼다. 화면 코드는 그대로 |
-| 갱신 | 등록·수정 뒤 `revalidateTag` 로 자료실과 그 영상 페이지를 다시 만든다(지금 열람 페이지는 10분 주기) |
+| 갱신 | 등록·수정 뒤 `revalidateTag` 로 자료실과 그 영상 페이지를 다시 만든다(지금 열람 페이지는 연결된 영상 목록의 서버 캐시 — 10분마다 확인 — 를 따른다, ADR 0024) |
 | 영상 고르기 | 등록 화면의 영상 검색은 예배 페이지 목록(`fetchSermonLibrary`)을 쓴다 — 유튜브를 더 부르지 않는다 |
 | 이전 | 시드 57건을 DB 로 옮긴다. id(«게시판-글번호»)는 그대로 두면 주소가 유지된다 |
 

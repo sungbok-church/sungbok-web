@@ -4,6 +4,9 @@
 
 import 'server-only'; // 화면(클라이언트) 코드가 가져다 쓰면 빌드가 실패한다 — 키·쿼터는 서버에만
 
+import { cacheLife, cacheTag } from 'next/cache';
+
+import { failureCacheLife, settle, type Settled, unwrap } from '@/shared/api/settled.server';
 import { z } from 'zod';
 
 import {
@@ -170,8 +173,23 @@ const collectNews = async (feed: NewsVideoFeed): Promise<Collected> => {
   };
 };
 
-const collectPage = (page: VideoPage): Promise<Collected> =>
-  isWorshipPage(page) ? collect(page) : collectNews(page);
+// 영상 페이지의 목록 · 설명은 서버 캐시('use cache')에 둔다(ADR 0024) — 미리 그린 페이지 · /api · 자료실 링크가 같이 쓴다.
+// 10분마다 다시 확인하고 만료는 없다. 다시 받기가 실패하면 그 실패도 짧게(5초 · 1분) 캐시된다 — 옛 목록을 지키는 것은
+// 아래 fetch 의 Data Cache(유튜브 응답 1시간, 200 만 저장 · 배포와 서버가 바뀌어도 남는다)와 페이지 쪽 규칙(loadForPage:
+// 운영 중 실패면 직전 페이지 유지)이다.
+// 새 영상은 늦어도 약 1시간 10분 안에 보인다(두 시계 — 페이지 확인 10분 + 유튜브 응답 1시간).
+export const VIDEO_PAGE_CACHE = { stale: 300, revalidate: 600 } as const;
+
+// 실패는 던지지 않고 값으로 담는다(settled.server — 캐시 안에서 던지면 빌드가 멈춘다). 실패는 짧게(5초 · 1분) 붙든다.
+const cachedPage = async (page: VideoPage): Promise<Settled<Collected>> => {
+  'use cache';
+  cacheTag(`video-page-${page}`);
+  const settled = await settle(() => (isWorshipPage(page) ? collect(page) : collectNews(page)));
+  cacheLife(settled.ok ? VIDEO_PAGE_CACHE : failureCacheLife(settled));
+  return settled;
+};
+
+const collectPage = async (page: VideoPage): Promise<Collected> => unwrap(await cachedPage(page));
 
 /** 영상 페이지의 영상 전체 — 날짜 최신순. 설명 본문은 무거워 싣지 않는다(fetchSermonDescription). */
 export const fetchSermonLibrary = async (page: VideoPage): Promise<Sermon[]> =>
