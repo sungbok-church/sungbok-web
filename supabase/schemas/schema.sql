@@ -672,6 +672,117 @@ as $$
      )
 $$;
 
+-- 한 번에 저장하는 함수 — 여러 표를 한 트랜잭션으로 바꾼다(하나라도 막히면 전부 되돌린다).
+-- 로그인한 사람의 권한으로 돈다(security invoker — 행 권한 · 지키는 규칙 · 감사 로그가 그대로). 화면을 연 뒤 다른 사람이
+-- 바꿨으면(updated_at · 그룹 소속 · 권한 표가 그때와 다르면) 아무것도 바꾸지 않고 null — 화면은 «다른 사람이 먼저 고쳤습니다».
+
+-- 사용자 고치기: 이름 · 부서 · 사용 여부 + 그룹 소속. p_seen_group_ids 는 화면을 열었을 때의 그룹 목록.
+create function public.save_user(
+  p_id uuid,
+  p_updated_at timestamptz,
+  p_name text,
+  p_department public.department_slug,
+  p_is_active boolean,
+  p_group_ids uuid[],
+  p_seen_group_ids uuid[]
+) returns timestamptz
+language plpgsql
+set search_path = ''
+as $$
+declare
+  saved timestamptz;
+begin
+  -- 같은 사람을 동시에 저장하면 차례로(앞 저장이 끝난 뒤 판을 다시 본다)
+  perform 1 from public.profiles where id = p_id for update;
+  if (select coalesce(array_agg(ug.group_id order by ug.group_id), '{}')
+        from public.user_groups ug where ug.user_id = p_id)
+     is distinct from
+     (select coalesce(array_agg(distinct g order by g), '{}') from unnest(p_seen_group_ids) g) then
+    return null;
+  end if;
+  update public.profiles
+     set name = p_name, department = p_department, is_active = p_is_active
+   where id = p_id and updated_at = p_updated_at
+  returning updated_at into saved;
+  if saved is null then
+    return null;
+  end if;
+  delete from public.user_groups
+   where user_id = p_id and group_id <> all (coalesce(p_group_ids, '{}'));
+  insert into public.user_groups (user_id, group_id)
+  select distinct p_id, g
+    from unnest(coalesce(p_group_ids, '{}')) g
+   where not exists (select 1 from public.user_groups ug where ug.user_id = p_id and ug.group_id = g);
+  return saved;
+end
+$$;
+
+-- 그룹 고치기: 이름 · 설명 · 사용 여부 + 권한 표('메뉴key:기능' 목록). p_permissions 가 null 이면 권한은 그대로
+-- («전체 관리» 처럼 권한 표가 없는 그룹). p_seen_permissions 는 화면을 열었을 때의 권한 표.
+create function public.save_group(
+  p_id uuid,
+  p_updated_at timestamptz,
+  p_name text,
+  p_description text,
+  p_is_active boolean,
+  p_permissions text[],
+  p_seen_permissions text[]
+) returns timestamptz
+language plpgsql
+set search_path = ''
+as $$
+declare
+  saved timestamptz;
+begin
+  perform 1 from public.groups where id = p_id for update;
+  if p_permissions is not null
+     and (select coalesce(array_agg(m.key || ':' || gp.action order by m.key || ':' || gp.action), '{}')
+            from public.group_permissions gp join public.menus m on m.id = gp.menu_id
+           where gp.group_id = p_id)
+         is distinct from
+         (select coalesce(array_agg(distinct x order by x), '{}') from unnest(p_seen_permissions) x) then
+    return null;
+  end if;
+  update public.groups
+     set name = p_name, description = p_description, is_active = p_is_active
+   where id = p_id and updated_at = p_updated_at
+  returning updated_at into saved;
+  if saved is null or p_permissions is null then
+    return saved;
+  end if;
+  delete from public.group_permissions gp
+   using public.menus m
+   where gp.group_id = p_id and m.id = gp.menu_id
+     and (m.key || ':' || gp.action) <> all (p_permissions);
+  insert into public.group_permissions (group_id, menu_id, action)
+  select distinct p_id, m.id, split_part(x, ':', 2)::public.permission_action
+    from unnest(p_permissions) x
+    join public.menus m on m.area = 'ADMIN' and m.key = split_part(x, ':', 1)
+   where not exists (
+     select 1 from public.group_permissions gp
+      where gp.group_id = p_id and gp.menu_id = m.id and gp.action::text = split_part(x, ':', 2)
+   );
+  return saved;
+end
+$$;
+
+-- 그룹 만들기: 그룹과 처음 권한 표를 함께. 권한이 막히면 그룹도 만들지 않는다.
+create function public.create_group(p_name text, p_description text, p_permissions text[]) returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  new_id uuid;
+begin
+  insert into public.groups (name, description) values (p_name, p_description) returning id into new_id;
+  insert into public.group_permissions (group_id, menu_id, action)
+  select distinct new_id, m.id, split_part(x, ':', 2)::public.permission_action
+    from unnest(coalesce(p_permissions, '{}')) x
+    join public.menus m on m.area = 'ADMIN' and m.key = split_part(x, ':', 1);
+  return new_id;
+end
+$$;
+
 -- 화면용: 변경 이력의 «누가» 를 이름으로 — 이력을 볼 수 있는 사람(«변경 이력» 조회 또는 어느 메뉴든 «이력조회»)에게만
 -- 이름을 돌려준다. 사용자 목록 권한 없이도 이력에 이름이 보이게 하되, 이메일 같은 다른 칸은 주지 않는다.
 create function public.actor_names(p_ids uuid[])
@@ -1726,6 +1837,9 @@ grant execute on function private.can_read_history(text, uuid, text, uuid) to au
 grant execute on function public.my_permissions() to authenticated;
 grant execute on function public.can_manage_user(uuid) to authenticated;
 grant execute on function public.actor_names(uuid[]) to authenticated;
+grant execute on function public.save_user(uuid, timestamptz, text, public.department_slug, boolean, uuid[], uuid[]) to authenticated;
+grant execute on function public.save_group(uuid, timestamptz, text, text, boolean, text[], text[]) to authenticated;
+grant execute on function public.create_group(text, text, text[]) to authenticated;
 grant execute on function public.purge_expired() to service_role;
 grant execute on function public.orphan_storage_objects(integer) to service_role;
 grant execute on function public.newcomer_notify_emails() to service_role;

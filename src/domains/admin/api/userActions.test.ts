@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createUser, resetPassword, setUsersActive } from './userActions';
+import { createUser, resetPassword, setUsersActive, updateUser } from './userActions';
 
 const m = vi.hoisted(() => ({
   // (메뉴, 기능) 으로 불린다 — 기능마다 다르게 답하는 시험이 mockImplementation 으로 바꾼다
@@ -211,5 +211,57 @@ describe('setUsersActive', () => {
 
   it('id 모양이 틀리면 거절', async () => {
     expect(await setUsersActive({ ids: ['x'], active: true })).toMatchObject({ ok: false });
+  });
+});
+
+describe('updateUser — 사용자 정보와 그룹 소속을 한 번에(save_user)', () => {
+  const ID = '0190a0b0-0000-7000-8000-0000000000aa';
+  const OPENED = '2026-11-20T00:00:00+00:00';
+  const SAVED = '2026-11-20T01:00:00+00:00';
+  const EDIT = {
+    id: ID,
+    updatedAt: OPENED,
+    name: '홍길동',
+    department: null,
+    isActive: true,
+    groupIds: [G],
+    seenGroupIds: [],
+  };
+
+  it('화면을 열었을 때의 판과 그룹 목록을 함께 보내고, 새 판을 돌려준다', async () => {
+    m.rpc.mockResolvedValue({ data: SAVED, error: null });
+    expect(await updateUser(EDIT)).toEqual({
+      ok: true,
+      data: { updatedAt: SAVED },
+      message: '저장했습니다.',
+    });
+    expect(m.rpc).toHaveBeenCalledWith('save_user', {
+      p_id: ID,
+      p_updated_at: OPENED,
+      p_name: '홍길동',
+      p_department: null,
+      p_is_active: true,
+      p_group_ids: [G],
+      p_seen_group_ids: [],
+    });
+  });
+
+  it('다른 사람이 먼저 고쳤으면(DB 가 null) «다른 사람이 먼저 고쳤습니다»', async () => {
+    m.rpc.mockResolvedValue({ data: null, error: null });
+    expect(await updateUser(EDIT)).toMatchObject({ ok: false, error: { code: 'CONFLICT' } });
+  });
+
+  it('DB 가 거절하면(자기 권한보다 많은 그룹) 그 문구 — 이름도 저장되지 않는다(한 트랜잭션)', async () => {
+    m.rpc.mockResolvedValue({
+      data: null,
+      error: { code: '42501', message: '자기가 가진 권한보다 많은 그룹에는 넣을 수 없습니다' },
+    });
+    expect(await updateUser(EDIT)).toEqual({
+      ok: false,
+      error: {
+        code: 'NOT_ALLOWED',
+        message: '자기가 가진 권한보다 많은 그룹에는 넣을 수 없습니다',
+      },
+    });
   });
 });
