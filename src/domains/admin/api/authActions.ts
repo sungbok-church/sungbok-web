@@ -2,6 +2,7 @@
 
 import { readSupabaseEnv } from '@/shared/api/supabase/env';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
+import { type AppError, appError } from '@/shared/api/result';
 import { redirect } from 'next/navigation';
 
 import { ADMIN_LOGIN, safeNextPath } from './authRedirect';
@@ -9,12 +10,16 @@ import { loginInputSchema } from './loginInput';
 
 // 관리자 로그인·로그아웃 Server Action. 로그인은 Supabase Auth 의 이메일 + 비밀번호다(가입은 막혀 있다).
 
-/** error: 안내 문구. email: 실패했을 때 적었던 이메일(폼이 비워지므로 다시 채워 준다 — 비밀번호는 돌려주지 않는다) */
-export type LoginState = { error?: string; email?: string };
+/** error: 공용 오류(ADR 0022). email: 실패했을 때 적었던 이메일(폼이 비워지므로 다시 채워 준다 — 비밀번호는 돌려주지 않는다) */
+export type LoginState = { error?: AppError; email?: string };
 
-const NOT_CONFIGURED = '관리자 로그인이 아직 설정되지 않았습니다.';
-const MISMATCH = '이메일 또는 비밀번호가 맞지 않습니다.';
-const UNREACHABLE = '로그인 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.';
+const NOT_CONFIGURED = () =>
+  appError('NOT_CONFIGURED', { detail: '관리자 로그인이 아직 설정되지 않았습니다.' });
+const MISMATCH = () => appError('LOGIN_FAILED');
+const UNREACHABLE = () =>
+  appError('SERVICE_UNAVAILABLE', {
+    detail: '로그인 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+  });
 
 // Supabase 는 연결 실패(status 0)·서버 오류(5xx)·횟수 제한(429)을 던지지 않고 error 로 돌려준다.
 // 이것들은 적은 값이 틀린 것이 아니다 — «맞지 않습니다» 로 알리면 맞게 적은 사람이 비밀번호 초기화를 요청한다.
@@ -29,15 +34,19 @@ export const signIn = async (_prev: LoginState, formData: FormData): Promise<Log
   const rawEmail = formData.get('email');
   const email = typeof rawEmail === 'string' ? rawEmail.trim() : '';
   const parsed = loginInputSchema.safeParse({ email, password: formData.get('password') });
-  if (!parsed.success) return { error: '이메일과 비밀번호를 입력해 주세요.', email };
-  if (!readSupabaseEnv()) return { error: NOT_CONFIGURED, email };
+  if (!parsed.success)
+    return {
+      error: appError('INVALID_INPUT', { detail: '이메일과 비밀번호를 입력해 주세요.' }),
+      email,
+    };
+  if (!readSupabaseEnv()) return { error: NOT_CONFIGURED(), email };
 
   try {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
-    if (error) return { error: isServerTrouble(error) ? UNREACHABLE : MISMATCH, email };
+    if (error) return { error: isServerTrouble(error) ? UNREACHABLE() : MISMATCH(), email };
   } catch {
-    return { error: UNREACHABLE, email };
+    return { error: UNREACHABLE(), email };
   }
 
   // redirect 는 던져서 동작한다 — try 밖에서 부른다.

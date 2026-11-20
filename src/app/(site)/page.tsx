@@ -1,4 +1,5 @@
-import { prefetchHomeVideo } from '@/domains/home/api/homeVideoPrefetch.server';
+import { loadHomeVideoFeed } from '@/domains/home/api/homeVideoCache.server';
+import { HomeVideoFeedProvider } from '@/domains/home/api/useHomeVideoFeed';
 import { ChurchNews } from '@/domains/home/components/widgets/ChurchNews';
 import { FirstVisit } from '@/domains/home/components/widgets/FirstVisit';
 import { HomeLead } from '@/domains/home/components/widgets/HomeLead';
@@ -9,12 +10,13 @@ import { HomeVideoWarmup } from '@/domains/home/components/widgets/HomeVideoWarm
 import { Section } from '@/domains/home/components/features/Section';
 import { TurntableStage } from '@/domains/home/components/widgets/RecentSermons/TurntableStage';
 import { WorshipTimes } from '@/domains/home/components/widgets/WorshipTimes';
-import { HydrationBoundary, type DehydratedState } from '@tanstack/react-query';
+import type { HomeVideoFeedData } from '@/domains/home/api/homeVideoFeed';
+import { loadForPage } from '@/shared/api/loadForPage.server';
 import { Suspense } from 'react';
 
-// 영상 정보 조회는 요청 시작과 함께 진행하지만, 첫 화면은 조회를 기다리지 않는다.
-// 영상 영역만 별도로 스트리밍하고, 브라우저에서는 기존의 60초 폴링을 유지한다.
-export const revalidate = 60;
+// 홈은 미리 그려 둔다(ADR 0024) — 영상 피드는 서버 캐시(homeVideoCache.server, 60초마다 확인)에서 와 HTML 에 들어 있다.
+// 캐시가 비어 있을 때도 첫 화면은 영상 조회를 기다리지 않는다 — 영상 영역만 따로 이어 보내고,
+// 브라우저에서는 60초 간격 확인을 이어 간다.
 
 const HomeVideoFallback = () => (
   <div role="status" aria-label="영상 정보 준비 중">
@@ -29,17 +31,17 @@ const HomeVideoFallback = () => (
   </div>
 );
 
-const HomeVideoSections = async ({ state }: { state: Promise<DehydratedState | undefined> }) => (
-  <HydrationBoundary state={await state}>
+const HomeVideoSections = async ({ feed }: { feed: Promise<HomeVideoFeedData | undefined> }) => (
+  <HomeVideoFeedProvider initial={await feed}>
     <LiveStage />
     <NoticeReel />
-  </HydrationBoundary>
+  </HomeVideoFeedProvider>
 );
 
 export default function Home() {
-  // 홈의 장식·영상 조회 실패가 첫 화면 전체를 오류로 바꾸지 않게 한다.
-  // 서버에서 못 채운 경우 영상 부품의 기존 useQuery가 /api/home-video 조회를 이어간다.
-  const videoState = prefetchHomeVideo().catch(() => undefined);
+  // 실패 규칙은 loadForPage — 운영 중 다시 그리다 실패하면 직전 홈을 유지하고, 빌드 · 개발 서버에서는
+  // 영상 영역을 비운 채 그려 브라우저가 /api/home-video 로 받게 한다.
+  const feed = loadForPage(() => loadHomeVideoFeed());
   return (
     <>
       {/* 히어로 → 사진 띠 → 표어 → 담임 (HomeLead 가 HomeHero 를 품고 변형 무대로 잇는다) */}
@@ -49,7 +51,7 @@ export default function Home() {
         <WorshipTimes />
         {/* 영상 준비는 첫 화면과 독립적으로 완료되는 대로 반영한다. */}
         <Suspense fallback={<HomeVideoFallback />}>
-          <HomeVideoSections state={videoState} />
+          <HomeVideoSections feed={feed} />
         </Suspense>
         {/* LP 턴테이블·다음세대 별자리는 폰(768px 미만)에서 숨긴다 — 넓은 화면용 인터랙션이고(기획 요구 8),
             별자리는 touch-action:none 이라 폰에서 그 화면 높이만큼 스크롤이 막힌다. 폰 대체 화면은 따로 만든다.

@@ -15,10 +15,6 @@ import {
   takeListReturn,
 } from '@/domains/worship-video/api/sermonListState';
 import { SINGLES } from '@/domains/worship-video/api/sermonParse';
-import {
-  sermonDescriptionQueryKey,
-  sermonLibraryQueryKey,
-} from '@/domains/worship-video/api/worshipVideoQueries';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 
 import { SermonWatchPage } from './index';
@@ -80,20 +76,23 @@ const LIB: Sermon[] = [
 ];
 const LONG = '[사도행전 강해 20]\n*설교본문: 사도행전 20:1-5\n셋째 줄\n넷째 줄\n#성복교회';
 
-// 실제 앱처럼 설교마다 화면을 새로 만든다 — Next 는 주소의 영상 id 가 바뀌면 그 아래 화면을 통째로 다시 만든다
-const tree = (client: QueryClient, videoId: string) => (
+// 실제 앱처럼 설교마다 화면을 새로 만든다 — Next 는 주소의 영상 id 가 바뀌면 그 아래 화면을 통째로 다시 만든다.
+// 서버가 받은 목록 · 설명을 props 로 넘긴다(미리 그린 HTML 에 들어간다). null 이면 서버가 못 받은 경우 — 화면이 /api 로 받는다
+const tree = (client: QueryClient, videoId: string, sermons: Sermon[] | null) => (
   <QueryClientProvider client={client}>
-    <SermonWatchPage key={videoId} page="sunday" videoId={videoId} />
+    <SermonWatchPage
+      key={videoId}
+      page="sunday"
+      videoId={videoId}
+      sermons={sermons ?? undefined}
+      description={sermons ? LONG : undefined}
+    />
   </QueryClientProvider>
 );
 const renderPage = (videoId = 'a20', sermons: Sermon[] | null = LIB) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  if (sermons) {
-    client.setQueryData(sermonLibraryQueryKey('sunday'), sermons);
-    for (const s of sermons) client.setQueryData(sermonDescriptionQueryKey('sunday', s.id), LONG);
-  }
-  const view = render(tree(client, videoId));
-  return { ...view, go: (id: string) => view.rerender(tree(client, id)) };
+  const view = render(tree(client, videoId, sermons));
+  return { ...view, go: (id: string) => view.rerender(tree(client, id, sermons)) };
 };
 const frame = () => document.querySelector('iframe')!;
 const nav = () => screen.getByRole('navigation', { name: '설교 이동' });
@@ -448,8 +447,39 @@ describe('SermonWatchPage — 상태', () => {
     expect(document.querySelector('iframe')).toBeNull();
   });
 
-  it('설교가 한 편도 없으면 그렇게 알린다', () => {
+  it('설교가 한 편도 없으면 찾을 수 없다고 알린다(서버가 받은 빈 목록)', () => {
     renderPage('a20', []);
-    expect(screen.getByRole('status')).toHaveTextContent('아직 등록된 설교 영상이 없습니다.');
+    expect(screen.getByRole('status')).toHaveTextContent('이 설교 영상을 찾을 수 없습니다.');
+  });
+});
+
+describe('SermonWatchPage — 서버가 받은 목록 · 설명', () => {
+  it('서버가 넘긴 목록 · 설명은 react-query 없이 그린다 — 미리 그리기(빌드)에서 지금 시각을 읽지 않게', () => {
+    render(<SermonWatchPage page="sunday" videoId="a20" sermons={LIB} description={LONG} />);
+    expect(frame()).toBeInTheDocument();
+    expect(screen.getByText(/설교본문: 사도행전 20:1-5/)).toBeInTheDocument();
+  });
+
+  it('서버가 못 받았으면 화면이 /api 로 목록 · 설명을 받아 그린다', async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      Response.json({ ok: true, data: url.includes('description') ? { body: LONG } : LIB })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    renderPage('a20', null);
+    expect(await screen.findByText(/설교본문: 사도행전 20:1-5/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/worship-video/library?page=sunday');
+  });
+
+  it('화면이 받은 목록에 없는 영상도 같은 «찾을 수 없습니다» 화면(404 와 같은 부품)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ ok: true, data: LIB }))
+    );
+    renderPage('nope', null);
+    expect(await screen.findByText('이 설교 영상을 찾을 수 없습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '설교 목록' })).toHaveAttribute(
+      'href',
+      '/worship/sunday'
+    );
   });
 });

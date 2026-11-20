@@ -22,12 +22,12 @@ describe('GET /api/worship-video/description', () => {
   it('영상의 설명 글을 { body } 로 돌려준다 — 빈 설명도 200', async () => {
     const r = await GET(req('?page=sunday&v=a'));
     expect(r.status).toBe(200);
-    await expect(r.json()).resolves.toEqual({ body: '본문' });
+    await expect(r.json()).resolves.toEqual({ ok: true, data: { body: '본문' } });
     expect(fetchSermonDescription).toHaveBeenCalledWith('sunday', 'a');
 
     const empty = await GET(req('?page=sunday&v=empty'));
     expect(empty.status).toBe(200);
-    await expect(empty.json()).resolves.toEqual({ body: '' });
+    await expect(empty.json()).resolves.toEqual({ ok: true, data: { body: '' } });
   });
 
   it('그 페이지 목록에 없는 영상은 404', async () => {

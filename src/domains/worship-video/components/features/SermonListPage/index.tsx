@@ -7,9 +7,15 @@ import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import { SermonLatest } from '@/domains/worship-video/components/features/SermonLatest';
 import { SermonList } from '@/domains/worship-video/components/features/SermonList';
 import { FOCUS } from '@/shared/components/ui/controlStyles';
-import { QueryStatus } from '@/domains/worship-video/components/features/StatusText';
+import {
+  LoadingStatus,
+  QueryStatus,
+  StatusRegion,
+  StatusText,
+} from '@/domains/worship-video/components/features/StatusText';
 import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProfile';
 import type { VideoPage } from '@/domains/worship-video/config/worshipPages';
+import { useIsClient } from '@/shared/lib/hooks/useIsClient';
 import { cn } from '@/shared/lib/utils';
 import { useLenis } from 'lenis/react';
 import { useLayoutEffect, useMemo } from 'react';
@@ -49,10 +55,32 @@ const ListView = ({ page, sermons }: Props & { sermons: Sermon[] }) => {
 
 /**
  * 설교 목록 페이지(/worship/sunday) — 최신 설교 한 편 + 검색·시리즈·정렬이 되는 설교 목록.
- * 서버가 설교 목록을 미리 채워 두면(HydrationBoundary) 첫 화면이 HTML 로 그려져 오고, 못 채웠으면(빌드 중 실패 등) 화면이 받는다.
+ * 서버가 받은 목록(sermons)을 그대로 그린다 — 미리 그린 HTML 에 목록이 들어간다(검색엔진에 보인다, ADR 0024).
+ * 서버가 못 받았으면(빌드 중 유튜브 실패 등) sermons 가 없고, 그때만 화면이 /api 로 받는다.
  * 검색·시리즈·정렬은 받은 목록으로 화면에서 한다 — 유튜브를 다시 부르지 않는다. 설교를 누르면 그 설교 페이지로 넘어간다.
  */
-export const SermonListPage = ({ page }: Props) => {
+export const SermonListPage = ({ page, sermons }: Props & { sermons?: Sermon[] }) => {
+  if (sermons?.length) return <ListView page={page} sermons={sermons} />;
+  if (sermons)
+    return (
+      <StatusRegion>
+        <StatusText>아직 등록된 {VIDEO_PAGE_PROFILE[page].videoNoun}이 없습니다.</StatusText>
+      </StatusRegion>
+    );
+  return <ClientSermonList page={page} />;
+};
+
+// 화면이 받는 경우는 브라우저에 붙은 뒤에만 — react-query 는 그리는 중에 지금 시각을 읽어 미리 그리기에 쓸 수 없다
+const ClientSermonList = ({ page }: Props) =>
+  useIsClient() ? (
+    <FetchedSermonList page={page} />
+  ) : (
+    <StatusRegion>
+      <LoadingStatus />
+    </StatusRegion>
+  );
+
+const FetchedSermonList = ({ page }: Props) => {
   const q = useSermonLibrary(page);
   if (q.data?.length) return <ListView page={page} sermons={q.data} />;
   return (

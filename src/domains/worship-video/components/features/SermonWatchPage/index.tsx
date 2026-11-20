@@ -8,14 +8,19 @@ import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import { SermonInfo } from '@/domains/worship-video/components/features/SermonInfo';
 import { SermonPlayer } from '@/domains/worship-video/components/features/SermonPlayer';
 import { SermonSidebar } from '@/domains/worship-video/components/features/SermonSidebar';
-import { FOCUS, OUTLINE_BTN } from '@/shared/components/ui/controlStyles';
-import { QueryStatus, STATUS_CLASS } from '@/domains/worship-video/components/features/StatusText';
+import { FOCUS } from '@/shared/components/ui/controlStyles';
+import {
+  LoadingStatus,
+  QueryStatus,
+  StatusRegion,
+} from '@/domains/worship-video/components/features/StatusText';
+import { VideoNotFound } from '@/domains/worship-video/components/features/VideoNotFound';
 import { VIDEO_PAGE_PROFILE } from '@/domains/worship-video/config/videoPageProfile';
-import { sermonPath, type VideoPage } from '@/domains/worship-video/config/worshipPages';
+import type { VideoPage } from '@/domains/worship-video/config/worshipPages';
 import type { SheetLink } from '@/domains/resources/api/sheetLinks';
+import { useIsClient } from '@/shared/lib/hooks/useIsClient';
 import { cn } from '@/shared/lib/utils';
 import { useLenis } from 'lenis/react';
-import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Props {
@@ -23,6 +28,10 @@ interface Props {
   videoId: string;
   /** 이 영상에 연결된 공개 자료(설교 시트지) — 서버가 자료실에서 찾아 넘긴다. 없으면 카드를 그리지 않는다 */
   sheets?: readonly SheetLink[];
+  /** 서버가 받은 영상 목록 — 없으면(서버가 못 받음) 화면이 /api 로 받는다 */
+  sermons?: Sermon[];
+  /** 서버가 받은 이 영상의 설명 — 없으면 화면이 /api 로 받는다 */
+  description?: string;
 }
 
 const WatchView = ({
@@ -30,7 +39,8 @@ const WatchView = ({
   sermons,
   current,
   sheets,
-}: Pick<Props, 'page' | 'sheets'> & { sermons: Sermon[]; current: Sermon }) => {
+  description,
+}: Pick<Props, 'page' | 'sheets' | 'description'> & { sermons: Sermon[]; current: Sermon }) => {
   const profile = VIDEO_PAGE_PROFILE[page];
   const frameRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -94,6 +104,7 @@ const WatchView = ({
           newer={newer}
           navRef={navRef}
           sheets={sheets}
+          description={description}
         />
       </div>
       <SermonSidebar
@@ -111,34 +122,63 @@ const WatchView = ({
 
 /**
  * 설교 한 편 페이지(/worship/sunday/영상id) — 유튜브 플레이어 + 제목·이동·설명란 + 설교 목록(시리즈 칩과 회차).
- * 서버가 설교 목록과 이 설교의 설명을 미리 채워 두면(HydrationBoundary) 첫 화면이 HTML 로 그려져 오고,
- * 못 채웠으면(빌드 중 실패 등) 화면이 받는다. 목록에 없는 영상은 서버가 404 를 낸다 — 여기까지 온 경우(목록을 화면이 받았을 때)에는
- * 찾을 수 없다고 알리고 목록으로 보낸다.
+ * 서버가 받은 목록 · 설명(sermons · description)을 그대로 그린다 — 미리 그린 HTML 에 들어간다(ADR 0024).
+ * 서버가 못 받았으면(빌드 중 실패 등) 화면이 /api 로 받는다. 목록에 없는 영상은 서버가 404 를 낸다 —
+ * 화면이 받은 목록에 없을 때도 같은 «찾을 수 없습니다» 부품(VideoNotFound)을 보인다.
  */
-export const SermonWatchPage = ({ page, videoId, sheets }: Props) => {
-  const q = useSermonLibrary(page);
-  const profile = VIDEO_PAGE_PROFILE[page];
-  const current = q.data?.find(s => s.id === videoId);
-  if (q.data && current) {
-    return <WatchView page={page} sermons={q.data} current={current} sheets={sheets} />;
-  }
-  if (q.data?.length) {
+export const SermonWatchPage = ({ page, videoId, sheets, sermons, description }: Props) => {
+  const isClient = useIsClient();
+  if (sermons)
     return (
-      <div className={cn(STATUS_CLASS, 'flex flex-wrap items-center gap-x-4 gap-y-3')}>
-        <p role="status">이 {profile.videoNoun}을 찾을 수 없습니다.</p>
-        <Link
-          href={sermonPath(page)}
-          className={cn(OUTLINE_BTN, FOCUS, 'text-label min-h-11 px-4')}
-        >
-          {profile.item} 목록
-        </Link>
-      </div>
+      <WatchOrMissing
+        page={page}
+        videoId={videoId}
+        sheets={sheets}
+        sermons={sermons}
+        description={description}
+      />
     );
-  }
+  // 화면이 받는 경우는 브라우저에 붙은 뒤에만 — react-query 는 그리는 중에 지금 시각을 읽어 미리 그리기에 쓸 수 없다
+  if (!isClient)
+    return (
+      <StatusRegion>
+        <LoadingStatus />
+      </StatusRegion>
+    );
+  return <FetchedWatch page={page} videoId={videoId} sheets={sheets} />;
+};
+
+const WatchOrMissing = ({
+  page,
+  videoId,
+  sheets,
+  sermons,
+  description,
+}: Props & { sermons: Sermon[] }) => {
+  const current = sermons.find(s => s.id === videoId);
+  if (!current) return <VideoNotFound page={page} />;
+  return (
+    <WatchView
+      page={page}
+      sermons={sermons}
+      current={current}
+      sheets={sheets}
+      description={description}
+    />
+  );
+};
+
+const FetchedWatch = ({ page, videoId, sheets }: Omit<Props, 'sermons' | 'description'>) => {
+  const q = useSermonLibrary(page);
+  if (q.data?.length)
+    return <WatchOrMissing page={page} videoId={videoId} sheets={sheets} sermons={q.data} />;
   return (
     // 상태 문구를 같은 상자 안에서 바꿔 끼운다 — «다시 시도» 뒤 포커스가 이 상자에 남아 문서 맨 위로 튀지 않는다
     <div data-focus-host tabIndex={-1} className={cn('rounded', FOCUS)}>
-      <QueryStatus query={q} empty={`아직 등록된 ${profile.videoNoun}이 없습니다.`} />
+      <QueryStatus
+        query={q}
+        empty={`아직 등록된 ${VIDEO_PAGE_PROFILE[page].videoNoun}이 없습니다.`}
+      />
     </div>
   );
 };

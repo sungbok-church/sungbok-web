@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "sungbok-web",
+      "name": "sungbok-dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
       "port": 3005
+    },
+    {
+      "name": "sungbok-prod",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["exec", "next", "start", "-p", "3015"],
+      "port": 3015
     }
   ]
 }

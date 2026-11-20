@@ -1,13 +1,15 @@
 import { videoPageTitle } from '@/domains/worship-video/api/videoMetadata.server';
+import { fetchSermonLibrary } from '@/domains/worship-video/api/worshipVideo.server';
+import { oneBuildParam } from '@/shared/lib/buildParams';
 import SermonWatch from '@/domains/worship-video/components/widgets/SermonWatch';
 import type { Metadata } from 'next';
 
 type Props = { params: Promise<{ videoId: string }> };
 
-// 목록 페이지(../page.tsx)와 같은 주기 — 유튜브 응답은 Data Cache 1시간이라 다시 만들어도 쿼터를 더 쓰지 않는다.
-export const revalidate = 600;
-// 설교 페이지는 빌드 때 만들지 않는다(빌드가 유튜브 응답에 묶이지 않게) — 처음 열릴 때 만들어 두고 그 뒤로는 저장된 것을 준다.
-export const generateStaticParams = () => [];
+// 빌드 때는 최신 영상 한 편만 만든다(Cache Components 는 빈 목록이 안 된다 — oneBuildParam). 나머지는 처음 열릴 때
+// 만들어 두고 그 뒤로는 저장된 것을 준다. 목록 페이지(../page.tsx)와 같은 서버 캐시(10분마다 확인)를 쓴다(ADR 0024).
+export const generateStaticParams = () =>
+  oneBuildParam('videoId', async () => (await fetchSermonLibrary('sunday'))[0]?.id);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { videoId } = await params;

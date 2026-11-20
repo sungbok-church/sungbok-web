@@ -51,6 +51,9 @@ Next.js 15 (App Router) + TypeScript + Tailwind CSS 4 기반 교회 웹사이트
 - **`globals.css` 의 `@import 'shadcn/tailwind.css'` 를 지우지 않는다.** 원본 부품의 상태 모양(`data-active:` · `data-horizontal:` 등)이 여기서 정의된다 — 빠지면 오류 없이 모양만 깨진다.
 - **공개 사이트는 대상이 아니다.** 공개 화면은 [DESIGN.md](DESIGN.md) 의 바(터치 44px · 입력칸 16px · B1 토큰)를 그대로 따른다.
 
+### DB 작업 (Supabase)
+DB 구조의 정본은 [supabase/schemas/schema.sql](supabase/schemas/schema.sql)(구조) · [supabase/reference.sql](supabase/reference.sql)(초기 행) 두 파일이다([ADR 0019](.md/decisions/0019-db-schema-ssot-uuid-v7.md)). **`supabase/migrations/` 에 변경 파일을 손으로 쓰지 않는다** — 정본을 고치고 `pnpm db:sync` → `pnpm db:reset` → `pnpm db:types` → `pnpm db:test` → `pnpm db:advisors` → `pnpm db:probe`. 절차는 [deploy-and-env.md](.md/workflow/deploy-and-env.md) 6절. 운영 DB 적용은 사용자 승인 뒤에만.
+
 ## 코딩 컨벤션
 
 - **패키지 매니저**: pnpm

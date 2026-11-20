@@ -6,9 +6,9 @@ import { scrollbarWidth } from '@/shared/lib/scrollbarWidth';
 import { useEffect, useState, type PropsWithChildren } from 'react';
 
 export const AppProvider = ({ children }: PropsWithChildren) => {
-  // QueryClient 는 컴포넌트 안에서 만든다 — 서버는 렌더(=ISR 재생성)마다 새로, 브라우저는 탭당 하나.
-  // 모듈 스코프에 두면 서버 프로세스 전체가 한 캐시를 공유해, 홈 HydrationBoundary 가 첫 재생성 데이터에
-  // 굳어(이미 있는 쿼리는 렌더 중에 덮지 않음) 이후 HTML 이 옛 피드로 나가고 하이드레이션이 어긋난다.
+  // QueryClient 는 컴포넌트 안에서 만든다 — 서버는 그릴 때마다 새로, 브라우저는 탭당 하나.
+  // 모듈 스코프에 두면 서버 프로세스 전체가 한 캐시를 공유한다. 서버가 그리는 동안에는 쿼리를 돌리지 않는다 —
+  // react-query 는 브라우저에 붙은 뒤에만 쓴다(서버 데이터는 props 로 넘긴다, ADR 0024).
   // 실패한 쿼리는 여기 한곳에서 기록한다 — 화면엔 실패 문구만 보이므로 원인은 콘솔에 남긴다.
   const [queryClient] = useState(
     () =>

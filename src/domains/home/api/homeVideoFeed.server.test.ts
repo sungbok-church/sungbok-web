@@ -102,6 +102,7 @@ describe('fetchHomeVideoFeed', () => {
     });
     const feed = await fetchHomeVideoFeed();
     expect(feed.staleMs).toBe(11 * 60_000);
+    expect(feed.servedAt).toBe(Date.now()); // 이 응답을 만든 시각 — 미리 그린 홈이 얼마나 묵었는지 화면이 안다
     expect(feed.live?.id).toBe('L'); // 서버는 라이브를 지우지 않는다 — 판단은 화면 한 곳에서
     now.mockRestore();
   });

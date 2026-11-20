@@ -2,8 +2,7 @@
 // 규칙 근거: .md/specs/2026-10-11-home-video-sections-analysis.md §4·§5
 
 /**
- * react-query 키 — 서버 미리 채우기(homeVideoPrefetch.server)와 브라우저 훅(useHomeVideoFeed)이 함께 쓴다.
- * 'use client' 파일(useHomeVideoFeed)에 두면 서버에서는 실제 배열이 아니라 클라이언트 참조로 바뀌어 키가 어긋난다 — 그래서 여기(순수 모듈).
+ * react-query 키 — 브라우저 훅(useHomeVideoFeed)이 쓴다. 순수 모듈에 두어 테스트 · 다른 모듈이 같은 키를 쓴다.
  */
 export const HOME_VIDEO_QUERY_KEY = ['home-video'] as const;
 
@@ -51,6 +50,11 @@ export type HomeVideoFeedData = Pick<HomeVideoFeed, 'live' | 'sermon' | 'notices
    * Next Data Cache 의 옛 응답이나 서버가 대신 준 마지막 성공분이면 커진다. 라이브 만료는 이 값으로만 판단한다(isLiveStale).
    */
   staleMs: number;
+  /**
+   * 서버가 이 응답을 만든 시각(ms, 서버 시계). 미리 그린 홈은 몇 시간 묵었을 수 있다 — 화면은 이 시각을 «받은 시각» 으로 삼아
+   * 60초가 지났으면 붙자마자 다시 받는다(useHomeVideoFeed). 옛 응답에는 없을 수 있다.
+   */
+  servedAt?: number;
 };
 
 /** 라이브 정보를 믿는 최대 나이 — 넘으면 끝났을지 모르니 «ON AIR» 를 내린다. 설교·광고는 지난 것이어도 보여 준다. */

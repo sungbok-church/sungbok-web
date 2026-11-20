@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { upstreamStatus } from './upstreamStatus.server';
+import { upstreamErrorResponse, upstreamStatus } from './upstreamStatus.server';
 import { YoutubeApiError, YoutubeNetworkError, YoutubeShapeError } from './youtubeApi.server';
 
 describe('upstreamStatus — 유튜브 실패를 우리 API 응답 상태로', () => {
@@ -35,5 +35,20 @@ describe('upstreamStatus — 유튜브 실패를 우리 API 응답 상태로', (
       upstreamStatus(new TypeError("Cannot read properties of undefined (reading 'map')"))
     ).toBe(502);
     expect(upstreamStatus(new Error('boom'))).toBe(502);
+  });
+});
+
+describe('upstreamErrorResponse — 공용 실패 모양 + 상태', () => {
+  it('쿼터 소진은 429 QUOTA_EXCEEDED, 일시 장애 503 SERVICE_UNAVAILABLE, 그 밖 502 UPSTREAM_ERROR', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const quota = upstreamErrorResponse(new YoutubeApiError('/videos', 403, 'quotaExceeded'));
+    expect(quota.status).toBe(429);
+    expect(await quota.json()).toMatchObject({ ok: false, error: { code: 'QUOTA_EXCEEDED' } });
+    const down = upstreamErrorResponse(new YoutubeNetworkError('/videos', new Error('x')));
+    expect(down.status).toBe(503);
+    expect(await down.json()).toMatchObject({ ok: false, error: { code: 'SERVICE_UNAVAILABLE' } });
+    const bug = upstreamErrorResponse(new TypeError('x'));
+    expect(bug.status).toBe(502);
+    expect(await bug.json()).toMatchObject({ ok: false, error: { code: 'UPSTREAM_ERROR' } });
   });
 });

@@ -33,7 +33,8 @@ const wrapper = () => {
   W.displayName = 'TestWrapper';
   return W;
 };
-const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+// 우리 API 의 성공 응답 모양 { ok: true, data }(ADR 0022)
+const ok = (data: unknown) => ({ ok: true, status: 200, json: async () => ({ ok: true, data }) });
 
 describe('useSermonLibrary', () => {
   it('서버 Route Handler 를 한 번만 부르고(유튜브 직접 호출 없음) 설교 목록 전체를 돌려준다', async () => {
