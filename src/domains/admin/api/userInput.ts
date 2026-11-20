@@ -42,6 +42,8 @@ export const userUpdateSchema = z.object({
   groupIds,
   department,
   isActive: z.boolean(),
+  /** 화면을 열었을 때의 그룹 목록 — 그 뒤 다른 사람이 그룹을 바꿨으면 저장하지 않는다(남의 변경을 덮지 않게) */
+  seenGroupIds: groupIds,
 });
 
 export type UserCreateInput = z.input<typeof userCreateSchema>;

@@ -43,16 +43,21 @@ describe('userCreateSchema', () => {
 });
 
 describe('userUpdateSchema', () => {
-  it('열었던 시각(updatedAt)과 사용 여부를 함께 받는다', () => {
-    expect(
-      userUpdateSchema.parse({
-        id: G,
-        updatedAt: '2026-11-19T10:00:00.123456+00:00',
-        name: '홍길동',
-        groupIds: [],
-        department: null,
-        isActive: false,
-      })
-    ).toMatchObject({ id: G, isActive: false });
+  it('열었던 시각(updatedAt) · 열었을 때의 그룹 목록과 사용 여부를 함께 받는다', () => {
+    const input = {
+      id: G,
+      updatedAt: '2026-11-19T10:00:00.123456+00:00',
+      name: '홍길동',
+      groupIds: [],
+      department: null,
+      isActive: false,
+    };
+    expect(userUpdateSchema.parse({ ...input, seenGroupIds: [G] })).toMatchObject({
+      id: G,
+      isActive: false,
+      seenGroupIds: [G],
+    });
+    // 열었을 때의 그룹 목록이 없으면 받지 않는다 — 남의 변경을 덮을 수 있다
+    expect(userUpdateSchema.safeParse(input).success).toBe(false);
   });
 });

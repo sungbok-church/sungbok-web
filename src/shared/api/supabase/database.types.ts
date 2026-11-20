@@ -460,6 +460,9 @@ isOneToOne: false
 "can_manage_user":
 { Args: { "p_target": string }; Returns: boolean
                            },
+"create_group":
+{ Args: { "p_description": string,"p_name": string,"p_permissions": (string)[] }; Returns: string
+                           },
 "my_permissions":
 { Args: Record<PropertyKey, never>; Returns: {
               "action": Database["public"]['Enums']["permission_action"],"menu_key": string
@@ -473,6 +476,12 @@ isOneToOne: false
                            },
 "purge_expired":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"save_group":
+{ Args: { "p_description": string,"p_id": string,"p_is_active": boolean,"p_name": string,"p_permissions": (string)[],"p_seen_permissions": (string)[],"p_updated_at": string }; Returns: string
+                           },
+"save_user":
+{ Args: { "p_department": Database["public"]['Enums']["department_slug"],"p_group_ids": (string)[],"p_id": string,"p_is_active": boolean,"p_name": string,"p_seen_group_ids": (string)[],"p_updated_at": string }; Returns: string
                            }
           }
           Enums: {

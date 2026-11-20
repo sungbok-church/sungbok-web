@@ -1,6 +1,6 @@
 'use client';
 
-import { createGroup, saveGroupPermissions, updateGroup } from '@/domains/admin/api/groupActions';
+import { createGroup, saveGroup } from '@/domains/admin/api/groupActions';
 import { groupCreateSchema } from '@/domains/admin/api/groupInput';
 import { notifyResult } from '@/domains/admin/api/notify';
 import {
@@ -67,33 +67,36 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
   const router = useRouter();
   const initialKeys = useMemo(() => new Set(checkedKeys(matrix ?? [])), [matrix]);
   const [keys, setKeys] = useState<Set<string>>(initialKeys);
+  // 화면을 열었을 때의 권한 표 — 열 때 한 번만 기억한다(페이지 데이터가 새로 와도 바뀌지 않아야 남의 변경을 «충돌» 로 알아챈다)
+  const [seenKeys] = useState(initialKeys);
   const permsDirty = matrix !== undefined && !sameSet(keys, initialKeys);
 
   const form = useForm({
     defaultValues: initial,
     validators: { onSubmit: zodFormValidator(groupCreateSchema) },
     onSubmit: async ({ value, formApi }) => {
+      // 그룹 정보와 권한 표를 한 번에 저장한다(한 트랜잭션) — 하나라도 막히면 아무것도 바뀌지 않는다
       let groupId = editing?.id;
       if (!editing) {
-        const created = await createGroup({ name: value.name, description: value.description });
+        const created = await createGroup({
+          name: value.name,
+          description: value.description,
+          permissions: keysToPermissions(keys),
+        });
         if (!created.ok || !created.data) return notifyResult(created);
         groupId = created.data.id;
-      } else if (formApi.state.isDirty) {
-        const updated = await updateGroup({
+      } else {
+        const saved = await saveGroup({
           ...value,
           id: editing.id,
           updatedAt: editing.updatedAt,
+          // 권한 표가 있으면(«전체 관리» 가 아니면) 지금 표와 화면을 열었을 때의 표를 함께 — 그 사이 바뀌었으면 저장하지 않는다
+          ...(matrix && {
+            permissions: keysToPermissions(keys),
+            seenPermissions: keysToPermissions(seenKeys),
+          }),
         });
-        if (!updated.ok) return notifyResult(updated);
-      }
-      if (groupId && (permsDirty || (!editing && keys.size > 0))) {
-        const saved = await saveGroupPermissions({ groupId, permissions: keysToPermissions(keys) });
-        if (!saved.ok) {
-          notifyResult(saved);
-          // 그룹은 만들어졌으니 상세로 보내 다시 고치게 한다
-          if (!editing) router.push(`${LIST}/${groupId}/edit`);
-          return;
-        }
+        if (!saved.ok) return notifyResult(saved);
       }
       notifyResult({ ok: true, message: editing ? '저장했습니다.' : '그룹을 만들었습니다.' });
       draft.clear();

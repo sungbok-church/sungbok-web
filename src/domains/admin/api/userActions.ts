@@ -10,7 +10,6 @@ import { type ActionResult, parseInput, toActionError } from './actionResult';
 import { actionPermission, NO_PERMISSION } from './adminContext.server';
 import { generateTempPassword } from './tempPassword';
 import { userCreateSchema, userUpdateSchema } from './userInput';
-import { updateVersioned } from './versionedUpdate.server';
 
 const NO_SECRET =
   '계정 만들기 설정(SUPABASE_SECRET_KEY)이 되어 있지 않습니다. 개발 담당자에게 알려 주세요.';
@@ -85,51 +84,31 @@ export const createUser = async (
 };
 
 /**
- * 사용자 고치기 — 이름 · 부서 · 사용 여부 · 그룹. 모두 로그인한 사람의 세션으로(권한 올리기 방지는 DB 가 한다).
- * 그룹은 바뀐 것만 넣고 뺀다. 사용자 정보는 열었을 때의 updated_at 이 같을 때만 고친다(동시 수정 막기).
+ * 사용자 고치기 — 이름 · 부서 · 사용 여부 · 그룹을 한 번에, 한 트랜잭션으로(save_user). 로그인한 사람의 권한으로 돈다
+ * (권한 올리기 방지는 DB 가 한다) — 하나라도 막히면 아무것도 저장하지 않는다. 화면을 열었을 때의 updated_at 과 그룹 목록이
+ * 지금과 다르면(다른 사람이 먼저 고침) 저장하지 않는다(CONFLICT).
  */
 export const updateUser = async (raw: unknown): Promise<ActionResult<{ updatedAt: string }>> => {
   if (!(await actionPermission('users', 'UPDATE'))) return NO_PERMISSION;
   const input = parseInput(userUpdateSchema, raw);
   if (!input.ok) return input;
-  const { id, updatedAt, name, department, isActive, groupIds } = input.data;
+  const { id, updatedAt, name, department, isActive, groupIds, seenGroupIds } = input.data;
   const supabase = await createSupabaseServerClient();
-
-  const { data: current, error: readError } = await supabase
-    .from('user_groups')
-    .select('group_id')
-    .eq('user_id', id);
-  if (readError) return { ok: false, error: toActionError(readError) };
-  const before = new Set((current ?? []).map(r => r.group_id));
-  const after = new Set(groupIds);
-  const add = groupIds.filter(g => !before.has(g));
-  const remove = [...before].filter(g => !after.has(g));
-
-  const saved = await updateVersioned(supabase, 'profiles', id, updatedAt, {
-    name,
-    department,
-    is_active: isActive,
+  const { data, error } = await supabase.rpc('save_user', {
+    p_id: id,
+    p_updated_at: updatedAt,
+    p_name: name,
+    // 생성 타입은 null 을 모르지만 SQL 은 받는다(부서 없음 = 모든 부서)
+    p_department: department as NonNullable<typeof department>,
+    p_is_active: isActive,
+    p_group_ids: groupIds,
+    p_seen_group_ids: seenGroupIds,
   });
-  if (!saved.ok) return saved;
-
-  if (add.length > 0) {
-    const { error } = await supabase
-      .from('user_groups')
-      .insert(add.map(group_id => ({ user_id: id, group_id })));
-    if (error) return { ok: false, error: toActionError(error) };
-  }
-  if (remove.length > 0) {
-    const { error } = await supabase
-      .from('user_groups')
-      .delete()
-      .eq('user_id', id)
-      .in('group_id', remove);
-    if (error) return { ok: false, error: toActionError(error) };
-  }
-
+  if (error) return { ok: false, error: toActionError(error) };
+  if (!data) return fail('CONFLICT');
   revalidatePath(LIST);
   revalidatePath(`${LIST}/${id}`);
-  return saved;
+  return { ok: true, data: { updatedAt: data }, message: '저장했습니다.' };
 };
 
 /**

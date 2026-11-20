@@ -73,12 +73,17 @@ const EMPTY: UserFormValues = { name: '', email: '', groupIds: [], department: '
 export const UserForm = ({ mode, groups, initial, editing }: Props) => {
   const router = useRouter();
   const [temp, setTemp] = useState<{ password: string; email: string; id: string } | null>(null);
+  // 화면을 열었을 때의 그룹 목록 — 열 때 한 번만 기억한다. 페이지 데이터가 새로 와도(router.refresh 등) 바뀌지 않아야
+  // 그 사이 다른 사람이 바꾼 그룹을 «충돌» 로 알아챈다(새 값으로 바뀌면 남의 변경을 덮어쓴다)
+  const [seenGroupIds] = useState(initial.groupIds);
 
   const form = useForm({
     defaultValues: initial,
     validators: {
       onSubmit: zodFormValidator(
-        mode === 'create' ? userCreateSchema : userUpdateSchema.omit({ id: true, updatedAt: true })
+        mode === 'create'
+          ? userCreateSchema
+          : userUpdateSchema.omit({ id: true, updatedAt: true, seenGroupIds: true })
       ),
     },
     onSubmit: async ({ value, formApi }) => {
@@ -93,7 +98,13 @@ export const UserForm = ({ mode, groups, initial, editing }: Props) => {
         return;
       }
       if (!editing) return;
-      const result = await updateUser({ ...value, id: editing.id, updatedAt: editing.updatedAt });
+      // 화면을 열었을 때의 그룹 목록도 보낸다 — 그 뒤 다른 사람이 그룹을 바꿨으면 저장하지 않는다
+      const result = await updateUser({
+        ...value,
+        id: editing.id,
+        updatedAt: editing.updatedAt,
+        seenGroupIds,
+      });
       notifyResult(result);
       applyServerErrors(result, serverFieldError(formApi));
       if (result.ok) {
