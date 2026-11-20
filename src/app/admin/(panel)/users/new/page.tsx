@@ -3,6 +3,9 @@ import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { UserForm } from '@/domains/admin/components/widgets/UserForm';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 
+// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+export const instant = false;
+
 // 계정 만들기 — 만들면 임시 비밀번호를 한 번 보여 준다(설계 11-1).
 export default async function AdminUserNewPage() {
   await requirePermission('users', 'CREATE');

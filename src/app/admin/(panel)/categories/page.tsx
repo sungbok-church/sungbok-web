@@ -16,6 +16,9 @@ import {
 } from '@/shared/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 
+// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+export const instant = false;
+
 const PATH = '/admin/categories';
 
 // 분류 관리(콘텐츠 › 분류 관리) — 왼쪽 묶음(주일광고 분류 · 앨범 분류 · 설교 시트지 묶음 …), 오른쪽 그 묶음의 분류.

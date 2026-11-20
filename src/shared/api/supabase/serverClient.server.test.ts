@@ -9,6 +9,8 @@ const cookieStore = vi.hoisted(() => ({
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => cookieStore }));
+const connection = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('next/server', () => ({ connection }));
 vi.mock('@supabase/ssr', () => ({ createServerClient: vi.fn(() => ({})) }));
 
 beforeEach(() => {
@@ -21,6 +23,14 @@ afterEach(() => {
 });
 
 describe('createSupabaseServerClient', () => {
+  it('요청 때의 일이라고 먼저 알린다(connection) — Supabase 인증이 지금 시각을 읽어 미리 그리기에 쓸 수 없다', async () => {
+    await createSupabaseServerClient();
+    expect(connection).toHaveBeenCalled();
+    expect(connection.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(createServerClient).mock.invocationCallOrder[0]
+    );
+  });
+
   it('환경변수의 주소·키와 쿠키 저장소로 클라이언트를 만든다', async () => {
     await createSupabaseServerClient();
     const [url, key, opts] = vi.mocked(createServerClient).mock.calls[0];
