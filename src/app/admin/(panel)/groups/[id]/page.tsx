@@ -25,6 +25,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 
+// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+export const instant = false;
+
 const PATH = '/admin/groups';
 
 // 그룹 상세(보기) — 설계 6.10 «화면 흐름 표준 › 상세». 기본 정보 · 구성원 · 권한(보기 전용). 고치려면 [수정].

@@ -6,6 +6,9 @@ import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.s
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 
+// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+export const instant = false;
+
 // 그룹 수정 — 상세에서 [수정] 으로 들어온다. 기본 정보 · 권한을 한 번에 저장하고 상세로 돌아간다.
 export default async function AdminGroupEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, permissions } = await requirePermission('groups', 'UPDATE');

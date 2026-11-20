@@ -5,6 +5,9 @@ import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { GroupForm } from '@/domains/admin/components/widgets/GroupForm';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 
+// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+export const instant = false;
+
 // 그룹 등록 — 이름 · 설명과 권한을 한 번에. 권한을 줄 수 있는 사람(그룹 수정 권한)에게만 표가 보인다.
 export default async function AdminGroupNewPage() {
   const { user, permissions } = await requirePermission('groups', 'CREATE');

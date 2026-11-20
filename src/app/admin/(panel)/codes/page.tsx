@@ -20,6 +20,9 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { LockIcon } from 'lucide-react';
 
+// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+export const instant = false;
+
 const PATH = '/admin/codes';
 
 // 코드 관리(시스템 › 코드 관리) — 공통코드. 왼쪽 묶음(직분 · 콘텐츠 상태 · 새가족 구분 · 새가족 처리 상태 …),

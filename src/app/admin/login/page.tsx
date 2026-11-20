@@ -3,6 +3,9 @@ import { LoginForm } from '@/domains/admin/components/widgets/LoginForm';
 import { readSupabaseEnv } from '@/shared/api/supabase/env';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 
+// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+export const instant = false;
+
 type Props = { searchParams: Promise<{ next?: string | string[]; reason?: string | string[] }> };
 
 // 로그인 화면. 관리자 화면은 색을 의미 토큰으로만 쓴다(ADR 0017 — 나중에 다크 모드를 켤 수 있게).
