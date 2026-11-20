@@ -8,6 +8,12 @@ import {
   keysToPermissions,
   type MatrixRow,
 } from '@/domains/admin/api/permissionMatrix';
+import {
+  applySetChanges,
+  changedFields,
+  type SetChanges,
+  setChanges,
+} from '@/domains/admin/api/draftChanges';
 import { useFormDraft, useSaveShortcut, useUnsavedGuard } from '@/domains/admin/api/useFormGuards';
 import {
   CharCount,
@@ -63,6 +69,8 @@ const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
  * 그룹 등록 · 수정(설계 6.10 «화면 흐름 표준 › 등록 · 수정») — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장한다.
  * 이름 · 설명은 쓰던 내용을 임시 보관한다. 저장하면 상세로 간다.
  */
+type GroupDraft = { fields?: Partial<Values>; perms?: SetChanges };
+
 export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
   const router = useRouter();
   const initialKeys = useMemo(() => new Set(checkedKeys(matrix ?? [])), [matrix]);
@@ -108,11 +116,14 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
 
   const values = useStore(form.store, s => s.values);
   const dirty = useStore(form.store, s => s.isDirty);
-  const draft = useFormDraft({
+  // 임시저장은 «내가 바꾼 것» 만 — 바꾼 칸과 권한 표에서 넣은 것 · 뺀 것(draftChanges). «다른 사람이 먼저 고쳤습니다» 로
+  // 새로고침한 뒤 불러오면 새 화면 위에 내 변경만 얹는다(그 사이 다른 사람이 바꾼 칸 · 권한은 그대로 남는다).
+  const [seenValues] = useState(initial);
+  const draft = useFormDraft<GroupDraft>({
     userId,
     formKey: editing ? `groups:${editing.id}` : 'groups:new',
-    values,
-    dirty,
+    values: { fields: changedFields(seenValues, values), perms: setChanges(seenKeys, keys) },
+    dirty: dirty || permsDirty,
     enabled: true,
   });
   useUnsavedGuard(dirty || permsDirty);
@@ -139,10 +150,12 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
                   onDiscard={draft.discard}
                   onRestore={() =>
                     draft.restore(saved => {
-                      const v = saved as Partial<Values>;
-                      (Object.keys(initial) as (keyof Values)[]).forEach(k => {
-                        if (v[k] !== undefined) form.setFieldValue(k, v[k] as never);
-                      });
+                      const fields = saved.fields ?? {};
+                      (Object.keys(fields) as (keyof Values)[]).forEach(k =>
+                        form.setFieldValue(k, fields[k] as never)
+                      );
+                      // 권한 표가 있는 그룹만(«전체 관리» 는 표가 없다) — 지금 표에 내가 넣은 것 · 뺀 것만 얹는다
+                      if (matrix && saved.perms) setKeys(applySetChanges(initialKeys, saved.perms));
                     })
                   }
                 />
