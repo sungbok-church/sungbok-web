@@ -45,7 +45,7 @@ type DraftOptions<T> = {
   formKey: string;
   values: T;
   dirty: boolean;
-  /** false 면 읽지도 쓰지도 않는다(사용자 · 새가족 폼) */
+  /** false 면 읽지도 쓰지도 않는다(사용자 등록 · 새가족 폼) */
   enabled: boolean;
 };
 

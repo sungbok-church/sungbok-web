@@ -10,7 +10,7 @@ export const instant = false;
 
 // 사용자 수정 — 상세에서 [수정] 으로 들어온다. 저장하면 상세로 돌아간다.
 export default async function AdminUserEditPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermission('users', 'UPDATE');
+  const { user } = await requirePermission('users', 'UPDATE');
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
@@ -47,6 +47,7 @@ export default async function AdminUserEditPage({ params }: { params: Promise<{ 
           isActive: profile.is_active,
         }}
         editing={{ id: profile.id, updatedAt: profile.updated_at }}
+        userId={user.id}
       />
     </>
   );

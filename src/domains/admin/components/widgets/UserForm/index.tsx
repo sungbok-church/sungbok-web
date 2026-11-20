@@ -1,12 +1,19 @@
 'use client';
 
 import { notifyResult } from '@/domains/admin/api/notify';
-import { useSaveShortcut, useUnsavedGuard } from '@/domains/admin/api/useFormGuards';
+import {
+  applySetChanges,
+  changedFields,
+  type SetChanges,
+  setChanges,
+} from '@/domains/admin/api/draftChanges';
+import { useFormDraft, useSaveShortcut, useUnsavedGuard } from '@/domains/admin/api/useFormGuards';
 import { createUser, updateUser } from '@/domains/admin/api/userActions';
 import { DEPARTMENTS, userCreateSchema, userUpdateSchema } from '@/domains/admin/api/userInput';
 import {
   applyServerErrors,
   CharCount,
+  DraftNotice,
   FormActions,
   RequiredMark,
   serverFieldError,
@@ -58,7 +65,16 @@ interface Props {
   initial: UserFormValues;
   /** 수정일 때 — 사용자 id 와 열었을 때의 updated_at(동시 수정 막기) */
   editing?: { id: string; updatedAt: string };
+  /** 로그인한 관리자 — 수정 화면의 임시저장을 사람별로 둔다(등록 화면은 임시 비밀번호가 오가 보관하지 않는다) */
+  userId?: string;
 }
+
+type UserDraft = { fields?: Partial<Omit<UserFormValues, 'groupIds'>>; groups?: SetChanges };
+const withoutGroups = (values: UserFormValues) => {
+  const rest: Partial<UserFormValues> = { ...values };
+  delete rest.groupIds;
+  return rest as Omit<UserFormValues, 'groupIds'>;
+};
 
 const LIST = '/admin/users';
 const ALL_DEPARTMENTS = '';
@@ -70,7 +86,7 @@ const EMPTY: UserFormValues = { name: '', email: '', groupIds: [], department: '
  * 아래 고정 막대에 [취소] · [저장]. 사용 여부 · 비밀번호 초기화는 상세 화면에서 한다.
  * 비밀번호가 오가는 화면이라 쓰던 내용을 보관하지 않는다. 등록하면 임시 비밀번호 창에서 [상세로] · [계속 등록].
  */
-export const UserForm = ({ mode, groups, initial, editing }: Props) => {
+export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
   const router = useRouter();
   const [temp, setTemp] = useState<{ password: string; email: string; id: string } | null>(null);
   // 화면을 열었을 때의 그룹 목록 — 열 때 한 번만 기억한다. 페이지 데이터가 새로 와도(router.refresh 등) 바뀌지 않아야
@@ -108,6 +124,7 @@ export const UserForm = ({ mode, groups, initial, editing }: Props) => {
       notifyResult(result);
       applyServerErrors(result, serverFieldError(formApi));
       if (result.ok) {
+        draft.clear();
         formApi.reset(value);
         router.push(`${LIST}/${editing.id}`);
         router.refresh();
@@ -116,6 +133,20 @@ export const UserForm = ({ mode, groups, initial, editing }: Props) => {
   });
 
   const dirty = useStore(form.store, s => s.isDirty);
+  const values = useStore(form.store, s => s.values);
+  // 수정 화면만 임시저장 — «내가 바꾼 것» 만 담는다(바꾼 칸 + 그룹에서 넣은 것 · 뺀 것, draftChanges). «다른 사람이 먼저
+  // 고쳤습니다» 로 새로고침한 뒤 불러오면 새 화면 위에 내 변경만 얹는다(그 사이 다른 사람이 바꾼 것은 그대로).
+  const [seenValues] = useState(initial);
+  const draft = useFormDraft<UserDraft>({
+    userId: userId ?? '',
+    formKey: editing ? `users:${editing.id}` : 'users:new',
+    values: {
+      fields: changedFields(withoutGroups(seenValues), withoutGroups(values)),
+      groups: setChanges(seenGroupIds, values.groupIds),
+    },
+    dirty,
+    enabled: mode === 'edit' && Boolean(userId),
+  });
   useUnsavedGuard(dirty && temp === null);
   useSaveShortcut(() => void form.handleSubmit());
 
@@ -137,6 +168,23 @@ export const UserForm = ({ mode, groups, initial, editing }: Props) => {
             </CardHeader>
             <CardContent>
               <FieldGroup>
+                {draft.available && (
+                  <DraftNotice
+                    onDiscard={draft.discard}
+                    onRestore={() =>
+                      draft.restore(saved => {
+                        const fields = saved.fields ?? {};
+                        (Object.keys(fields) as (keyof typeof fields)[]).forEach(k =>
+                          form.setFieldValue(k, fields[k] as never)
+                        );
+                        if (saved.groups)
+                          form.setFieldValue('groupIds', [
+                            ...applySetChanges(initial.groupIds, saved.groups),
+                          ]);
+                      })
+                    }
+                  />
+                )}
                 <form.Field name="name">
                   {field => {
                     const invalid = !field.state.meta.isValid;
