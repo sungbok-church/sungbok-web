@@ -10,8 +10,13 @@ import { loadHomeVideoFeed } from './homeVideoCache.server';
 const DATA: HomeVideoFeedData = { live: null, sermon: null, notices: [], staleMs: 0 };
 
 describe('loadHomeVideoFeed — 홈을 미리 그릴 때 쓰는 영상 피드(서버 캐시, ADR 0024)', () => {
-  it('서버에서 받은 피드를 그대로 준다', async () => {
+  it('서버에서 받은 피드를 준다', async () => {
     vi.mocked(fetchHomeVideoFeed).mockResolvedValue(DATA);
+    expect(await loadHomeVideoFeed()).toEqual(DATA);
+  });
+
+  it('시각 값(staleMs)은 빼고 담는다 — 60초마다 다시 만들어도 영상이 같으면 같은 홈이라 ISR 쓰기가 생기지 않는다', async () => {
+    vi.mocked(fetchHomeVideoFeed).mockResolvedValue({ ...DATA, staleMs: 42_000 });
     expect(await loadHomeVideoFeed()).toEqual(DATA);
   });
 

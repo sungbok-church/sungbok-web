@@ -50,11 +50,6 @@ export type HomeVideoFeedData = Pick<HomeVideoFeed, 'live' | 'sermon' | 'notices
    * Next Data Cache 의 옛 응답이나 서버가 대신 준 마지막 성공분이면 커진다. 라이브 만료는 이 값으로만 판단한다(isLiveStale).
    */
   staleMs: number;
-  /**
-   * 서버가 이 응답을 만든 시각(ms, 서버 시계). 미리 그린 홈은 몇 시간 묵었을 수 있다 — 화면은 이 시각을 «받은 시각» 으로 삼아
-   * 60초가 지났으면 붙자마자 다시 받는다(useHomeVideoFeed). 옛 응답에는 없을 수 있다.
-   */
-  servedAt?: number;
 };
 
 /** 라이브 정보를 믿는 최대 나이 — 넘으면 끝났을지 모르니 «ON AIR» 를 내린다. 설교·광고는 지난 것이어도 보여 준다. */
@@ -63,6 +58,23 @@ export const LIVE_MAX_AGE = 10 * 60_000;
 /** 서버가 잰 나이(staleMs) + 받은 뒤 화면에서 흐른 시간이 LIVE_MAX_AGE 를 넘었나. staleMs 는 서버 시계로만 잰다. elapsedMs 는 브라우저가 직접 받은 데이터면 기기 시계로만 재지만, 서버가 미리 채운 데이터는 서버 시각과 기기 시각을 섞는다(useHomeVideoFeed 의 «알고 둔 한계» ②). */
 export const isLiveStale = (staleMs: number, elapsedMs: number): boolean =>
   staleMs + elapsedMs > LIVE_MAX_AGE;
+
+/**
+ * 미리 그린 홈에 넣는 피드(ADR 0024) — 시각 값을 빼서, 영상이 같으면 언제 다시 만들어도 같은 값이 되게 한다.
+ * 홈은 60초마다 다시 만들어지는데, 내용이 같으면 Vercel 이 ISR 쓰기를 세지 않는다(시각이 들어 있으면 매번 «바뀐 홈» 이 된다).
+ * 화면은 미리 그린 피드의 나이를 모르므로 라이브를 믿을지는 여기서 정하고(10분 넘었으면 뺀다), 화면은 붙자마자 한 번 다시 받는다.
+ */
+export const toShellFeed = ({
+  live,
+  sermon,
+  notices,
+  staleMs,
+}: HomeVideoFeedData): HomeVideoFeedData => ({
+  live: isLiveStale(staleMs, 0) ? null : live,
+  sermon,
+  notices,
+  staleMs: 0,
+});
 
 const SEP = ' | ';
 

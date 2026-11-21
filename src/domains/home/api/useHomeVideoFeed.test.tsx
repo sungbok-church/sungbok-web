@@ -156,27 +156,24 @@ describe('useHomeVideoQuery — 브라우저에서 60초마다 다시 확인', (
     expect(result.current.error).toContain('500');
     expect(result.current.notices).toEqual([]);
   });
-  it('서버가 그린 피드가 있으면 첫 렌더부터 ready — 회색 자리표시 없이, 유튜브 재요청 없이', () => {
-    const { result } = renderHook(() => useHomeVideoQuery({ ...DATA, servedAt: Date.now() }), {
-      wrapper: makeWrapper(),
-    });
+  it('서버가 그린 피드가 있으면 첫 렌더부터 ready — 회색 자리표시 없이', () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useHomeVideoQuery(DATA), { wrapper: makeWrapper() });
 
     expect(result.current.status).toBe('ready');
     expect(result.current.sermon).toEqual(DATA.sermon);
-    // 방금 받은 데이터(60초 이내)라 마운트 때 다시 부르지 않는다
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('미리 그린 홈이 60초 넘게 묵었으면(서버가 만든 시각 servedAt) 화면에 붙자마자 다시 받는다', async () => {
+  it('미리 그린 피드는 언제 만든 것인지 모르므로 화면에 붙자마자 한 번 다시 받는다 — 그 뒤로는 60초 간격', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({ ok: true, data: DATA }),
     } as Response);
-    renderHook(() => useHomeVideoQuery({ ...DATA, servedAt: Date.now() - 3 * 60 * 60_000 }), {
-      wrapper: makeWrapper(),
-    });
+    renderHook(() => useHomeVideoQuery(DATA), { wrapper: makeWrapper() });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/home-video'));
+    await new Promise(r => setTimeout(r, 50));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('짧은 앱 전환은 다시 조회하지 않고, 오래 비운 뒤에는 기존 화면을 유지하며 갱신한다', async () => {
@@ -230,11 +227,13 @@ describe('HomeVideoFeedProvider — 서버가 그린 피드로 첫 화면, 브�
     return renderHook(() => useHomeVideoFeed(), { wrapper: Wrapper });
   };
 
-  it('서버가 그린 피드가 있으면 첫 렌더부터 그 값 — 유튜브 재요청 없이', () => {
+  it('서버가 그린 피드가 있으면 첫 렌더부터 그 값 — 확인은 붙은 뒤 /api/home-video 로 한 번', async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
     const { result } = inProvider(DATA);
     expect(result.current.status).toBe('ready');
     expect(result.current.sermon).toEqual(DATA.sermon);
-    expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock).toHaveBeenCalledWith('/api/home-video');
   });
 
   it('서버가 못 받았으면 불러오는 중으로 시작해 브라우저가 /api/home-video 로 받는다', async () => {

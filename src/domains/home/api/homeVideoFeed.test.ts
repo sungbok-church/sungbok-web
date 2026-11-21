@@ -9,6 +9,7 @@ import {
   parseSermonTitle,
   pickLatestSermon,
   pickLive,
+  toShellFeed,
   watchHref,
   type HomeVideo,
 } from './homeVideoFeed';
@@ -131,5 +132,27 @@ describe('isLiveStale', () => {
     expect(isLiveStale(9 * 60_000, 2 * 60_000)).toBe(true); // 서버 대신 응답 9분 + 화면 실패 2분 = 11분
     expect(isLiveStale(0, 11 * 60_000)).toBe(true);
     expect(isLiveStale(LIVE_MAX_AGE, 0)).toBe(false); // 딱 10분은 아직
+  });
+});
+
+describe('toShellFeed — 미리 그린 홈에 넣는 피드(ADR 0024)', () => {
+  const live = v({ id: 'L', broadcast: 'live', durationSec: null });
+  const sermon = v({ id: 'S' });
+  const notices = [v({ id: 'N' })];
+
+  it('시각 값을 빼서, 영상이 같으면 언제 다시 만들어도 같은 값이다 — 같은 내용이면 Vercel 이 ISR 쓰기를 세지 않는다', () => {
+    const a = toShellFeed({ live, sermon, notices, staleMs: 3_000 });
+    const b = toShellFeed({ live, sermon, notices, staleMs: 61_000 });
+    expect(a).toEqual(b);
+    expect(a).toEqual({ live, sermon, notices, staleMs: 0 });
+  });
+
+  it('영상 정보가 이미 10분 넘었으면 라이브를 빼고 넣는다 — 화면은 미리 그린 피드의 나이를 모른다', () => {
+    expect(toShellFeed({ live, sermon, notices, staleMs: 11 * 60_000 })).toEqual({
+      live: null,
+      sermon,
+      notices,
+      staleMs: 0,
+    });
   });
 });

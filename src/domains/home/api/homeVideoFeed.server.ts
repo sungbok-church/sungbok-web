@@ -134,7 +134,6 @@ const withAge = ({
 }: Awaited<ReturnType<typeof fetchFeed>>): HomeVideoFeedData => ({
   ...data,
   staleMs: Math.max(0, Date.now() - fetchedAt),
-  servedAt: Date.now(),
 });
 
 // Data Cache 는 200 만 저장한다 — 유튜브가 403/5xx·어긋난 모양을 내는 동안은 마지막 성공분으로 버틴다(stale-while-error).
