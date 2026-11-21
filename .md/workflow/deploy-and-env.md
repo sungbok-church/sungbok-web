@@ -102,7 +102,23 @@ DB 는 **정본 두 파일**로만 바꾼다([ADR 0019](../decisions/0019-db-sch
 
 - **교회 계정으로 옮길 때(나중에)**: 새 프로젝트로 복사하지 않고 Supabase 의 «프로젝트 이전»(Settings › General › Transfer project)을 쓴다(사용자 결정, 2026-11-19). 같은 프로젝트라 주소 · 키 · DB · 파일 · 로그인 계정이 그대로이고, 바꿀 것은 GitHub Secret `SUPABASE_ACCESS_TOKEN`(교회 계정 토큰)뿐이다. 조건: 지금 조직의 owner + 교회 조직의 member 이상, GitHub 연동 · 로그 드레인 없음, 리전은 바꿀 수 없다([공식 문서](https://supabase.com/docs/guides/platform/project-transfer)). 절차 문서와 이전 뒤 확인 명령은 이전할 때 만든다.
 
-## 7. 알려진 제약
+## 7. Vercel 방화벽 — 공식 권장만
+
+Vercel 은 운영에서도 **Hobby(무료)** 로 쓴다(유료는 Supabase Pro). Hobby 는 청구가 없는 대신 한 달 한도(CDN 요청 100만 · 함수 호출 100만 · Active CPU 4시간 등, [Hobby 한도](https://vercel.com/docs/plans/hobby))를 넘으면 그 기능이 최대 30일 멈춘다. 방화벽이 막은 요청은 한도에 잡히지 않는다([공식](https://vercel.com/docs/vercel-firewall/vercel-waf/usage-and-pricing)).
+
+[출시 전 체크리스트](https://vercel.com/docs/production-checklist)가 권하는 것만 한다(공식은 숫자를 정해 주지 않는다). DDoS 차단은 자동이라 할 것이 없다.
+
+- [ ] **요청 제한 1개 — 배포와 상관없이 지금 켤 수 있다. 프로젝트 소유자 계정으로 한다**(체크리스트: «Consider implementing rate limiting»): Vercel › 프로젝트 › Firewall › New Rule › 조건 Request Path · Matches expression · `^/(api|admin)/` → Rate Limit, 대시보드 기본값 그대로(**60초 · 100건**, 기준 IP) → **Too Many Requests(429)**. 요청마다 함수가 도는 곳만 건다 — `/api/*` 와, 요청마다 로그인 확인(`src/proxy.ts`)이 도는 `/admin/*`. 미리 만든 공개 페이지는 CDN 이 답한다. Hobby 는 요청 제한 규칙이 1개라 두 경로를 정규식 조건 하나로 묶는다(조건을 둘 걸면 «둘 다 맞아야» 라 아무것도 안 걸린다). 공식 예시도 API 경로에 거는 방식이다([요청 제한](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)).
+- [ ] **켜져 있는지 확인만**: 배포 보호(Deployment Protection — 2023-11 이후 새 프로젝트는 기본 켜짐), Fluid compute(체크리스트 «비용» 항목).
+- **공격받을 때**: Firewall › **Attack Challenge Mode** 를 1 · 6 · 24시간 켠다([Attack Mode](https://vercel.com/docs/vercel-firewall/attack-mode)) — 사람과 화면의 API 호출, 확인된 검색 · 미리보기 봇은 통과한다.
+
+배포 뒤 `/api/home-video` 가 CDN 에서 답하는지 확인(도메인은 운영 주소로):
+
+```bash
+curl -sI https://<도메인>/api/home-video | grep -i -E '^(x-vercel-cache|age):'   # 두 번째부터 HIT, age 는 30 미만
+```
+
+## 8. 알려진 제약
 
 - 삭제 동기화 없음. Secrets 에서 지운 변수는 Vercel 에서 소유자가 지운다.
 - production·preview 에 같은 값이 들어간다. 환경별로 달라야 하는 변수가 생기면 접미사 규약(예: `X_PREVIEW`)으로 워크플로우를 확장한다.

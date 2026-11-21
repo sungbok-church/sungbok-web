@@ -36,6 +36,24 @@ describe('GET /api/home-video', () => {
     expect((await GET()).status).toBe(503);
   });
 
+  it('성공 응답은 Vercel CDN 이 30초 들고 있는다 — 방문자 · 매크로가 몰려도 함수는 30초에 한 번만 돈다', async () => {
+    vi.mocked(fetchHomeVideoFeed).mockResolvedValue({
+      live: null,
+      sermon: null,
+      notices: [],
+      staleMs: 0,
+    });
+    const r = await GET();
+    expect(r.headers.get('Vercel-CDN-Cache-Control')).toBe('max-age=30');
+    expect(r.headers.get('Cache-Control')).toBeNull(); // 브라우저는 따로 담아 두지 않는다(60초 확인은 화면이 정한다)
+  });
+
+  it('실패 응답은 CDN 에 담지 않는다 — 유튜브가 돌아오면 바로 다음 요청부터 정상', async () => {
+    vi.mocked(fetchHomeVideoFeed).mockRejectedValueOnce(new YoutubeApiError('videos', 503));
+    const r = await GET();
+    expect(r.headers.get('Vercel-CDN-Cache-Control')).toBeNull();
+  });
+
   it('미리 만들어 두지 않고 요청 때마다 답한다(connection)', async () => {
     vi.mocked(fetchHomeVideoFeed).mockResolvedValue({
       live: null,

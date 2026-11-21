@@ -102,7 +102,7 @@
 ### Workflow
 
 - [prototype-preview.md](workflow/prototype-preview.md) — 시안(디자인 변형) 탐색·라이브 프리뷰 방식. 좋은 시안의 조건(콘텐츠 분리·쏠림 금지·등장/사라짐 설계) + `<name>-preview` 라우트 + `_variants/` + 전용 dev 포트 + 비인터랙티브 영상/스크롤 헬퍼 + browse 자기점검. (구 standalone HTML 방식 폐기)
-- [deploy-and-env.md](workflow/deploy-and-env.md) — 배포·환경변수 운영 절차. 정본 = GitHub Secrets, Actions "Sync env to Vercel"(수동, 변수 1개씩)로 Vercel 에 덮어쓰기, 배포는 Vercel Git 자동. 1회 셋업 체크리스트(조직 이전·Vercel 재연결·토큰)·일상 절차·로컬 개발·규칙
+- [deploy-and-env.md](workflow/deploy-and-env.md) — 배포·환경변수 운영 절차. 정본 = GitHub Secrets, Actions "Sync env to Vercel"(수동, 변수 1개씩)로 Vercel 에 덮어쓰기, 배포는 Vercel Git 자동. 1회 셋업 체크리스트(조직 이전·Vercel 재연결·토큰)·일상 절차·로컬 개발·규칙·Vercel 방화벽(공식 권장만: `/api/` · `/admin/` 요청 제한 기본값 · 공격 때 Attack Challenge Mode)
 
 ### Patterns
 
