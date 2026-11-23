@@ -463,6 +463,9 @@ isOneToOne: false
 "create_group":
 { Args: { "p_description": string,"p_name": string,"p_permissions": (string)[] }; Returns: string
                            },
+"my_department_limit":
+{ Args: Record<PropertyKey, never>; Returns: Database["public"]['Enums']["department_slug"]
+                           },
 "my_permissions":
 { Args: Record<PropertyKey, never>; Returns: {
               "action": Database["public"]['Enums']["permission_action"],"menu_key": string
@@ -476,6 +479,9 @@ isOneToOne: false
                            },
 "purge_expired":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"reorder_rows":
+{ Args: { "p_ids": (string)[],"p_table": string }; Returns: undefined
                            },
 "save_group":
 { Args: { "p_description": string,"p_id": string,"p_is_active": boolean,"p_name": string,"p_permissions": (string)[],"p_seen_permissions": (string)[],"p_updated_at": string }; Returns: string

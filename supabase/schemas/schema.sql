@@ -587,6 +587,20 @@ as $$
   )
 $$;
 
+-- 로그인한 사람이 이 그룹의 구성원인가(그룹이 켜져 있는지는 보지 않는다 — 꺼진 내 그룹도 내 그룹이다).
+-- «전체 관리» 가 아닌 사람은 내 그룹에만 사람을 넣고 빼며(guard_user_groups), 대상의 그룹이 모두 내 그룹일 때만 그 계정을
+-- 관리한다(can_manage_user). 같은 그룹이면 그 그룹의 권한(꺼진 그룹 · 꺼진 메뉴의 잠자는 권한도)이 나와 같이 살고 같이 잔다 —
+-- 내게 없는 권한을 줄 수 없다(권한 올리기 방지 ②).
+create function private.is_my_group(p_group uuid) returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.user_groups ug
+     where ug.user_id = (select auth.uid()) and ug.group_id = p_group
+  )
+$$;
+
 -- 이 사람이 «메뉴 key + 기능» 을 갖는가. 사용자가 활성이고, 메뉴가 사용 중이고 그 기능이 있으며,
 -- 속한 활성 그룹 중 하나가 그 권한을 갖거나 «전체 관리» 일 때 참. 여러 그룹이면 합친다.
 -- 로그인한 사람의 판정은 has_permission, 다른 사람의 판정(새가족 알림 받을 사람)은 이 함수를 직접 쓴다.
@@ -642,11 +656,38 @@ as $$
      and private.user_has_permission((select auth.uid()), m.key, a.action)
 $$;
 
--- 화면용: 로그인한 사람이 이 사용자의 비밀번호를 초기화하거나 계정을 관리할 수 있는가.
--- 비밀번호 초기화는 만능 키(Auth API)로 해서 DB 트리거가 막지 못하므로 서버가 먼저 이것으로 확인한다(설계 6.4 ①).
--- 사용자 수정 권한이 있고, 대상이 자기 자신이 아니고, «전체 관리» 가 아니면: 대상이 «전체 관리» 구성원이 아니고
--- 대상이 속한 그룹의 권한을 내가 모두 가졌을 때만 참 — 비밀번호를 초기화하면 그 계정(과 권한)을 받는 것과 같다
--- (권한 올리기 방지 ②, guard_user_groups 와 같은 조건).
+-- 화면 · 지키는 규칙용: 로그인한 사람의 부서 범위 — «전체 관리» 가 아니고 담당 부서가 정해져 있으면 그 부서, 아니면 null(범위 없음).
+-- 부서 범위가 있는 사람은 다른 사람의 부서를 자기 부서로만 정하고(비우면 모든 부서가 된다) 자기 부서의 사용자만 관리한다
+-- (권한 올리기 방지 ③ — guard_profiles · guard_user_groups · can_manage_user). 자기 행만 읽으므로 로그인한 사람의 권한으로 돈다.
+create function public.my_department_limit() returns public.department_slug
+language sql stable
+set search_path = ''
+as $$
+  select p.department
+    from public.profiles p
+   where p.id = (select auth.uid())
+     and not private.is_full_admin()
+$$;
+
+-- 이 사용자가 로그인한 사람의 부서 범위 안에 있는가 — 범위가 없거나 대상의 부서가 내 부서와 같을 때 참.
+create function private.in_my_department(p_target uuid) returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select case
+    when public.my_department_limit() is null then true
+    else exists (
+      select 1 from public.profiles p
+       where p.id = p_target and p.department = public.my_department_limit()
+    )
+  end
+$$;
+
+-- 로그인한 사람이 이 사용자의 비밀번호를 초기화하거나 계정을 관리(이름 · 부서 · 끄기 · 켜기 — guard_profiles 가 이것으로 막는다)
+-- 할 수 있는가. 비밀번호 초기화는 만능 키(Auth API)로 해서 DB 트리거가 막지 못하므로 서버가 먼저 이것으로 확인한다(설계 6.4 ①).
+-- 사용자 수정 권한이 있고, 대상이 자기 자신이 아니고, «전체 관리» 가 아니면: 대상이 속한 그룹이 모두 내 그룹이고
+-- («전체 관리» 그룹은 빼고, is_my_group — 그룹이 없는 사람도 된다) 대상이 내 부서 범위 안일 때만 참 — 비밀번호를 초기화하면
+-- 그 계정(과 권한 · 부서 범위)을 받는 것과 같다(권한 올리기 방지 ② · ③). 대상이 꺼져 있어도 같은 기준이다(켜면 권한이 살아난다).
 create function public.can_manage_user(p_target uuid) returns boolean
 language sql stable security definer
 set search_path = ''
@@ -658,16 +699,9 @@ as $$
        or (
          not exists (
            select 1 from public.user_groups ug join public.groups g on g.id = ug.group_id
-            where ug.user_id = p_target and g.is_system
+            where ug.user_id = p_target and (g.is_system or not private.is_my_group(g.id))
          )
-         and not exists (
-           select 1
-             from public.user_groups ug
-             join public.group_permissions gp on gp.group_id = ug.group_id
-             join public.menus m on m.id = gp.menu_id
-            where ug.user_id = p_target
-              and not private.has_permission(m.key, gp.action)
-         )
+         and private.in_my_department(p_target)
        )
      )
 $$;
@@ -677,6 +711,7 @@ $$;
 -- 바꿨으면(updated_at · 그룹 소속 · 권한 표가 그때와 다르면) 아무것도 바꾸지 않고 null — 화면은 «다른 사람이 먼저 고쳤습니다».
 
 -- 사용자 고치기: 이름 · 부서 · 사용 여부 + 그룹 소속. p_seen_group_ids 는 화면을 열었을 때의 그룹 목록.
+-- 사용자 정보를 그룹보다 먼저 고친다 — guard_profiles 의 «관리할 수 있는 사람인가» 는 바꾸기 전 그룹으로 본다.
 create function public.save_user(
   p_id uuid,
   p_updated_at timestamptz,
@@ -707,8 +742,10 @@ begin
   if saved is null then
     return null;
   end if;
-  delete from public.user_groups
-   where user_id = p_id and group_id <> all (coalesce(p_group_ids, '{}'));
+  -- «전체 관리» 소속은 목록에 없어도 지우지 않는다(화면에서 바꾸지 않는다 — 넣으려 하면 guard_user_groups 가 막는다)
+  delete from public.user_groups ug
+   where ug.user_id = p_id and ug.group_id <> all (coalesce(p_group_ids, '{}'))
+     and not exists (select 1 from public.groups g where g.id = ug.group_id and g.is_system);
   insert into public.user_groups (user_id, group_id)
   select distinct p_id, g
     from unnest(coalesce(p_group_ids, '{}')) g
@@ -780,6 +817,83 @@ begin
     from unnest(coalesce(p_permissions, '{}')) x
     join public.menus m on m.area = 'ADMIN' and m.key = split_part(x, ':', 1);
   return new_id;
+end
+$$;
+
+-- 끌어서 옮긴 순서를 한 번에 저장(메뉴 관리 · 분류 관리 · 코드 관리). p_ids 는 한 무리(메뉴: 같은 영역 · 같은 상위 메뉴,
+-- 분류 · 코드: 같은 묶음)의 모든 줄을 새 순서대로 — 빠지거나 더 있거나 겹치거나 다른 무리가 섞이면 아무것도 바꾸지 않고 오류.
+-- 순서 값은 10, 20, 30 … 으로 다시 매기고 값이 바뀐 줄만 고친다(그대로인 줄은 수정 시각 · 변경 이력이 남지 않는다).
+-- 로그인한 사람의 권한으로 돈다(security invoker — 행 권한 · 지키는 규칙 · 감사 로그가 그대로). 무리의 줄을 잠가 같은 무리를
+-- 동시에 옮기면 차례로 돈다(뒤의 저장은 앞 저장이 끝난 뒤 무리를 다시 본다). 메뉴 key 와 표 이름이 같다(권한 판정).
+create function public.reorder_rows(p_table text, p_ids uuid[]) returns void
+language plpgsql
+set search_path = ''
+as $$
+declare
+  first_id uuid := p_ids[1];
+  current_ids uuid[];
+begin
+  if p_table is null or p_table not in ('menus', 'categories', 'codes') then
+    raise exception '순서를 바꿀 수 없는 표입니다: %', p_table using errcode = '22023';
+  end if;
+  if coalesce(cardinality(p_ids), 0) = 0
+     or cardinality(p_ids) <> (select count(distinct x) from unnest(p_ids) x) then
+    raise exception '순서를 바꿀 목록이 비었거나 같은 줄이 두 번 들어 있습니다' using errcode = '23514';
+  end if;
+  if not private.has_permission(p_table, 'UPDATE') then
+    raise exception '수정 권한이 없습니다' using errcode = '42501';
+  end if;
+
+  -- 첫 줄과 같은 무리의 줄을 모두 잠그고 지금 목록을 읽는다(잠그는 차례는 id 순 — 서로 기다리다 멈추지 않게)
+  if p_table = 'menus' then
+    with locked as (
+      select t.id
+        from public.menus t
+        join public.menus f on f.id = first_id
+       where t.area = f.area and t.parent_id is not distinct from f.parent_id
+       order by t.id
+         for update of t
+    )
+    select array_agg(id order by id) into current_ids from locked;
+  elsif p_table = 'categories' then
+    with locked as (
+      select t.id
+        from public.categories t
+        join public.categories f on f.id = first_id
+       where t.group_key = f.group_key
+       order by t.id
+         for update of t
+    )
+    select array_agg(id order by id) into current_ids from locked;
+  else
+    with locked as (
+      select t.id
+        from public.codes t
+        join public.codes f on f.id = first_id
+       where t.group_key = f.group_key
+       order by t.id
+         for update of t
+    )
+    select array_agg(id order by id) into current_ids from locked;
+  end if;
+
+  if current_ids is distinct from (select array_agg(x order by x) from unnest(p_ids) x) then
+    raise exception '목록이 그사이 바뀌었습니다. 새로고침한 뒤 다시 옮겨 주세요' using errcode = '23514';
+  end if;
+
+  if p_table = 'menus' then
+    update public.menus t set sort = o.sort
+      from (select x.id, (x.n * 10)::integer as sort from unnest(p_ids) with ordinality as x (id, n)) o
+     where t.id = o.id and t.sort <> o.sort;
+  elsif p_table = 'categories' then
+    update public.categories t set sort = o.sort
+      from (select x.id, (x.n * 10)::integer as sort from unnest(p_ids) with ordinality as x (id, n)) o
+     where t.id = o.id and t.sort <> o.sort;
+  else
+    update public.codes t set sort = o.sort
+      from (select x.id, (x.n * 10)::integer as sort from unnest(p_ids) with ordinality as x (id, n)) o
+     where t.id = o.id and t.sort <> o.sort;
+  end if;
 end
 $$;
 
@@ -1098,15 +1212,22 @@ end
 $$;
 
 -- 메뉴는 화면에서 이름 · 사용 여부 · 순서만 바꾼다. 나머지는 reference.sql(사람 없음)로만.
+-- 사용 여부(켜기 · 끄기)는 «전체 관리» 만 — 권한은 메뉴가 켜져 있을 때만 살아 있어서(user_has_permission),
+-- 켜면 잠자던 내 권한이 깨어나고 끄면 모두의 권한이 빠진다(내 권한은 «전체 관리» 만 바꾼다, guard_group_permissions).
 create function private.guard_menus() returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
-  if (select auth.uid()) is not null
-     and (to_jsonb(new) - array['label', 'is_active', 'sort', 'updated_at', 'updated_by'])
-         is distinct from (to_jsonb(old) - array['label', 'is_active', 'sort', 'updated_at', 'updated_by']) then
+  if (select auth.uid()) is null then
+    return new;
+  end if;
+  if (to_jsonb(new) - array['label', 'is_active', 'sort', 'updated_at', 'updated_by'])
+     is distinct from (to_jsonb(old) - array['label', 'is_active', 'sort', 'updated_at', 'updated_by']) then
     raise exception '메뉴는 이름 · 사용 여부 · 순서만 바꿀 수 있습니다' using errcode = '42501';
+  end if;
+  if new.is_active is distinct from old.is_active and not private.is_full_admin() then
+    raise exception '메뉴 켜기 · 끄기는 «전체 관리» 만 합니다' using errcode = '42501';
   end if;
   return new;
 end
@@ -1167,7 +1288,8 @@ begin
 end
 $$;
 
--- 권한 칸: 그 메뉴에 있는 기능만. 사람이 줄 때는 자기가 가진 권한만 줄 수 있다(«전체 관리» 는 예외).
+-- 권한 칸: 그 메뉴에 있는 기능만. 사람이 넣고 빼는 것은 «전체 관리» 만(권한 올리기 방지 ① — 그룹 권한 표를 고치면
+-- 누구에게든 어떤 권한이든 줄 수 있다). 사람이 없는 변경(reference.sql · 변경 파일)은 검사하지 않는다.
 create function private.guard_group_permissions() returns trigger
 language plpgsql security definer
 set search_path = ''
@@ -1175,20 +1297,22 @@ as $$
 declare
   m record;
 begin
+  if (select auth.uid()) is not null and not private.is_full_admin() then
+    raise exception '그룹 권한은 «전체 관리» 만 바꿉니다' using errcode = '42501';
+  end if;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
   select key, actions, area into m from public.menus where id = new.menu_id;
   if m.area <> 'ADMIN' or not (new.action = any (m.actions)) then
     raise exception '메뉴 «%» 에는 «%» 기능이 없습니다', m.key, new.action using errcode = '23514';
-  end if;
-  if (select auth.uid()) is not null
-     and not private.is_full_admin()
-     and not private.has_permission(m.key, new.action) then
-    raise exception '자기가 가진 권한만 줄 수 있습니다' using errcode = '42501';
   end if;
   return new;
 end
 $$;
 
--- 그룹 소속: 자기 그룹은 못 바꾸고, «전체 관리» 그룹의 구성원은 «전체 관리» 만 바꾼다.
+-- 그룹 소속: «전체 관리» 소속은 화면에서 아무도 못 바꾸고(사람 없는 변경만), 자기 그룹은 못 바꾼다. «전체 관리» 가 아니면
+-- 내가 속한 그룹에만 넣고 빼고, 내 부서 범위의 사용자 중 내가 관리할 수 있는 사람(can_manage_user)만 바꾼다.
 create function private.guard_user_groups() returns trigger
 language plpgsql security definer
 set search_path = ''
@@ -1206,24 +1330,31 @@ begin
     target_group := new.group_id;
   end if;
   if actor is not null then
+    -- «전체 관리» 소속은 화면(로그인한 세션)에서 아무도 — «전체 관리» 도 — 바꾸지 못한다. «전체 관리» 계정을 빼앗겨도 새 «전체 관리» 를
+    -- 만들거나 다른 «전체 관리» 를 빼내지 못하게. 운영자가 대시보드 SQL 편집기(사람 없는 변경)로만 바꾼다(deploy-and-env.md).
+    if exists (select 1 from public.groups g where g.id = target_group and g.is_system) then
+      raise exception '«전체 관리» 소속은 화면에서 바꿀 수 없습니다' using errcode = '42501';
+    end if;
     if target_user = actor then
       raise exception '자기 그룹은 바꿀 수 없습니다' using errcode = '42501';
     end if;
-    if exists (select 1 from public.groups g where g.id = target_group and g.is_system)
-       and not private.is_full_admin() then
-      raise exception '«전체 관리» 그룹의 구성원은 «전체 관리» 만 바꿉니다' using errcode = '42501';
-    end if;
-    -- 권한 올리기 방지 ②: 그룹에 넣는 것도 권한을 주는 것이다 — 그 그룹의 권한을 내가 모두 가졌을 때만.
-    if tg_op = 'INSERT'
-       and not private.is_full_admin()
-       and exists (
-         select 1
-           from public.group_permissions gp
-           join public.menus m on m.id = gp.menu_id
-          where gp.group_id = target_group
-            and not private.has_permission(m.key, gp.action)
-       ) then
-      raise exception '자기가 가진 권한보다 많은 그룹에는 넣을 수 없습니다' using errcode = '42501';
+    if not private.is_full_admin() then
+      -- 권한 올리기 방지 ②: 그룹에 넣는 것도 권한을 주는 것이다 — 내가 속한 그룹(내가 가진 권한)에만. 빼는 것도 내 그룹에서만.
+      if not private.is_my_group(target_group) then
+        raise exception '내가 속한 그룹에만 넣고 뺄 수 있습니다' using errcode = '42501';
+      end if;
+      -- 권한 올리기 방지 ③: 부서 범위가 있으면 내 부서의 사용자만(넣기 · 빼기 모두). 새 계정은 만들 때 부서가 정해진다(createUser).
+      if not private.in_my_department(target_user) then
+        raise exception '내 담당 부서의 사용자만 바꿀 수 있습니다' using errcode = '42501';
+      end if;
+      -- 권한 올리기 방지 ②: 대상이 남의 그룹에도 속하면(관리할 수 없는 사람) 내 그룹이라도 넣고 빼지 못한다 — 빼면 그 사람의
+      -- 권한을 깎고, 넣으면 내가 관리하지 못하는 계정의 권한을 바꾼다. BEFORE 트리거라 이 줄은 아직 반영되지 않았다 — 바꾸기 전
+      -- 소속으로 본다(넣기: 아직 없음 · 빼기: 아직 있음 — 둘 다 내 그룹이라 관리할 수 있는 사람은 그대로 관리할 수 있다).
+      -- 그룹 없는 새 계정(createUser)은 관리할 수 있고, save_user 는 사용자 정보를 먼저 고친 뒤 한 줄씩 넣고 빼므로
+      -- 줄마다 대상의 그룹은 여전히 모두 내 그룹이다.
+      if not public.can_manage_user(target_user) then
+        raise exception '내가 속하지 않은 그룹의 사용자는 «전체 관리» 만 바꿉니다' using errcode = '42501';
+      end if;
     end if;
   end if;
   if tg_op = 'DELETE' then
@@ -1234,6 +1365,7 @@ end
 $$;
 
 -- 그룹: 시스템 그룹은 끄거나 지우거나 key 를 바꿀 수 없다(이름 · 설명은 된다). key 는 사람이 정하지 않는다.
+-- 사람이 만들고 고치는 것(이름 · 설명 · 끄기 · 켜기)은 «전체 관리» 만 — 켜고 끄는 것도 구성원의 권한을 바꾸는 것이다.
 create function private.guard_groups() returns trigger
 language plpgsql
 set search_path = ''
@@ -1246,18 +1378,14 @@ begin
     return old;
   end if;
   if (select auth.uid()) is not null then
+    if not private.is_full_admin() then
+      raise exception '그룹은 «전체 관리» 만 만들고 고칩니다' using errcode = '42501';
+    end if;
     if tg_op = 'INSERT' and (new.key is not null or new.is_system) then
       raise exception '그룹 key 와 시스템 여부는 변경 파일로만 정합니다' using errcode = '42501';
     end if;
     if tg_op = 'UPDATE' and (new.key is distinct from old.key or new.is_system is distinct from old.is_system) then
       raise exception '그룹 key 와 시스템 여부는 변경 파일로만 정합니다' using errcode = '42501';
-    end if;
-    -- «삭제»(끄기) 권한만 있으면 사용 여부만 바꾼다.
-    if tg_op = 'UPDATE'
-       and not private.has_permission('groups', 'UPDATE')
-       and (to_jsonb(new) - array['is_active', 'updated_at', 'updated_by'])
-           is distinct from (to_jsonb(old) - array['is_active', 'updated_at', 'updated_by']) then
-      raise exception '그룹 수정 권한이 없습니다' using errcode = '42501';
     end if;
   end if;
   return new;
@@ -1266,12 +1394,15 @@ $$;
 
 -- 사용자 정보: id · email 은 화면에서 못 바꾼다. 자기 자신은(사용자 수정 권한이 없으면) 비밀번호 변경 표시만 끈다.
 -- «전체 관리» 구성원을 끄거나 · 비밀번호 초기화 표시를 하거나 · 부서를 바꾸는 것은 «전체 관리» 만.
+-- «전체 관리» 가 아니면 다른 사람의 정보는 그 계정을 관리할 수 있을 때만(can_manage_user — 대상의 그룹이 모두 내 그룹).
+-- 부서 범위가 있는 사람은 다른 사람의 부서를 자기 부서로만 정하고 자기 부서의 사용자만 바꾼다(권한 올리기 방지 ③).
 create function private.guard_profiles() returns trigger
 language plpgsql security definer
 set search_path = ''
 as $$
 declare
   actor uuid := (select auth.uid());
+  scope_dept public.department_slug;
 begin
   if actor is null then
     return new;
@@ -1295,6 +1426,19 @@ begin
   if old.id = actor and new.department is distinct from old.department and not private.is_full_admin() then
     raise exception '자기 부서 범위는 바꿀 수 없습니다' using errcode = '42501';
   end if;
+  -- 부서 범위가 있으면(권한 올리기 방지 ③): 다른 사람의 부서는 내 부서로만 정하고(비우면 모든 부서 = 내 범위보다 넓다),
+  -- 내 부서의 사용자만 바꾼다 — 예외 없이. 범위 밖 계정(부서가 빈 새 계정도)을 내 부서로 끌어오면 그 계정을 관리하게 되고
+  -- 비밀번호를 초기화해 쥘 수 있다(다른 관리자가 막 만든 계정 · 물러난 관리자의 꺼진 계정 등). 계정 만들기(createUser)는
+  -- 부서를 계정과 함께 정한다(user_metadata.department → on_auth_user_changed) — 내 부서인지는 서버가 Auth API 전에 본다.
+  scope_dept := public.my_department_limit();
+  if old.id <> actor and scope_dept is not null then
+    if new.department is distinct from old.department and new.department is distinct from scope_dept then
+      raise exception '부서는 내 담당 부서로만 정할 수 있습니다' using errcode = '42501';
+    end if;
+    if old.department is distinct from scope_dept then
+      raise exception '내 담당 부서의 사용자만 바꿀 수 있습니다' using errcode = '42501';
+    end if;
+  end if;
   if old.id <> actor
      and exists (
        select 1 from public.user_groups ug join public.groups g on g.id = ug.group_id
@@ -1302,6 +1446,13 @@ begin
      )
      and not private.is_full_admin() then
     raise exception '«전체 관리» 구성원은 «전체 관리» 만 바꿉니다' using errcode = '42501';
+  end if;
+  -- 권한 올리기 방지 ②: 다른 사람의 정보(이름 · 부서 · 끄기 · 켜기 · 비밀번호 바꾸기 표시)는 그 계정을 관리할 수 있을 때만 —
+  -- 비밀번호 초기화와 같은 기준(can_manage_user: 대상의 그룹이 모두 내 그룹이고 내 부서 범위 안). 꺼진 남의 그룹 사람을 켜면
+  -- 그 그룹의 권한이 되살아난다. save_user 는 사용자 정보를 그룹보다 먼저 고치므로 이때 대상의 그룹은 아직 화면을 열었을 때의
+  -- 그룹이다(그룹 없는 새 계정도 관리할 수 있다 — 그 뒤 그룹 넣고 빼기도 guard_user_groups 가 같은 기준으로 본다).
+  if old.id <> actor and not private.is_full_admin() and not public.can_manage_user(old.id) then
+    raise exception '내가 속하지 않은 그룹의 사용자는 «전체 관리» 만 바꿉니다' using errcode = '42501';
   end if;
   return new;
 end
@@ -1352,22 +1503,32 @@ end
 $$;
 
 -- 로그인 계정이 생기면 사용자 정보를 만들고, 이메일이 바뀌면 맞춘다.
--- 이름은 계정을 만들 때 넘긴 user_metadata.name(없으면 이메일 앞부분).
+-- 이름 · 담당 부서는 계정을 만들 때 넘긴 user_metadata.name(없으면 이메일 앞부분) · user_metadata.department(없으면 모든 부서).
+-- 부서는 **계정이 생길 때만** 읽는다 — 로그인한 사람은 자기 user_metadata 를 바꿀 수 있어서(auth.updateUser({ data })),
+-- 그 뒤의 metadata 로 부서를 바꾸면 자기 부서 범위를 스스로 넓힌다. 계정은 만능 키로만 만든다(createUser — 내 부서인지는
+-- 서버가 먼저 본다). 부서 목록에 없는 값이면 계정을 만들지 않는다(조용히 «모든 부서» 가 되지 않게).
 create function private.on_auth_user_changed() returns trigger
 language plpgsql security definer
 set search_path = ''
 as $$
+declare
+  dept text;
 begin
   -- 익명 로그인은 관리자 계정이 아니다(reference.sql 의 기존 계정 채우기와 같은 기준).
   if new.is_anonymous then
     return null;
   end if;
   if tg_op = 'INSERT' then
-    insert into public.profiles (id, email, name)
+    dept := nullif(new.raw_user_meta_data ->> 'department', '');
+    if dept is not null and not (dept = any (enum_range(null::public.department_slug)::text[])) then
+      raise exception '없는 부서입니다: %', dept using errcode = '22023';
+    end if;
+    insert into public.profiles (id, email, name, department)
     values (
       new.id,
       coalesce(new.email, ''),
-      left(coalesce(nullif(new.raw_user_meta_data ->> 'name', ''), split_part(coalesce(new.email, 'user'), '@', 1)), 50)
+      left(coalesce(nullif(new.raw_user_meta_data ->> 'name', ''), split_part(coalesce(new.email, 'user'), '@', 1)), 50),
+      dept::public.department_slug
     )
     on conflict (id) do nothing;
   elsif new.email is distinct from old.email then
@@ -1489,7 +1650,7 @@ create trigger guard_lists before insert or update on public.department_staff
   for each row execute function private.guard_list_menu('departments', 'photo_list_id');
 create trigger prune_permissions after update of actions on public.menus
   for each row execute function private.prune_menu_permissions();
-create trigger guard before insert or update on public.group_permissions
+create trigger guard before insert or update or delete on public.group_permissions
   for each row execute function private.guard_group_permissions();
 create trigger guard before insert or delete on public.user_groups
   for each row execute function private.guard_user_groups();
@@ -1575,6 +1736,7 @@ create policy profiles_update on public.profiles for update to authenticated
 
 create policy groups_select on public.groups for select to authenticated
   using ((select private.has_permission('groups', 'READ')) or (select private.has_permission('users', 'READ')));
+-- 그룹 · 그룹 권한을 만들고 고치는 것은 행 권한을 지나도 «전체 관리» 만 된다(guard_groups · guard_group_permissions).
 create policy groups_insert on public.groups for insert to authenticated
   with check ((select private.has_permission('groups', 'CREATE')));
 -- «삭제» 는 끄기(is_active = false)다 — 행을 지우는 규칙은 두지 않는다.
@@ -1837,6 +1999,7 @@ grant execute on function private.uuid_v7() to service_role;
 -- RLS 와 기본값이 부르는 함수
 grant execute on function private.uuid_v7() to authenticated;
 grant execute on function private.is_full_admin() to authenticated;
+grant execute on function private.is_my_group(uuid) to authenticated;
 grant execute on function private.has_permission(text, public.permission_action) to authenticated;
 grant execute on function private.news_menu(public.news_feed) to authenticated;
 grant execute on function private.can_edit_department(public.department_slug) to authenticated;
@@ -1848,10 +2011,12 @@ grant execute on function private.can_read_history(text, uuid, text, uuid) to au
 -- 예약 작업은 서버 전용 키만
 grant execute on function public.my_permissions() to authenticated;
 grant execute on function public.can_manage_user(uuid) to authenticated;
+grant execute on function public.my_department_limit() to authenticated;
 grant execute on function public.actor_names(uuid[]) to authenticated;
 grant execute on function public.save_user(uuid, timestamptz, text, public.department_slug, boolean, uuid[], uuid[]) to authenticated;
 grant execute on function public.save_group(uuid, timestamptz, text, text, boolean, text[], text[]) to authenticated;
 grant execute on function public.create_group(text, text, text[]) to authenticated;
+grant execute on function public.reorder_rows(text, uuid[]) to authenticated;
 grant execute on function public.purge_expired() to service_role;
 grant execute on function public.orphan_storage_objects(integer) to service_role;
 grant execute on function public.newcomer_notify_emails() to service_role;

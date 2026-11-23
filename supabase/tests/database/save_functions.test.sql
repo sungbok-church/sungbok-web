@@ -5,7 +5,8 @@ begin;
 select * from no_plan();
 
 -- 준비(postgres = 사람 없는 변경)
--- 계정: u 사용자 관리(조회 · 수정) · g 그룹 관리(조회 · 등록 · 수정 + 앨범 조회) · t 고칠 대상 · a 전체 관리
+-- 계정: u 사용자 관리(조회 · 수정 — save-users · save-plain 구성원) · g 그룹 관리(조회 · 등록 · 수정 + 앨범 조회 — 전체 관리 아님) ·
+--       t 고칠 대상 · a 전체 관리
 insert into auth.users (id, email) values
   ('00000000-0000-7000-8000-00000000a001', 'sa@test.local'),
   ('00000000-0000-7000-8000-00000000a002', 'su@test.local'),
@@ -33,6 +34,7 @@ select g, m.id, a::public.permission_action
 insert into public.user_groups (user_id, group_id) values
   ('00000000-0000-7000-8000-00000000a001', (select id from public.groups where key = 'admin')),
   ('00000000-0000-7000-8000-00000000a002', '00000000-0000-7000-8000-00000000b001'),
+  ('00000000-0000-7000-8000-00000000a002', '00000000-0000-7000-8000-00000000b003'),
   ('00000000-0000-7000-8000-00000000a003', '00000000-0000-7000-8000-00000000b002');
 
 -- ----------------------------------------------------------------------------
@@ -89,7 +91,7 @@ select throws_ok(
       '{00000000-0000-7000-8000-00000000b003}'
     )$$,
   '42501', null,
-  'save_user: 자기에게 없는 권한을 가진 그룹은 넣을 수 없다'
+  'save_user: 내가 속하지 않은 그룹은 넣을 수 없다'
 );
 select is(
   (select name from public.profiles where id = '00000000-0000-7000-8000-00000000a004'),
@@ -113,10 +115,28 @@ select ok(
 reset role;
 
 -- ----------------------------------------------------------------------------
--- save_group — 그룹 이름 · 설명 · 사용 여부와 권한 표를 한 번에
+-- save_group — 그룹 이름 · 설명 · 사용 여부와 권한 표를 한 번에(«전체 관리» 만 — own_group.test.sql)
 -- ----------------------------------------------------------------------------
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-00000000a003","role":"authenticated"}', true);
+select throws_ok(
+  $$select public.save_group(
+      '00000000-0000-7000-8000-00000000b003',
+      (select updated_at from public.groups where id = '00000000-0000-7000-8000-00000000b003'),
+      '그룹 관리가 고침', null, true, null, null
+    )$$,
+  '42501', null,
+  'save_group: «전체 관리» 가 아니면 그룹 권한이 있어도 저장하지 못한다'
+);
+select throws_ok(
+  $$select public.create_group('그룹 관리가 만듦', null, '{album:READ}')$$,
+  '42501', null,
+  'create_group: «전체 관리» 가 아니면 그룹 권한이 있어도 만들지 못한다'
+);
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-00000000a001","role":"authenticated"}', true);
 
 select is(
   public.save_group(
@@ -156,10 +176,10 @@ select throws_ok(
       '00000000-0000-7000-8000-00000000b003',
       (select updated_at from public.groups where id = '00000000-0000-7000-8000-00000000b003'),
       '반쯤 저장되면 안 됨', null, true,
-      '{album:READ,album:UPDATE}', '{album:READ}'
+      '{album:READ,home-hero:CREATE}', '{album:READ}'
     )$$,
-  '42501', null,
-  'save_group: 자기에게 없는 권한은 줄 수 없다'
+  '23514', null,
+  'save_group: 메뉴에 없는 기능은 줄 수 없다'
 );
 select is(
   (select name from public.groups where id = '00000000-0000-7000-8000-00000000b003'),
@@ -197,9 +217,9 @@ select is(
   'create_group: 처음 권한이 함께 들어갔다'
 );
 select throws_ok(
-  $$select public.create_group('막힐 묶음', null, '{album:READ,album:UPDATE}')$$,
-  '42501', null,
-  'create_group: 자기에게 없는 권한은 줄 수 없다'
+  $$select public.create_group('막힐 묶음', null, '{album:READ,home-hero:CREATE}')$$,
+  '23514', null,
+  'create_group: 메뉴에 없는 기능은 줄 수 없다'
 );
 reset role;
 select ok(

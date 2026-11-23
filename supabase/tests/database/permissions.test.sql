@@ -7,7 +7,7 @@ select * from no_plan();
 -- 준비(postgres = 사람 없는 변경이라 지키는 규칙을 건너뛴다)
 -- ----------------------------------------------------------------------------
 -- 계정: a 전체 관리 · c 콘텐츠 담당 · e 앨범 수정만 · n 새가족 담당 · d 영아부 담당 · g 그룹 관리(앨범 조회만) ·
---       u 사용자 관리(영아부 범위) · k 앨범 등록만 · x 그룹 없음
+--       u 사용자 관리(영아부 범위) · k 앨범 등록만 · x 그룹 없음(영아부 — u 의 범위 안. 범위 밖은 department_scope.test.sql)
 insert into auth.users (id, email) values
   ('00000000-0000-7000-8000-00000000000a', 'a@test.local'),
   ('00000000-0000-7000-8000-00000000000c', 'c@test.local'),
@@ -64,7 +64,8 @@ select u::uuid, (select id from public.groups where key = gk or (gk like 'test-%
   ) as v (u, gk);
 
 update public.profiles set department = 'INFANT'
- where id in ('00000000-0000-7000-8000-00000000000d', '00000000-0000-7000-8000-000000000003');
+ where id in ('00000000-0000-7000-8000-00000000000d', '00000000-0000-7000-8000-000000000003',
+              '00000000-0000-7000-8000-00000000000f');
 
 insert into public.categories (id, group_key, slug, label) values
   ('00000000-0000-7000-8000-0000000c0de1', 'ALBUM_CATEGORY', 'test-event', '시험 앨범 분류'),
@@ -442,24 +443,14 @@ reset role;
 -- ----------------------------------------------------------------------------
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-000000000002","role":"authenticated"}', true);
-select lives_ok(
+select throws_ok(
   $$insert into public.group_permissions (group_id, menu_id, action)
     select '00000000-0000-7000-8000-000000000030', id, 'READ' from public.menus where area = 'ADMIN' and key = 'album'$$,
-  '그룹 관리: 자기가 가진 권한(앨범 조회)은 준다'
+  '42501', null, '그룹 관리: 자기가 가진 권한(앨범 조회)도 주지 못한다 — 그룹 권한은 «전체 관리» 만'
 );
 select throws_ok(
-  $$insert into public.group_permissions (group_id, menu_id, action)
-    select '00000000-0000-7000-8000-000000000030', id, 'PURGE' from public.menus where area = 'ADMIN' and key = 'album'$$,
-  '42501', null, '그룹 관리: 자기에게 없는 권한(앨범 완전 삭제)은 못 준다'
-);
-select throws_ok(
-  $$insert into public.group_permissions (group_id, menu_id, action)
-    select '00000000-0000-7000-8000-000000000030', id, 'CREATE' from public.menus where area = 'ADMIN' and key = 'home-hero'$$,
-  '23514', null, '메뉴에 없는 기능은 권한으로 줄 수 없다'
-);
-select throws_ok(
-  $$insert into public.groups (name, key) values ('가짜 관리', 'fake')$$,
-  null, null, '화면에서 그룹 key 를 정할 수 없다'
+  $$insert into public.groups (name) values ('그룹 관리가 만든 그룹')$$,
+  '42501', null, '그룹 관리: 그룹을 만들지 못한다 — «전체 관리» 만'
 );
 reset role;
 
@@ -482,12 +473,17 @@ select throws_ok(
 select throws_ok(
   $$insert into public.user_groups (user_id, group_id)
     values ('00000000-0000-7000-8000-00000000000f', (select id from public.groups where key = 'newcomer'))$$,
-  '42501', null, '자기에게 없는 권한을 가진 그룹(새가족 담당)에는 넣을 수 없다'
+  '42501', null, '내가 속하지 않은 그룹(새가족 담당)에는 넣을 수 없다'
+);
+select throws_ok(
+  $$insert into public.user_groups (user_id, group_id)
+    values ('00000000-0000-7000-8000-00000000000f', '00000000-0000-7000-8000-000000000050')$$,
+  '42501', null, '권한이 없는 그룹이어도 내가 속하지 않았으면 넣을 수 없다'
 );
 select lives_ok(
   $$insert into public.user_groups (user_id, group_id)
-    values ('00000000-0000-7000-8000-00000000000f', '00000000-0000-7000-8000-000000000050')$$,
-  '사용자 관리: 자기 권한 안의 그룹에는 넣는다'
+    values ('00000000-0000-7000-8000-00000000000f', '00000000-0000-7000-8000-000000000030')$$,
+  '사용자 관리: 내가 속한 그룹에는 넣는다'
 );
 select ok(
   not public.can_manage_user('00000000-0000-7000-8000-00000000000a'),
@@ -495,11 +491,11 @@ select ok(
 );
 select ok(
   not public.can_manage_user('00000000-0000-7000-8000-00000000000c'),
-  '사용자 관리: 자기에게 없는 권한을 가진 사람(콘텐츠 담당)은 관리하지 못한다 — 비밀번호를 초기화하면 그 권한을 받게 된다'
+  '사용자 관리: 내가 속하지 않은 그룹의 사람(콘텐츠 담당)은 관리하지 못한다 — 비밀번호를 초기화하면 그 권한을 받게 된다'
 );
 select ok(
   public.can_manage_user('00000000-0000-7000-8000-00000000000f'),
-  '사용자 관리: 자기 권한 안의 그룹에만 속한 사람은 관리한다'
+  '사용자 관리: 내 그룹에만 속한 사람은 관리한다'
 );
 select ok(not public.can_manage_user('00000000-0000-7000-8000-000000000003'), '자기 자신은 이 화면으로 관리하지 않는다');
 select throws_ok(
@@ -532,6 +528,15 @@ select throws_ok(
 select throws_ok(
   $$update public.groups set is_active = false where key = 'admin'$$,
   null, null, '«전체 관리» 그룹은 끌 수 없다'
+);
+select throws_ok(
+  $$insert into public.group_permissions (group_id, menu_id, action)
+    select '00000000-0000-7000-8000-000000000030', id, 'CREATE' from public.menus where area = 'ADMIN' and key = 'home-hero'$$,
+  '23514', null, '메뉴에 없는 기능은 권한으로 줄 수 없다(«전체 관리» 여도)'
+);
+select throws_ok(
+  $$insert into public.groups (name, key) values ('가짜 관리', 'fake')$$,
+  '42501', null, '화면에서 그룹 key 를 정할 수 없다(«전체 관리» 여도)'
 );
 select throws_ok(
   $$update public.departments set slug = 'HIGH' where slug = 'MIDDLE'$$,
