@@ -41,51 +41,47 @@ const TODOS: Todo[] = [
 
 // 관리자 첫 화면(스타터의 overview 와 같은 배치) — 위: 숫자 카드, 가운데: 이번 주 할 일, 아래: 바로 가기.
 export default async function AdminHomePage() {
-  const { profile, permissions, nav } = await loadAdminContext();
   const supabase = await createSupabaseServerClient();
   // 요청마다 지금 시각 기준(서버 컴포넌트)
   // eslint-disable-next-line react-hooks/purity
   const weekAgo = periodStart('7d', Date.now()) ?? '';
-
   const count = async (query: PromiseLike<{ count: number | null }>) => (await query).count ?? 0;
-  const stats: Stat[] = (
-    await Promise.all([
-      can(permissions, 'users', 'READ') &&
-        count(
-          supabase
-            .from('profiles')
-            .select('id', { count: 'exact', head: true })
-            .eq('is_active', true)
-        ).then(value => ({
-          label: '사용 중인 계정',
-          value,
-          href: '/admin/users',
-        })),
-      can(permissions, 'groups', 'READ') &&
-        count(
-          supabase.from('groups').select('id', { count: 'exact', head: true }).eq('is_active', true)
-        ).then(value => ({ label: '사용 중인 그룹', value, href: '/admin/groups' })),
-      can(permissions, 'categories', 'READ') &&
-        count(
-          supabase
-            .from('categories')
-            .select('id', { count: 'exact', head: true })
-            .eq('is_active', true)
-        ).then(value => ({
-          label: '사용 중인 분류',
-          value,
-          href: '/admin/categories',
-        })),
-      can(permissions, 'audit', 'READ') &&
-        count(
-          supabase.from('audit_log').select('id', { count: 'exact', head: true }).gte('at', weekAgo)
-        ).then(value => ({
-          label: '최근 7일 변경',
-          value,
-          href: '/admin/audit',
-        })),
-    ])
-  ).filter((s): s is Stat => Boolean(s));
+  const active = (table: 'profiles' | 'groups' | 'categories') =>
+    count(supabase.from(table).select('id', { count: 'exact', head: true }).eq('is_active', true));
+
+  // 숫자는 권한 확인(loadAdminContext)을 기다리지 않고 함께 센다 — DB 를 한 번 덜 기다린다. 막는 것은 어차피 DB(RLS)이고,
+  // 권한이 없는 숫자는 아래에서 버린다.
+  const [{ profile, permissions, nav }, users, groups, categories, changes] = await Promise.all([
+    loadAdminContext(),
+    active('profiles'),
+    active('groups'),
+    active('categories'),
+    count(
+      supabase.from('audit_log').select('id', { count: 'exact', head: true }).gte('at', weekAgo)
+    ),
+  ]);
+  const stats: Stat[] = [
+    can(permissions, 'users', 'READ') && {
+      label: '사용 중인 계정',
+      value: users,
+      href: '/admin/users',
+    },
+    can(permissions, 'groups', 'READ') && {
+      label: '사용 중인 그룹',
+      value: groups,
+      href: '/admin/groups',
+    },
+    can(permissions, 'categories', 'READ') && {
+      label: '사용 중인 분류',
+      value: categories,
+      href: '/admin/categories',
+    },
+    can(permissions, 'audit', 'READ') && {
+      label: '최근 7일 변경',
+      value: changes,
+      href: '/admin/audit',
+    },
+  ].filter((s): s is Stat => Boolean(s));
 
   const todos = TODOS.filter(t => SCREENS_READY.has(t.key) && can(permissions, t.key, 'READ'));
   const screens = nav.flatMap(group =>

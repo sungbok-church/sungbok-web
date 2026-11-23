@@ -1,4 +1,5 @@
 import { AppProvider } from '@/app/_provider';
+import { AdminWarmup } from '@/shared/components/features/AdminWarmup';
 import { Footer } from '@/shared/components/layout/Footer';
 import { Header } from '@/shared/components/layout/Header';
 
@@ -11,6 +12,8 @@ export default function SiteLayout({ children }: Readonly<{ children: React.Reac
       {/* 본문이 짧아도 푸터가 바닥에 붙도록 남는 높이를 main 이 차지한다(body = flex-col min-h-dvh) */}
       <main className="flex-1">{children}</main>
       <Footer />
+      {/* 관리자로 로그인했던 브라우저면 관리자 서버를 미리 깨운다(주소줄로 /admin 에 들어올 때 기다리지 않게) */}
+      <AdminWarmup />
     </AppProvider>
   );
 }
