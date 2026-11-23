@@ -159,6 +159,7 @@ export const setUsersActive = async (raw: unknown): Promise<ActionResult> => {
   const supabase = await createSupabaseServerClient();
   let done = 0;
   let firstError: AppError | null = null;
+  // 한 명씩 차례로 고친다 — 한꺼번에 보내면 최대 100건이 동시에 나간다(«전체 관리» 가 한 명은 남는지는 DB 가 잠금을 걸고 차례로 본다)
   for (const id of input.data.ids) {
     const { error } = await supabase
       .from('profiles')
@@ -167,7 +168,10 @@ export const setUsersActive = async (raw: unknown): Promise<ActionResult> => {
     if (error) firstError ??= toActionError(error);
     else done += 1;
   }
+  // 목록에서도, 상세의 [끄기] · [켜기] 에서도 부른다 — 화면이 router.refresh 없이 바뀌게 둘 다 다시 그린다
+  // 실패했어도 다시 그린다 — 실패는 대개 그 사이 바뀐 상태(다른 관리자가 먼저 끔 등) 때문이라 지금 값을 보여 줘야 한다
   revalidatePath(LIST);
+  for (const id of input.data.ids) revalidatePath(`${LIST}/${id}`);
   const verb = input.data.active ? '켰습니다' : '껐습니다';
   const failed = input.data.ids.length - done;
   if (done === 0) return { ok: false, error: firstError ?? appError('INTERNAL') };

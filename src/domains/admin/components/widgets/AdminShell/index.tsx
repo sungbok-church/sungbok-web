@@ -3,9 +3,10 @@ import type { AdminUser } from '@/domains/admin/api/session.server';
 import { Separator } from '@/shared/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/shared/components/ui/sidebar';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 
 import { CommandMenu } from '@/domains/admin/components/features/CommandMenu';
+import { NavigationProgress } from '@/domains/admin/components/features/NavigationProgress';
 
 import { AdminSidebar } from './AdminSidebar';
 import { HeaderBreadcrumbs } from './HeaderTitle';
@@ -28,6 +29,10 @@ interface Props {
 export const AdminShell = ({ user, userName, nav, defaultOpen = true, children }: Props) => (
   // 접힌 메뉴에 올리면 이름이 바로 뜨게 한다 — 제공자가 없으면 Base UI 기본값(600ms 뒤)이 쓰인다
   <TooltipProvider>
+    {/* 화면 이동 중 위쪽 진행 표시줄 — 주소 조건(useSearchParams)을 읽으므로 Suspense 안에 둔다 */}
+    <Suspense fallback={null}>
+      <NavigationProgress />
+    </Suspense>
     <SidebarProvider defaultOpen={defaultOpen}>
       <AdminSidebar nav={nav} user={user} userName={userName} />
       <SidebarInset className="min-w-0">

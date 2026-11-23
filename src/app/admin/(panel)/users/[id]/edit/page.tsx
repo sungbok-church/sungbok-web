@@ -10,11 +10,12 @@ export const instant = false;
 
 // 사용자 수정 — 상세에서 [수정] 으로 들어온다. 저장하면 상세로 돌아간다.
 export default async function AdminUserEditPage({ params }: { params: Promise<{ id: string }> }) {
-  const { user } = await requirePermission('users', 'UPDATE');
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
-  const [{ data: profile }, { data: groups }] = await Promise.all([
+  // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
+  const [{ user }, { data: profile }, { data: groups }] = await Promise.all([
+    requirePermission('users', 'UPDATE'),
     supabase
       .from('profiles')
       .select('id, name, email, department, is_active, updated_at, user_groups(group_id)')

@@ -155,6 +155,9 @@ describe('actionPermission', () => {
   });
 
   it('거절 결과 문구', () => {
-    expect(NO_PERMISSION).toEqual({ ok: false, error: { code: 'NO_PERMISSION', message: '권한이 없습니다.' } });
+    expect(NO_PERMISSION).toEqual({
+      ok: false,
+      error: { code: 'NO_PERMISSION', message: '권한이 없습니다.' },
+    });
   });
 });

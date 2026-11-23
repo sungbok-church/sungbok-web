@@ -5,7 +5,6 @@ import { notifyResult } from '@/domains/admin/api/notify';
 import { ConfirmAction } from '@/domains/admin/components/features/ConfirmAction';
 import { Button } from '@/shared/components/ui/button';
 import { PowerIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 
 interface Props {
@@ -14,7 +13,6 @@ interface Props {
 
 /** 그룹 상세 머리의 [끄기 / 켜기] — 그룹의 «삭제» 는 끄기다(설계 6.4). 시스템 그룹에는 그리지 않는다. */
 export const GroupDetailActions = ({ group }: Props) => {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const toggle = (isActive: boolean) =>
     updateGroup({
@@ -35,11 +33,8 @@ export const GroupDetailActions = ({ group }: Props) => {
             끄기
           </Button>
         }
-        onConfirm={async () => {
-          const result = await toggle(false);
-          if (result.ok) router.refresh();
-          return result;
-        }}
+        // 화면은 Server Action 이 다시 그려 보낸다(revalidatePath)
+        onConfirm={() => toggle(false)}
       />
     );
   }
@@ -49,9 +44,7 @@ export const GroupDetailActions = ({ group }: Props) => {
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          const result = await toggle(true);
-          notifyResult(result);
-          if (result.ok) router.refresh();
+          notifyResult(await toggle(true));
         })
       }
     >

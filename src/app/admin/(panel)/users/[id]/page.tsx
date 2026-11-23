@@ -30,12 +30,13 @@ const PATH = '/admin/users';
 
 // 사용자 상세(보기) — 설계 6.10 «화면 흐름 표준 › 상세». 고치려면 [수정].
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const ctx = await requirePermission('users', 'READ');
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: profile }, { data: canManage }] = await Promise.all([
+  // 권한 확인과 함께 읽는다 — users/page.tsx 와 같다
+  const [ctx, { data: profile }, { data: canManage }] = await Promise.all([
+    requirePermission('users', 'READ'),
     supabase
       .from('profiles')
       .select(

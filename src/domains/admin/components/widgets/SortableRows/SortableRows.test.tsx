@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SortableRows } from '.';
 
 const m = vi.hoisted(() => ({
+  refresh: vi.fn(),
   updateMenu: vi.fn(
     async (): Promise<{ ok: boolean; data?: { updatedAt: string }; message: string }> => ({
       ok: true,
@@ -14,7 +15,7 @@ const m = vi.hoisted(() => ({
 vi.mock('@/domains/admin/api/menuActions', () => ({ updateMenu: m.updateMenu, moveMenu: vi.fn() }));
 vi.mock('@/domains/admin/api/codeActions', () => ({ updateCode: vi.fn(), moveCode: vi.fn() }));
 vi.mock('@/domains/admin/api/notify', () => ({ notifyResult: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: m.refresh }) }));
 vi.mock('@/shared/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => children,
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => children,
@@ -85,6 +86,29 @@ describe('SortableRows', () => {
       label: '둘째',
       isActive: true,
     });
+  });
+
+  it('저장에 성공하면 router.refresh 를 부르지 않는다 — 화면은 Server Action 이 다시 그려 보낸다', async () => {
+    m.updateMenu.mockResolvedValue({
+      ok: true,
+      data: { updatedAt: 't2' },
+      message: '저장했습니다.',
+    });
+    render(<SortableRows kind="menus" rows={[ROW]} editable caption="메뉴" detailHeader="주소" />);
+    const input = screen.getByLabelText('코드 관리 이름');
+    fireEvent.change(input, { target: { value: '새 이름' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() => expect(input).not.toBeDisabled());
+    expect(m.refresh).not.toHaveBeenCalled();
+  });
+
+  it('저장에 실패하면(다른 사람이 먼저 고침 등) 지금 값을 다시 읽는다', async () => {
+    m.updateMenu.mockResolvedValue({ ok: false, message: '다른 사람이 먼저 고쳤습니다.' });
+    render(<SortableRows kind="menus" rows={[ROW]} editable caption="메뉴" detailHeader="주소" />);
+    const input = screen.getByLabelText('코드 관리 이름');
+    fireEvent.change(input, { target: { value: '새 이름' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() => expect(m.refresh).toHaveBeenCalledTimes(1));
   });
 
   it('이름이 그대로면 저장하지 않는다', () => {

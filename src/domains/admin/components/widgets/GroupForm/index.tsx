@@ -3,6 +3,7 @@
 import { createGroup, saveGroup } from '@/domains/admin/api/groupActions';
 import { groupCreateSchema } from '@/domains/admin/api/groupInput';
 import { notifyResult } from '@/domains/admin/api/notify';
+import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
 import {
   checkedKeys,
   keysToPermissions,
@@ -44,7 +45,6 @@ import { Switch } from '@/shared/components/ui/switch';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { useForm, useStore } from '@tanstack/react-form';
 import { ShieldCheckIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 type Values = { name: string; description: string; isActive: boolean };
@@ -72,7 +72,7 @@ const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
 type GroupDraft = { fields?: Partial<Values>; perms?: SetChanges };
 
 export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
-  const router = useRouter();
+  const navigate = useAdminNavigate();
   const initialKeys = useMemo(() => new Set(checkedKeys(matrix ?? [])), [matrix]);
   const [keys, setKeys] = useState<Set<string>>(initialKeys);
   // 화면을 열었을 때의 권한 표 — 열 때 한 번만 기억한다(페이지 데이터가 새로 와도 바뀌지 않아야 남의 변경을 «충돌» 로 알아챈다)
@@ -109,8 +109,8 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
       notifyResult({ ok: true, message: editing ? '저장했습니다.' : '그룹을 만들었습니다.' });
       draft.clear();
       formApi.reset(value);
-      router.push(`${LIST}/${groupId}`);
-      router.refresh();
+      // 상세는 요청 때 그리는 화면이라 이동하면 새로 읽는다 — router.refresh 를 또 부르지 않는다
+      navigate(`${LIST}/${groupId}`);
     },
   });
 

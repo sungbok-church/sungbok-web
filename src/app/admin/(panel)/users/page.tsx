@@ -42,7 +42,6 @@ export default async function AdminUsersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const ctx = await requirePermission('users', 'READ');
   const query = parseListQuery(await searchParams, SPEC, await readListDefaults());
   const supabase = await createSupabaseServerClient();
 
@@ -62,7 +61,9 @@ export default async function AdminUsersPage({
   else if (query.filters.department)
     req = req.eq('department', query.filters.department as (typeof DEPARTMENTS)[number]['value']);
 
-  const [{ data, count }, { data: groups }] = await Promise.all([
+  // 권한 확인과 목록 읽기를 함께 시작한다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
+  const [ctx, { data, count }, { data: groups }] = await Promise.all([
+    requirePermission('users', 'READ'),
     req,
     supabase.from('groups').select('id, name').order('name'),
   ]);

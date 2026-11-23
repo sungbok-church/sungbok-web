@@ -28,9 +28,10 @@ export default async function AdminCategoriesPage({
 }: {
   searchParams: Promise<{ group?: string | string[] }>;
 }) {
-  const ctx = await requirePermission('categories', 'READ');
   const supabase = await createSupabaseServerClient();
-  const [{ data: groups }, { data: all }] = await Promise.all([
+  // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
+  const [ctx, { data: groups }, { data: all }] = await Promise.all([
+    requirePermission('categories', 'READ'),
     supabase.from('category_groups').select('key, name').order('sort'),
     supabase.from('categories').select('group_key'),
   ]);

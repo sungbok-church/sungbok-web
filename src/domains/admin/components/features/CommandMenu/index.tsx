@@ -1,6 +1,7 @@
 'use client';
 
 import { type AdminNavGroup } from '@/domains/admin/api/adminNav';
+import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
 import { useCommandShortcut } from '@/domains/admin/api/useCommandShortcut';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -13,7 +14,6 @@ import {
   CommandList,
 } from '@/shared/components/ui/command';
 import { SearchIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 /**
@@ -21,7 +21,7 @@ import { useState } from 'react';
  * 위쪽 막대의 «찾기» 버튼으로도 연다(단축키를 모르는 사람).
  */
 export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
-  const router = useRouter();
+  const navigate = useAdminNavigate();
   const [open, setOpen] = useState(false);
   useCommandShortcut(() => setOpen(true));
 
@@ -66,7 +66,7 @@ export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
                       value={`${item.label} ${item.key}`}
                       onSelect={() => {
                         setOpen(false);
-                        router.push(item.href);
+                        navigate(item.href);
                       }}
                     >
                       {item.label}

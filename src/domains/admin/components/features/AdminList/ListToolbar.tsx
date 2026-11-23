@@ -12,6 +12,7 @@ import {
   type RecentSearch,
   recentKey,
 } from '@/domains/admin/api/recentSearches';
+import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -25,7 +26,7 @@ import {
 } from '@/shared/components/ui/select';
 import { Switch } from '@/shared/components/ui/switch';
 import { HistoryIcon, RotateCcwIcon, SearchIcon, XIcon } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 export type ListFilter = {
@@ -60,7 +61,7 @@ export const ListToolbar = ({
   trashable,
   searchPlaceholder,
 }: Props) => {
-  const router = useRouter();
+  const navigate = useAdminNavigate();
   const pathname = usePathname();
   const inputRef = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState(query.q);
@@ -88,7 +89,7 @@ export const ListToolbar = ({
         .join(' · ');
       pushRecentSearch(window.localStorage, storeKey, { query: next.split('?')[1] ?? '', label });
     }
-    router.push(next);
+    navigate(next);
   };
 
   // `/` 로 검색칸(글을 쓰는 칸 안에서는 그대로 입력)
@@ -111,7 +112,7 @@ export const ListToolbar = ({
     setQ('');
     setFrom('');
     setTo('');
-    router.push(pathname);
+    navigate(pathname);
   };
   const removeCondition = (key: string) => {
     if (key === 'q') {
@@ -177,7 +178,7 @@ export const ListToolbar = ({
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => {
                           setRecentOpen(false);
-                          router.push(`${pathname}?${r.query}`);
+                          navigate(`${pathname}?${r.query}`);
                         }}
                       >
                         <HistoryIcon

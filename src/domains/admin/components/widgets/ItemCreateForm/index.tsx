@@ -12,7 +12,6 @@ import { Input } from '@/shared/components/ui/input';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm } from '@tanstack/react-form';
 import { PlusIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 const KINDS = {
   categories: {
@@ -41,7 +40,6 @@ export const ItemCreateForm = ({
   kind: keyof typeof KINDS;
   groupKey: string;
 }) => {
-  const router = useRouter();
   const k = KINDS[kind];
   // 두 종류의 영문 칸(slug · code)을 다 두고 그 종류의 칸만 그린다 — 스키마는 모르는 칸을 버린다
   const empty = { groupKey, slug: '', code: '', label: '' };
@@ -55,10 +53,8 @@ export const ItemCreateForm = ({
         label: value.label,
       });
       notifyResult(result);
-      if (result.ok) {
-        formApi.reset(empty);
-        router.refresh();
-      }
+      // 표는 Server Action 이 다시 그려 보낸다(revalidatePath) — router.refresh 를 또 부르지 않는다
+      if (result.ok) formApi.reset(empty);
     },
   });
 

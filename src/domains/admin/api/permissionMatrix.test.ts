@@ -93,7 +93,9 @@ describe('칸 key ↔ 권한', () => {
   });
 
   it('key 를 권한으로 되돌린다(모양이 틀린 key 는 버린다)', () => {
-    expect(keysToPermissions(['users:READ', 'bulletin:PURGE', 'broken', 'x:nope', 'users:read'])).toEqual([
+    expect(
+      keysToPermissions(['users:READ', 'bulletin:PURGE', 'broken', 'x:nope', 'users:read'])
+    ).toEqual([
       { menuKey: 'users', action: 'READ' },
       { menuKey: 'bulletin', action: 'PURGE' },
     ]);

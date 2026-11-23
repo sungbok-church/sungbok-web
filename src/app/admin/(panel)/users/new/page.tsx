@@ -8,13 +8,16 @@ export const instant = false;
 
 // 계정 만들기 — 만들면 임시 비밀번호를 한 번 보여 준다(설계 11-1).
 export default async function AdminUserNewPage() {
-  await requirePermission('users', 'CREATE');
   const supabase = await createSupabaseServerClient();
-  const { data: groups } = await supabase
-    .from('groups')
-    .select('id, name, is_system, description')
-    .eq('is_active', true)
-    .order('name');
+  // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
+  const [, { data: groups }] = await Promise.all([
+    requirePermission('users', 'CREATE'),
+    supabase
+      .from('groups')
+      .select('id, name, is_system, description')
+      .eq('is_active', true)
+      .order('name'),
+  ]);
   return (
     <>
       <PageHeader

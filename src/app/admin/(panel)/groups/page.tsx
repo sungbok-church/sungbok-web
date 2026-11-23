@@ -33,7 +33,6 @@ export default async function AdminGroupsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const ctx = await requirePermission('groups', 'READ');
   const query = parseListQuery(await searchParams, SPEC, await readListDefaults());
   const supabase = await createSupabaseServerClient();
   let req = supabase
@@ -44,7 +43,8 @@ export default async function AdminGroupsPage({
     .range(...rangeOf(query.page, query.size));
   if (query.q) req = req.or(orIlike(['name', 'description'], query.q));
   if (query.filters.active) req = req.eq('is_active', query.filters.active === '1');
-  const { data, count } = await req;
+  // 권한 확인과 함께 읽는다 — users/page.tsx 와 같다
+  const [ctx, { data, count }] = await Promise.all([requirePermission('groups', 'READ'), req]);
 
   const rows: TableRowData[] = (data ?? []).map(g => {
     const href = `${PATH}/${g.id}`;

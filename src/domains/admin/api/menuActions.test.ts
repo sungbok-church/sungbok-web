@@ -10,7 +10,8 @@ const m = vi.hoisted(() => ({
   target: { area: 'ADMIN', parent_id: 'p1' } as unknown,
 }));
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+const cache = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
+vi.mock('next/cache', () => cache);
 vi.mock('./adminContext.server', () => ({
   actionPermission: m.permission,
   NO_PERMISSION: { ok: false, error: '권한이 없습니다.' },
@@ -83,5 +84,20 @@ describe('권한', () => {
         isActive: true,
       })
     ).toEqual({ ok: false, error: '권한이 없습니다.' });
+  });
+});
+
+describe('메뉴를 고친 뒤 다시 그리기', () => {
+  it('관리자 전체를 다시 그린다 — 왼쪽 메뉴가 모든 화면에 있고, «뒤로» 돌아간 화면에도 옛 이름이 남지 않게', async () => {
+    await updateMenu({ id: ID, updatedAt: 't1', label: '분류', isActive: true });
+    await moveMenu({ id: ID, dir: 'down' });
+    expect(cache.revalidatePath).toHaveBeenCalledTimes(2);
+    expect(cache.revalidatePath).toHaveBeenCalledWith('/admin', 'layout');
+  });
+
+  it('실패하면 다시 그리지 않는다', async () => {
+    m.move.mockResolvedValueOnce({ ok: false, message: '실패' } as never);
+    await moveMenu({ id: ID, dir: 'down' });
+    expect(cache.revalidatePath).not.toHaveBeenCalled();
   });
 });

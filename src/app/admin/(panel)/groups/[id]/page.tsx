@@ -36,13 +36,13 @@ export default async function AdminGroupDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const ctx = await requirePermission('groups', 'READ');
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
-  const canSeeUsers = can(ctx.permissions, 'users', 'READ');
-
-  const [{ data: group }, { data: members }] = await Promise.all([
+  // 권한 확인과 그룹 읽기를 함께(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS).
+  // 구성원 · 이름 · 권한 표는 그다음 한 번에 읽는다(구성원 칸은 사용자 조회 권한에 따라, 권한 표는 그룹 종류에 따라 다르다).
+  const [ctx, { data: group }] = await Promise.all([
+    requirePermission('groups', 'READ'),
     supabase
       .from('groups')
       .select(
@@ -50,6 +50,11 @@ export default async function AdminGroupDetailPage({
       )
       .eq('id', id)
       .maybeSingle(),
+  ]);
+  if (!group) notFound();
+  const canSeeUsers = can(ctx.permissions, 'users', 'READ');
+
+  const [{ data: members }, names, matrix] = await Promise.all([
     supabase
       .from('user_groups')
       .select(canSeeUsers ? 'user_id, profiles(id, name, email, is_active)' : 'user_id')
@@ -61,9 +66,6 @@ export default async function AdminGroupDetailPage({
         }[],
         { merge: false }
       >(),
-  ]);
-  if (!group) notFound();
-  const [names, matrix] = await Promise.all([
     actorNameMap(supabase, [group.created_by, group.updated_by]),
     group.is_system
       ? Promise.resolve([])

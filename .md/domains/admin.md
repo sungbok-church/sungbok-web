@@ -39,7 +39,9 @@
 - **흐름**: 목록 → (줄 누름) 상세 → [수정] → 저장하면 상세. 상세가 없는 목록(변경 이력)은 «자세히» 창, 목록만 있는 화면(메뉴 · 코드)은 그 자리에서 고친다.
 - **목록**: [AdminTable](../../src/domains/admin/components/features/AdminList/AdminTable.tsx) — 테두리 있는 표(회색 머리) · 머리 눌러 정렬 · 줄 누르면 상세(Ctrl/⌘ 는 새 탭) · 줄 체크 일괄 처리 · 아래 «총 N건 · 10/20/50/100개씩(쿠키로 기억) · 쪽 번호». 좁은 화면은 카드. 그린 쪽의 주소 · 줄 순서를 탭 저장소에 남겨 상세의 [목록] · 이전/다음이 쓴다([listMemory](../../src/domains/admin/api/listMemory.ts)).
 - **상세**: 머리에 [목록] · 이전/다음 · [수정] · (끄기 등) · [변경 이력], 아래 등록 · 수정한 사람과 시각([RecordMeta](../../src/domains/admin/components/features/Detail/RecordMeta.tsx)).
-- **불러오는 중**: `(panel)/loading.tsx` 뼈대. **왼쪽 메뉴 숫자**: `AdminNavItem.badge`(값은 패키지 C).
+- **불러오는 중**: `(panel)/loading.tsx` 뼈대 + 위쪽 진행 표시줄([NavigationProgress](../../src/domains/admin/components/features/NavigationProgress/index.tsx) — 링크 클릭은 스스로 알아채고, `router.push` 로 옮기는 곳(목록 줄 · 검색 · 저장 뒤 상세로)은 [useAdminNavigate](../../src/domains/admin/api/useAdminNavigate.ts) 를 쓴다). 목록 줄은 마우스를 올리면 그 화면의 틀을 미리 받는다.
+- **빠르게 그리기(2026-11-23)**: 페이지는 권한 확인(`requirePermission`)과 화면 데이터 읽기를 `Promise.all` 로 함께 시작한다 — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 RLS). 저장한 뒤 화면은 Server Action 이 다시 그려 보내므로(`revalidatePath`) 화면 쪽에서 `router.refresh()` 를 또 부르지 않는다(실패해서 지금 값을 다시 읽을 때만).
+- **왼쪽 메뉴 숫자**: `AdminNavItem.badge`(값은 패키지 C).
 - **엑셀 다운로드**: 메뉴의 `actions` 에 `export` 가 있고 그 권한이 있을 때만 버튼 — 지금은 새가족(패키지 C)만.
 - **등록 · 수정**: 넓은 화면은 카드를 나란히(기본 정보 · 그룹/권한), 화면 아래에 붙은 막대([FormActions](../../src/domains/admin/components/features/AdminForm/index.tsx))에 취소 · 저장. 필수 칸 *, 글자 수. 그룹 권한은 «메뉴 × 기능» 표([PermissionMatrix](../../src/domains/admin/components/widgets/PermissionMatrix/index.tsx) — 상세는 보기 전용, 폼은 체크).
 - **첫 화면**: 숫자 카드(권한 있는 것만) · 이번 주 할 일 · 아이콘 있는 바로 가기 카드.

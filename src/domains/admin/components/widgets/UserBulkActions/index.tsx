@@ -5,20 +5,16 @@ import { setUsersActive } from '@/domains/admin/api/userActions';
 import { ConfirmAction } from '@/domains/admin/components/features/ConfirmAction';
 import { useSelectedIds } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { Button } from '@/shared/components/ui/button';
-import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 
 /** 사용자 목록의 일괄 처리 — 고른 사용자 끄기 · 켜기. */
 export const UserBulkActions = () => {
   const { ids, clear } = useSelectedIds();
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const run = (active: boolean) =>
     setUsersActive({ ids, active }).then(result => {
-      if (result.ok) {
-        clear();
-        router.refresh();
-      }
+      // 화면은 Server Action 이 다시 그려 보낸다(revalidatePath) — router.refresh 를 또 부르지 않는다
+      if (result.ok) clear();
       return result;
     });
 

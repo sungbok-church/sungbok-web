@@ -7,6 +7,7 @@ import {
   type SetChanges,
   setChanges,
 } from '@/domains/admin/api/draftChanges';
+import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
 import { useFormDraft, useSaveShortcut, useUnsavedGuard } from '@/domains/admin/api/useFormGuards';
 import { createUser, updateUser } from '@/domains/admin/api/userActions';
 import { DEPARTMENTS, userCreateSchema, userUpdateSchema } from '@/domains/admin/api/userInput';
@@ -46,7 +47,6 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useForm, useStore } from '@tanstack/react-form';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 type GroupOption = { id: string; name: string; isSystem: boolean; description: string | null };
@@ -87,7 +87,7 @@ const EMPTY: UserFormValues = { name: '', email: '', groupIds: [], department: '
  * 비밀번호가 오가는 화면이라 쓰던 내용을 보관하지 않는다. 등록하면 임시 비밀번호 창에서 [상세로] · [계속 등록].
  */
 export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
-  const router = useRouter();
+  const navigate = useAdminNavigate();
   const [temp, setTemp] = useState<{ password: string; email: string; id: string } | null>(null);
   // 화면을 열었을 때의 그룹 목록 — 열 때 한 번만 기억한다. 페이지 데이터가 새로 와도(router.refresh 등) 바뀌지 않아야
   // 그 사이 다른 사람이 바꾼 그룹을 «충돌» 로 알아챈다(새 값으로 바뀌면 남의 변경을 덮어쓴다)
@@ -126,8 +126,8 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
       if (result.ok) {
         draft.clear();
         formApi.reset(value);
-        router.push(`${LIST}/${editing.id}`);
-        router.refresh();
+        // 상세는 요청 때 그리는 화면이라 이동하면 새로 읽는다 — router.refresh 를 또 부르지 않는다
+        navigate(`${LIST}/${editing.id}`);
       }
     },
   });
@@ -337,7 +337,7 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
         onClose={() => {
           const id = temp?.id;
           setTemp(null);
-          if (id) router.push(`${LIST}/${id}`);
+          if (id) navigate(`${LIST}/${id}`);
         }}
         onContinue={() => {
           setTemp(null);

@@ -12,7 +12,9 @@ import { updateVersioned } from './versionedUpdate.server';
 
 /**
  * 메뉴 이름 · 사용 여부(설계 6.5). 이름을 비우면 기본 이름으로 돌아간다. 잠긴 메뉴는 끌 수 없고,
- * 그 밖의 칸(주소 · 기능 · 상위)은 DB 가 막는다(guard_menus). 왼쪽 메뉴에 바로 반영되도록 관리자 전체를 다시 그린다.
+ * 그 밖의 칸(주소 · 기능 · 상위)은 DB 가 막는다(guard_menus).
+ * 왼쪽 메뉴에 바로 반영되도록 관리자 전체를 다시 그린다 — 지금 화면만(refresh()) 다시 그리면 «뒤로» 로 돌아간 화면에
+ * 옛 메뉴 이름이 남는다(브라우저에 남은 화면은 지우지 않는다). 대신 저장할 때마다 왼쪽 메뉴 링크의 미리 받기가 다시 받아진다.
  */
 export const updateMenu = async (raw: unknown): Promise<ActionResult<{ updatedAt: string }>> => {
   if (!(await actionPermission('menus', 'UPDATE'))) return NO_PERMISSION;

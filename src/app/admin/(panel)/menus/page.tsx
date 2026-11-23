@@ -40,14 +40,17 @@ const toRow = (m: MenuRow): SortableRow => ({
 
 // 메뉴 관리(설계 6.5) — 관리자 메뉴의 이름 · 사용 여부 · 순서. 홈페이지 메뉴 탭은 패키지 D 에서 더한다.
 export default async function AdminMenusPage() {
-  const ctx = await requirePermission('menus', 'READ');
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from('menus')
-    .select('id, key, parent_id, label, default_label, path, is_active, is_locked, updated_at')
-    .eq('area', 'ADMIN')
-    .order('sort')
-    .order('created_at');
+  // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
+  const [ctx, { data }] = await Promise.all([
+    requirePermission('menus', 'READ'),
+    supabase
+      .from('menus')
+      .select('id, key, parent_id, label, default_label, path, is_active, is_locked, updated_at')
+      .eq('area', 'ADMIN')
+      .order('sort')
+      .order('created_at'),
+  ]);
   const menus = (data ?? []) as MenuRow[];
   const tops = menus.filter(m => m.parent_id === null);
   const headers = tops.filter(m => m.path === null);

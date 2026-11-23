@@ -23,7 +23,8 @@ const m = vi.hoisted(() => ({
   deleteProfile: vi.fn(),
 }));
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+const cache = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
+vi.mock('next/cache', () => cache);
 vi.mock('./adminContext.server', () => ({
   actionPermission: m.permission,
   NO_PERMISSION: { ok: false, error: { code: 'NO_PERMISSION', message: '권한이 없습니다.' } },
@@ -211,6 +212,14 @@ describe('setUsersActive', () => {
 
   it('id 모양이 틀리면 거절', async () => {
     expect(await setUsersActive({ ids: ['x'], active: true })).toMatchObject({ ok: false });
+  });
+
+  it('목록과 각 사람의 상세를 다시 그린다 — 상세의 [끄기] · [켜기] 도 router.refresh 없이 바뀐다', async () => {
+    m.updateProfile.mockResolvedValue({ error: null });
+    const A = '0190a0b0-0000-7000-8000-00000000000a';
+    await setUsersActive({ ids: [A], active: false });
+    expect(cache.revalidatePath).toHaveBeenCalledWith('/admin/users');
+    expect(cache.revalidatePath).toHaveBeenCalledWith(`/admin/users/${A}`);
   });
 });
 

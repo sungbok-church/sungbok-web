@@ -19,15 +19,23 @@ describe('toActionError — DB 오류 → 오류 코드', () => {
 
   it('중복은 DUPLICATE', () => {
     expect(
-      toActionError({ code: '23505', message: 'duplicate key value violates unique constraint "x"' })
-        .code
+      toActionError({
+        code: '23505',
+        message: 'duplicate key value violates unique constraint "x"',
+      }).code
     ).toBe('DUPLICATE');
   });
 
   it('규칙 위반: 한글 문장이면 그대로, 영문(제약 이름 등)이면 감춘다', () => {
     expect(
-      toActionError({ code: '23514', message: '«전체 관리» 에 활성 사용자가 한 명은 남아야 합니다' })
-    ).toEqual({ code: 'NOT_ALLOWED', message: '«전체 관리» 에 활성 사용자가 한 명은 남아야 합니다' });
+      toActionError({
+        code: '23514',
+        message: '«전체 관리» 에 활성 사용자가 한 명은 남아야 합니다',
+      })
+    ).toEqual({
+      code: 'NOT_ALLOWED',
+      message: '«전체 관리» 에 활성 사용자가 한 명은 남아야 합니다',
+    });
     expect(
       toActionError({ code: '23503', message: 'insert or update violates foreign key constraint' })
     ).toEqual({ code: 'NOT_ALLOWED', message: '이 값으로는 저장할 수 없습니다.' });

@@ -6,7 +6,6 @@ import { ConfirmAction } from '@/domains/admin/components/features/ConfirmAction
 import { TempPasswordDialog } from '@/domains/admin/components/features/TempPasswordDialog';
 import { Button } from '@/shared/components/ui/button';
 import { KeyRoundIcon, PowerIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
 interface Props {
@@ -19,7 +18,6 @@ interface Props {
 
 /** 사용자 상세 머리의 [비밀번호 초기화] · [끄기 / 켜기]. 초기화하면 새 임시 비밀번호를 한 번 보여 준다. */
 export const UserDetailActions = ({ userId, email, isActive, canManage }: Props) => {
-  const router = useRouter();
   const [temp, setTemp] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   if (!canManage) return null;
@@ -49,11 +47,8 @@ export const UserDetailActions = ({ userId, email, isActive, canManage }: Props)
               끄기
             </Button>
           }
-          onConfirm={async () => {
-            const result = await setUsersActive({ ids: [userId], active: false });
-            if (result.ok) router.refresh();
-            return result;
-          }}
+          // 화면은 Server Action 이 다시 그려 보낸다(revalidatePath)
+          onConfirm={() => setUsersActive({ ids: [userId], active: false })}
         />
       ) : (
         <Button
@@ -61,9 +56,7 @@ export const UserDetailActions = ({ userId, email, isActive, canManage }: Props)
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const result = await setUsersActive({ ids: [userId], active: true });
-              notifyResult(result);
-              if (result.ok) router.refresh();
+              notifyResult(await setUsersActive({ ids: [userId], active: true }));
             })
           }
         >

@@ -11,15 +11,18 @@ export const instant = false;
 
 // 그룹 수정 — 상세에서 [수정] 으로 들어온다. 기본 정보 · 권한을 한 번에 저장하고 상세로 돌아간다.
 export default async function AdminGroupEditPage({ params }: { params: Promise<{ id: string }> }) {
-  const { user, permissions } = await requirePermission('groups', 'UPDATE');
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
-  const { data: group } = await supabase
-    .from('groups')
-    .select('id, name, description, is_system, is_active, updated_at')
-    .eq('id', id)
-    .maybeSingle();
+  // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
+  const [{ user, permissions }, { data: group }] = await Promise.all([
+    requirePermission('groups', 'UPDATE'),
+    supabase
+      .from('groups')
+      .select('id, name, description, is_system, is_active, updated_at')
+      .eq('id', id)
+      .maybeSingle(),
+  ]);
   if (!group) notFound();
   const matrix = group.is_system
     ? undefined

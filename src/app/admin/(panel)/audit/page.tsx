@@ -39,7 +39,6 @@ export default async function AdminAuditPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const ctx = await requirePermission('audit', 'READ');
   const query = parseListQuery(await searchParams, SPEC, await readListDefaults());
   const supabase = await createSupabaseServerClient();
 
@@ -56,9 +55,11 @@ export default async function AdminAuditPage({
   if (gte) req = req.gte('at', gte);
   if (lt) req = req.lt('at', lt);
 
-  // «사람» 조건의 선택지 — 최근 기록 1000줄에 나온 사람
-  const [{ data, count }, { data: recentActors }] = await Promise.all([
+  // 권한 확인과 함께 읽는다 — users/page.tsx 와 같다
+  const [ctx, { data, count }, { data: recentActors }] = await Promise.all([
+    requirePermission('audit', 'READ'),
     req,
+    // «사람» 조건의 선택지 — 최근 기록 1000줄에 나온 사람
     supabase
       .from('audit_log')
       .select('actor_id')

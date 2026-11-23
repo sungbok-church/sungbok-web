@@ -1,6 +1,7 @@
 'use client';
 
 import { saveListMemory } from '@/domains/admin/api/listMemory';
+import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
 import {
   type ListQuery,
   listQueryHref,
@@ -99,6 +100,7 @@ const PAGE_WINDOW = 5;
  */
 export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: Props) => {
   const router = useRouter();
+  const navigate = useAdminNavigate();
   const pathname = usePathname();
   const [selected, setSelected] = useState<string[]>([]);
   const href = (patch: Partial<ListQuery>) => listQueryHref(pathname, query, patch, spec);
@@ -126,7 +128,7 @@ export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: P
     if ((e.target as HTMLElement).closest('a, button, input, [role="checkbox"], [role="menuitem"]'))
       return;
     if (e.metaKey || e.ctrlKey) window.open(rowHref, '_blank');
-    else router.push(rowHref);
+    else navigate(rowHref);
   };
 
   const sortHeader = (column: TableColumn) => {
@@ -216,6 +218,9 @@ export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: P
                   data-state={selected.includes(row.id) ? 'selected' : undefined}
                   className={row.href ? 'cursor-pointer' : undefined}
                   onClick={e => openRow(e, row.href)}
+                  // 줄은 링크가 아니라 미리 받기가 없다 — 마우스를 올리면 그 화면의 틀을 받아 두어, 누르는 순간
+                  // «불러오는 중» 이 뜨게 한다(안 받아 두면 서버 응답이 올 때까지 화면이 멈춰 있다)
+                  onMouseEnter={row.href ? () => router.prefetch(row.href!) : undefined}
                 >
                   {bulk && (
                     <TableCell>
@@ -267,7 +272,7 @@ export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: P
                 const size = Number(value);
                 // 마지막에 고른 쪽당 개수를 기억한다(서버가 다음 목록에서 읽는다)
                 document.cookie = `admin_list_size=${size}; path=/admin; max-age=31536000; samesite=lax`;
-                router.push(href({ size }));
+                navigate(href({ size }));
               }}
             >
               <SelectTrigger size="sm" aria-label="쪽당 개수">

@@ -102,16 +102,19 @@ const RowEditor = ({
   const router = useRouter();
   const [label, setLabel] = useState(row.label);
   const [pending, startTransition] = useTransition();
-  // 이 줄의 «저장된 상태»(이름 · 사용 여부 · 판). 저장이 끝나도 화면이 새로 그려지기(router.refresh)까지 row 는 옛 값이다 —
+  // 이 줄의 «저장된 상태»(이름 · 사용 여부 · 판). 저장이 끝나도 화면이 새로 그려지기(Server Action 의 응답)까지 row 는 옛 값이다 —
   // 그 사이에 칸을 떠나거나 다시 고치면 옛 판으로 한 번 더 저장해 «다른 사람이 먼저 고쳤습니다» 가 떴다.
   // 그래서 보낼 때 이름을 먼저 적어 두고(같은 이름을 두 번 보내지 않는다), 성공하면 돌려받은 판으로 바꿔 둔다.
   const saved = useRef({ label: row.label, isActive: row.isActive, updatedAt: row.updatedAt });
   const run = (job: () => Promise<ActionResult<unknown>>, onFail?: () => void) =>
     startTransition(async () => {
       const result = await job();
-      if (!result.ok) onFail?.();
       notifyResult(result);
-      router.refresh();
+      // 성공하면 Server Action 이 표를 다시 그려 보낸다. 실패(다른 사람이 먼저 고침 등)는 지금 값을 다시 읽는다
+      if (!result.ok) {
+        onFail?.();
+        router.refresh();
+      }
     });
   const update = (patch: { label: string; isActive: boolean }) => {
     const before = saved.current;
