@@ -1,6 +1,6 @@
 'use client';
 
-import type { NameLookup } from '@/domains/admin/api/auditFormat';
+import type { NameLookup } from '@/domains/admin/lib/auditFormat';
 import { AuditEntry, type AuditItem } from '@/domains/admin/components/features/AuditEntry';
 import { Button } from '@/shared/components/ui/button';
 import {

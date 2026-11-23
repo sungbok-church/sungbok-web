@@ -1,8 +1,8 @@
 'use client';
 
-import { type AdminNavGroup } from '@/domains/admin/api/adminNav';
-import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
-import { useCommandShortcut } from '@/domains/admin/api/useCommandShortcut';
+import { type AdminNavGroup } from '@/domains/admin/lib/adminNav';
+import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
+import { useCommandShortcut } from '@/domains/admin/hooks/useKeyShortcut';
 import { Button } from '@/shared/components/ui/button';
 import {
   Command,
@@ -56,24 +56,22 @@ export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
           <CommandInput placeholder="메뉴 이름" />
           <CommandList>
             <CommandEmpty>찾는 메뉴가 없습니다.</CommandEmpty>
-            {nav
-              .filter(group => group.items.some(item => item.ready !== false))
-              .map(group => (
-                <CommandGroup key={group.key} heading={group.label || '바로 가기'}>
-                  {group.items.map(item => (
-                    <CommandItem
-                      key={item.key}
-                      value={`${item.label} ${item.key}`}
-                      onSelect={() => {
-                        setOpen(false);
-                        navigate(item.href);
-                      }}
-                    >
-                      {item.label}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ))}
+            {nav.map(group => (
+              <CommandGroup key={group.key} heading={group.label || '바로 가기'}>
+                {group.items.map(item => (
+                  <CommandItem
+                    key={item.key}
+                    value={`${item.label} ${item.key}`}
+                    onSelect={() => {
+                      setOpen(false);
+                      navigate(item.href);
+                    }}
+                  >
+                    {item.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </CommandDialog>

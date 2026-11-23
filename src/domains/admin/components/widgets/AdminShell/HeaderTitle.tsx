@@ -1,6 +1,6 @@
 'use client';
 
-import { type AdminNavGroup, buildBreadcrumbs } from '@/domains/admin/api/adminNav';
+import { type AdminNavGroup, buildBreadcrumbs } from '@/domains/admin/lib/adminNav';
 import {
   Breadcrumb,
   BreadcrumbItem,

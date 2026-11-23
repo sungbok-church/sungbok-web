@@ -125,3 +125,45 @@ curl -sI https://<도메인>/api/home-video | grep -i -E '^(x-vercel-cache|age):
 - 첫 동기화 때 대시보드에서 만든 3-타깃(production·preview·development) 레코드가 어떻게 재편되는지는 문서가 명시하지 않는다. 체크리스트 10번에서 기록.
 - 유튜브 키는 서버 전용이다(`import "server-only"`, ADR 0010). 브라우저 번들에 실리지 않으므로 Google Cloud 에서 "YouTube Data API v3 만 허용" 제한을 걸 수 있다. HTTP 리퍼러 제한은 서버 호출이라 걸지 않는다.
 - 관리자·백엔드(ADR 0008, Supabase)의 앱 변수는 `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 다(만능 키는 필요해지는 패키지에서 추가). 같은 절차로 동기화한다. ADR 0008 은 Vercel 계정을 교회 명의로 두기로 했는데, 그때는 제어용 Secret 3개(`VERCEL_TOKEN`·`VERCEL_ORG_ID`·`VERCEL_PROJECT_ID`)만 새 계정 것으로 바꾸면 된다. 이 구조는 Vercel 계정이 누구 것이든 같다.
+
+## 9. 관리자 비밀번호 찾기 — Supabase 대시보드 설정 (소유자)
+
+> **지금은 꺼 두었다(2026-11-23 사용자)** — 메일 서비스(Resend)를 Supabase SMTP 에 붙일 때 아래를 함께 하고 `src/domains/admin/lib/passwordReset.ts` 의 `PASSWORD_RESET_ENABLED` 를 `true` 로 바꾼다. 그 전까지 비밀번호를 잊은 사람은 사용자 상세의 «비밀번호 초기화»(임시 비밀번호).
+
+관리자가 잊은 비밀번호를 스스로 다시 정하는 흐름(`/admin/login/forgot` → 메일 → `/admin/login/confirm` → `/admin/password`, [admin.md](../domains/admin.md) «로그인 흐름» 5번)은 코드가 끝나 있다. 운영에서 돌게 하려면 소유자가 운영 프로젝트 대시보드에서 아래를 한 번 한다. 코드는 바꾸지 않는다.
+
+- [ ] 1. **Authentication › URL Configuration**
+  - **Site URL**: `https://sungbok-web.vercel.app` (교회 도메인으로 옮기면 그 주소로 바꾼다). 메일의 링크가 이 주소로 만들어진다 — 미리보기 배포에서 요청해도 링크는 운영으로 간다.
+  - **Redirect URLs** 에 `https://sungbok-web.vercel.app/admin/login/confirm` 을 더한다(도메인을 옮기면 새 주소도). 우리 메일 양식은 Site URL 로 링크를 만들어 이 목록을 쓰지 않지만, 양식을 바꾸기 전의 기본 링크가 여기로 돌아온다.
+- [ ] 2. **Authentication › Emails › Templates › Reset password**(비밀번호 재설정)
+  - 제목: `[성복교회 관리자] 비밀번호 찾기`
+  - 본문: [supabase/templates/recovery.html](../../supabase/templates/recovery.html) 의 내용을 그대로 붙인다. 핵심은 링크 한 줄이다:
+    `{{ .SiteURL }}/admin/login/confirm?token_hash={{ .TokenHash }}&type=recovery`
+  - 기본 양식(`{{ .ConfirmationURL }}`)을 그대로 두면 메일을 **요청한 브라우저에서만** 링크가 열린다(PC 에서 요청하고 휴대폰에서 열면 «링크가 만료됐습니다»). 반드시 바꾼다.
+- [ ] 3. **Authentication › Sign In / Providers › Email** 의 «Email OTP Expiration» 이 `3600`(1시간)인지 본다 — 메일 문구가 «1시간 뒤에 만료됩니다» 라서다. 다르게 두면 양식의 문구도 맞춘다.
+- [ ] 4. 확인: 운영 로그인 화면 › «비밀번호를 잊으셨나요?» › 프로젝트 팀 구성원인 자기 주소로 요청 → 메일의 링크를 **다른 기기**에서 열어 비밀번호 바꾸기 화면이 뜨는지, 새 비밀번호로 로그인되는지 본다.
+
+**메일 발송의 한계(2026-11-23, Supabase 공식 문서 [Send emails with custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) 확인)**: 사용자 정의 SMTP 를 붙이기 전의 기본 메일은 **프로젝트 팀(조직 구성원) 주소에만** 가고(그 밖의 주소는 «Email address not authorized» 로 거절), **시간당 2통**이며, 운영용이 아니다(전달 보장 없음). 그래서 지금은 대시보드 팀에 든 사람만 스스로 찾을 수 있다 — 화면은 계정이 있는지 드러내지 않으려고 이 거절도 «보냈습니다» 로 답한다(원인은 Vercel 함수 로그의 `[requestPasswordReset]`). 다른 관리자에게도 메일이 가려면 Resend(교회 도메인 DNS 인증)를 **Authentication › Emails › SMTP Settings** 에 넣는다 — 넣으면 처음 한도는 시간당 30통이고 **Authentication › Rate Limits** 에서 바꾼다. 그 전까지 팀 밖 관리자는 지금처럼 «전체 관리» 담당자가 비밀번호를 초기화한다(설계 12절 1 · 2번).
+
+## 10. «전체 관리» 구성원 넣고 빼기 — Supabase 대시보드 SQL 편집기 (소유자)
+
+«전체 관리» 소속은 관리자 화면에서 아무도 — «전체 관리» 도 — 바꾸지 못한다(2026-11-23 결정, 설계 6.4 ⑥ — «전체 관리» 계정을 빼앗겨도 새 «전체 관리» 를 만들지 못하게). 바꿀 때는 소유자가 운영 프로젝트 대시보드 **SQL Editor** 에서 한다(로그인한 세션이 아니라 `auth.uid()` 가 비어 있어 `guard_user_groups` 가 통과시킨다). 넣을 사람은 먼저 화면에서 계정을 만들어 둔다.
+
+```sql
+-- 1) 사람 찾기
+select id, name, email, is_active from public.profiles where email = 'someone@example.com';
+
+-- 2) 넣기
+insert into public.user_groups (user_id, group_id)
+select p.id, g.id from public.profiles p, public.groups g
+ where p.email = 'someone@example.com' and g.is_system;
+
+-- 3) 빼기
+delete from public.user_groups ug
+ using public.profiles p, public.groups g
+ where ug.user_id = p.id and ug.group_id = g.id
+   and p.email = 'someone@example.com' and g.is_system;
+```
+
+- 잠김 방지(`ensure_admin_remains`)는 여기서도 걸린다 — 빼서 활성 구성원이 0명이 되면 거절된다(다른 사람을 먼저 넣는다).
+- 변경 이력에는 «누가» 가 «시스템» 으로 남는다. 언제 · 왜 바꿨는지는 따로 적어 둔다.

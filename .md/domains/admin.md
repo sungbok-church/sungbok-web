@@ -10,22 +10,38 @@
 
 | 주소 | 내용 | 권한 |
 |---|---|---|
-| `/admin/login` | 로그인. `?reason=idle`(8시간 쉬어 로그아웃) · `inactive`(꺼진 계정) 안내 | — |
+| `/admin/login` | 로그인. `?reason=idle`(8시간 쉬어 로그아웃) · `inactive`(꺼진 계정) · `reset_expired`(비밀번호 찾기 링크 만료) 안내 | — |
+| `/admin/login/forgot` | 비밀번호 찾기 — 이메일을 적으면 새 비밀번호를 정하는 링크 메일을 보낸다 | — |
+| `/admin/login/confirm` | 그 메일의 링크가 오는 곳(route handler) — 링크로 로그인시키고 `/admin/password` 로 | — |
 | `/admin/password` | 비밀번호 바꾸기 — 첫 로그인 · 초기화 뒤에는 다른 화면으로 못 간다 | 로그인 |
 | `/admin/logout` | 서버가 로그아웃시킬 때 지나가는 주소(route handler) | — |
 | `/admin` | 첫 화면 — 숫자 카드 · 이번 주 할 일(주보 · 주일광고 · 처리 안 된 새가족 — 값은 패키지 B · C, 지금은 «준비 중») · 바로 가기 | 로그인 |
-| `/admin/users` · `/new` · `/[id]` · `/[id]/edit` | 목록(줄 체크 켜기 · 끄기) · 계정 만들기(임시 비밀번호 한 번 · 상세로 / 계속 등록) · 상세(비밀번호 초기화 · 끄기/켜기 · 이력) · 수정(이름 · 그룹 · 부서 범위) | `users` |
-| `/admin/groups` · `/new` · `/[id]` · `/[id]/edit` | 목록 · 만들기 · 상세(구성원 · 권한 표 보기 · 끄기/켜기 · 이력) · 수정 — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장 | `groups` |
+| `/admin/users` · `/new` · `/[id]` · `/[id]/edit` | 목록(줄 체크 켜기 · 끄기) · 계정 만들기(임시 비밀번호 한 번 · 상세로 / 계속 등록) · 상세(«더 보기» 메뉴: 비밀번호 초기화 · 끄기/켜기 · 이력) · 수정(이름 · 그룹 · 담당 부서) | `users` |
+| `/admin/groups` · `/new` · `/[id]` · `/[id]/edit` | 목록 · 만들기 · 상세(구성원 · 권한 표 보기 · «더 보기» 메뉴: 끄기/켜기 · 이력) · 수정 — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장(끄고 켜기는 사용자처럼 상세에서만, 수정 화면에는 없다) | `groups` |
 | `/admin/menus` | 관리자 메뉴의 이름 · 사용 여부 · 순서(홈페이지 탭은 패키지 D) · 화면 전체의 변경 이력 | `menus` |
 | `/admin/categories` | 콘텐츠 › 분류 관리 — 왼쪽 묶음 · 오른쪽 분류(더하기 · 이름 · 사용 여부 · 순서). 영문 이름(slug)은 공개 주소용이라 바꾸지 않는다 | `categories` |
 | `/admin/codes` | 시스템 › 코드 관리(공통코드) — 왼쪽 묶음 · 오른쪽 코드. 코드 값은 영문 대문자. 잠긴 묶음(콘텐츠 상태 · 새가족 구분 · 새가족 처리 상태 — enum 과 같은 값)은 이름 · 순서만([ADR 0020](../decisions/0020-codes-uppercase-and-categories-split.md)) | `codes` |
 | `/admin/audit` | 전체 변경 이력(대상 · 동작 · 사람 · 기간(시작일~끝일, 한국 날짜)) — 한 건은 «자세히» 창 | `audit` |
 | `/admin/없는주소` | 관리자 틀 안의 «페이지를 찾을 수 없습니다» — 권한 없는 화면도 이것(있는지조차 드러내지 않는다) | — |
 
+### 코드 위치(2026-11-23 정리)
+
+`src/domains/admin/` 는 역할별 폴더로 나눈다. 파일 이름은 그대로 두고(`*.server.ts` · `use*` · `*Actions`) 폴더만 역할을 말한다.
+
+| 폴더 | 무엇 |
+|---|---|
+| `api/actions/` | Server Action(`'use server'`) — 화면이 부르는 저장 · 읽기. `authActions` · `userActions` · `groupActions` · `menuActions` · `itemActions`(분류 · 코드) · `passwordActions` · `historyActions` |
+| `api/server/` | 서버에서만 도는 것(`*.server.ts`) — 권한 맥락(`adminContext.server`) · 세션 · 목록 기본값 · 이력 줄 · 권한 표 읽기 · 동시 수정(`versionedUpdate.server`) · 순서 저장(`sortRows.server`) · 한 줄 고치기 표의 공통 몸통(`rowActions.server` — 메뉴 · 분류 · 코드의 고치기 · 순서 · 맨 뒤에 더하기) |
+| `hooks/` | 클라이언트 훅 — `useAdminAction`(Server Action 부르고 토스트) · `useKeyShortcut`(⌘K · Ctrl/⌘+S · `/` 단축키와 «글 쓰는 칸인가» 판정 하나) · `useFormGuards` · `useAdminNavigate` · `useSignOut`(로그아웃 + 임시 보관 · 최근 검색 지우기) · `useCapsLock` |
+| `lib/` | 순수 함수 · 규칙 · 문구(서버 · 화면 공통) — 메뉴 · 권한(`adminNav` · `permissionMatrix`), 목록 주소(`listQuery` · `listMemory`), 이력 문구(`auditFormat` · `auditLabels`), 결과 · 알림(`actionResult` · `notify`), 브라우저 저장소(`adminStorage` · `formDraft` · `recentSearches`), 로그인 길(`authRedirect` · `idleSession` · `passwordReset` · `adminCsp`) 등 |
+| `lib/input/` | 화면 · Server Action 이 같이 쓰는 zod 스키마 — `userInput` · `groupInput` · `itemInput`(분류 · 코드) · `menuInput` · `reorderInput` · `passwordInput` · `loginInput` |
+| `components/features/` | 여러 화면이 쓰는 조각 — `AdminForm`(`TextField` · `FormActions` · `RequiredMark` …) · `AdminList`(`AdminTable` · `ListToolbar`) · `StatusBadge`(«사용 중 / 꺼짐») · `PageHeader` · `ConfirmAction` … |
+| `components/widgets/` | 한 화면 덩어리 — `ItemGroups`(분류 관리 · 코드 관리가 같이 쓰는 화면 — 다른 점은 `itemKinds.ts`) · `SortableRows` · `UserForm` · `GroupForm` … |
+
 ### 권한 판정
 
-- 페이지: [requirePermission(menu, action)](../../src/domains/admin/api/adminContext.server.ts) — 없으면 404. Server Action: `actionPermission` — 없으면 «권한이 없습니다» 토스트(404 를 던지지 않는다).
-- 로그인한 사람의 맥락(`loadAdminContext`, 요청당 한 번): 사용자 정보 · 권한 목록(`rpc('my_permissions')`) · 왼쪽 메뉴([buildAdminNav](../../src/domains/admin/api/adminNav.ts) — 사용 중 · 조회 권한 · 화면이 있는 메뉴만). 사용자 정보가 없거나 꺼진 계정은 `/admin/logout?reason=inactive` 로 보낸다.
+- 페이지: [requirePermission(menu, action)](../../src/domains/admin/api/server/adminContext.server.ts) — 없으면 404. Server Action: `actionPermission` — 없으면 «권한이 없습니다» 토스트(404 를 던지지 않는다).
+- 로그인한 사람의 맥락(`loadAdminContext`, 요청당 한 번): 사용자 정보 · 권한 목록(`rpc('my_permissions')`) · 왼쪽 메뉴([buildAdminNav](../../src/domains/admin/lib/adminNav.ts) — 사용 중 · 조회 권한 · 화면이 있는 메뉴만). 사용자 정보가 없거나 꺼진 계정은 `/admin/logout?reason=inactive` 로 보낸다.
 - **막는 것은 DB 다**(RLS · 트리거 — `supabase/schemas/schema.sql`). 화면 · 액션의 판정은 알맞은 안내를 내기 위한 것이다. 쓰기는 모두 로그인한 사람의 세션으로 한다(이력에 «누가» 가 남고 권한 올리기 방지를 DB 가 한다).
 - 만능 키([adminClient.server.ts](../../src/shared/api/supabase/adminClient.server.ts), `SUPABASE_SECRET_KEY`)는 계정 만들기 · 비밀번호 초기화에만. 비밀번호 초기화는 DB 트리거가 못 막으므로 먼저 `rpc('can_manage_user')` 로 확인한다. lint 가 관리자 코드 밖의 import 를 막는다.
 
@@ -35,51 +51,67 @@
 
 - **왼쪽 메뉴**: 대메뉴(콘텐츠 · 사이트 화면 · 접수 · 시스템) › 세부 메뉴. 펼친 상태는 접히는 묶음(Collapsible), 아이콘만 남긴 상태는 대메뉴를 누르면 오른쪽에 세부 메뉴(DropdownMenu). 화면이 아직 없는 메뉴는 «준비 중»(누를 수 없음). 아이콘은 [MenuIcon](../../src/domains/admin/components/features/MenuIcon/index.tsx).
 - **위쪽 막대**: 경로 표시(대메뉴 › 메뉴 › 새로 만들기 · 상세 › 수정 — `buildBreadcrumbs`) · 입력칸 모양의 «메뉴 찾기 ⌘K».
-- **화면 머리**: [PageHeader](../../src/domains/admin/components/features/PageHeader/index.tsx) — 제목(h1, 메뉴 관리에서 바꾼 이름) · 한 줄 설명([adminScreens.ts](../../src/domains/admin/api/adminScreens.ts)) · 주요 버튼(새로 만들기 · 변경 이력).
+- **화면 머리**: [PageHeader](../../src/domains/admin/components/features/PageHeader/index.tsx) — 제목(h1, 메뉴 관리에서 바꾼 이름) · 한 줄 설명([adminScreens.ts](../../src/domains/admin/lib/adminScreens.ts)) · 주요 버튼(새로 만들기 · 변경 이력).
 - **흐름**: 목록 → (줄 누름) 상세 → [수정] → 저장하면 상세. 상세가 없는 목록(변경 이력)은 «자세히» 창, 목록만 있는 화면(메뉴 · 코드)은 그 자리에서 고친다.
-- **목록**: [AdminTable](../../src/domains/admin/components/features/AdminList/AdminTable.tsx) — 테두리 있는 표(회색 머리) · 머리 눌러 정렬 · 줄 누르면 상세(Ctrl/⌘ 는 새 탭) · 줄 체크 일괄 처리 · 아래 «총 N건 · 10/20/50/100개씩(쿠키로 기억) · 쪽 번호». 좁은 화면은 카드. 그린 쪽의 주소 · 줄 순서를 탭 저장소에 남겨 상세의 [목록] · 이전/다음이 쓴다([listMemory](../../src/domains/admin/api/listMemory.ts)).
-- **상세**: 머리에 [목록] · 이전/다음 · [수정] · (끄기 등) · [변경 이력], 아래 등록 · 수정한 사람과 시각([RecordMeta](../../src/domains/admin/components/features/Detail/RecordMeta.tsx)).
-- **불러오는 중**: `(panel)/loading.tsx` 뼈대 + 위쪽 진행 표시줄([NavigationProgress](../../src/domains/admin/components/features/NavigationProgress/index.tsx) — 링크 클릭은 스스로 알아채고, `router.push` 로 옮기는 곳(목록 줄 · 검색 · 저장 뒤 상세로)은 [useAdminNavigate](../../src/domains/admin/api/useAdminNavigate.ts) 를 쓴다). 목록 줄은 마우스를 올리면 그 화면의 틀을 미리 받는다. 왼쪽 메뉴 링크도 올렸을 때만 미리 받는다([IntentLink](../../src/domains/admin/components/features/IntentLink/index.tsx) — Next 공식 hover-triggered prefetch). 보이면 미리 받는 기본 방식이면 무엇을 저장할 때마다 미리 받은 화면이 모두 다시 받아졌다(저장 한 번에 14건 → 2건, 2026-11-23 측정).
+- **목록**: [AdminTable](../../src/domains/admin/components/features/AdminList/AdminTable.tsx) — 테두리 있는 표(회색 머리) · 머리 눌러 정렬 · 줄 누르면 상세(Ctrl/⌘ 는 새 탭) · 줄 체크 일괄 처리 · 아래 «총 N건 · 10/20/50/100개씩(쿠키로 기억) · 쪽 번호». 좁은 화면은 카드. 그린 쪽의 주소 · 줄 순서를 탭 저장소에 남겨 상세의 [목록] · 이전/다음이 쓴다([listMemory](../../src/domains/admin/lib/listMemory.ts)).
+- **상세**: 머리에 [목록] · 이전/다음 · [수정] 만 두고, 자주 쓰지 않는 동작(비밀번호 초기화 · 끄기/켜기 · 변경 이력)은 «더 보기»(⋯) 메뉴 하나로 접는다(좁은 화면에서 버튼이 여러 줄로 넘치지 않게). 확인 창 · 이력 창은 메뉴 밖에 두고 `open` · `onOpenChange` 로 연다(ConfirmAction · HistorySheet 의 버튼 없는 쓰임). 아래 등록 · 수정한 사람과 시각([RecordMeta](../../src/domains/admin/components/features/Detail/RecordMeta.tsx)).
+- **불러오는 중**: `(panel)/loading.tsx` 뼈대 + 위쪽 진행 표시줄([NavigationProgress](../../src/domains/admin/components/features/NavigationProgress/index.tsx) — 링크 클릭은 스스로 알아채고, `router.push` 로 옮기는 곳(목록 줄 · 검색 · 저장 뒤 상세로)은 [useAdminNavigate](../../src/domains/admin/hooks/useAdminNavigate.ts) 를 쓴다). 목록 줄은 마우스를 올리면 그 화면의 틀을 미리 받는다. 왼쪽 메뉴 링크도 올렸을 때만 미리 받는다([IntentLink](../../src/domains/admin/components/features/IntentLink/index.tsx) — Next 공식 hover-triggered prefetch). 보이면 미리 받는 기본 방식이면 무엇을 저장할 때마다 미리 받은 화면이 모두 다시 받아졌다(저장 한 번에 14건 → 2건, 2026-11-23 측정).
 - **빠르게 그리기(2026-11-23)**: 페이지는 권한 확인(`requirePermission`)과 화면 데이터 읽기를 `Promise.all` 로 함께 시작한다 — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 RLS). 저장한 뒤 화면은 Server Action 이 다시 그려 보내므로(`revalidatePath`) 화면 쪽에서 `router.refresh()` 를 또 부르지 않는다(실패해서 지금 값을 다시 읽을 때만).
 - **왼쪽 메뉴 숫자**: `AdminNavItem.badge`(값은 패키지 C).
 - **엑셀 다운로드**: 메뉴의 `actions` 에 `export` 가 있고 그 권한이 있을 때만 버튼 — 지금은 새가족(패키지 C)만.
-- **등록 · 수정**: 넓은 화면은 카드를 나란히(기본 정보 · 그룹/권한), 화면 아래에 붙은 막대([FormActions](../../src/domains/admin/components/features/AdminForm/index.tsx))에 취소 · 저장. 필수 칸 *, 글자 수. 그룹 권한은 «메뉴 × 기능» 표([PermissionMatrix](../../src/domains/admin/components/widgets/PermissionMatrix/index.tsx) — 상세는 보기 전용, 폼은 체크).
+- **등록 · 수정**: 넓은 화면은 카드를 나란히(기본 정보 · 그룹/권한), 화면 아래에 붙은 막대([FormActions](../../src/domains/admin/components/features/AdminForm/index.tsx))에 취소 · 저장. 필수 칸 *, 글자 수. 그룹 권한은 «메뉴 × 기능» 표([PermissionMatrix](../../src/domains/admin/components/widgets/PermissionMatrix/index.tsx) — 상세는 보기 전용, 폼은 체크). 폼(«전체 관리» 만 연다)에서는 메뉴 이름 옆 체크로 그 줄, 기능 이름 아래 체크로 그 기능 칸을 한꺼번에 켜고 끈다(모두 · 일부 · 없음 세 모양. `rowKeys` · `columnKeys` · `bulkState` · `toggleCells`). 표를 고치는 사람이 «전체 관리» 뿐이라 막힌 칸은 없다 — 그 메뉴에 없는 기능 «–» 에 올리면 «이 메뉴에는 없는 기능입니다»(`NO_ACTION`)가 뜬다. «보기만» 같은 줄 모음 선택은 두지 않았다(줄 체크 · «조회» 칸 체크로 두 번이면 된다). **조회가 있어야 다른 기능을 쓴다(2026-11-23)** — 다른 기능을 켜면 그 줄의 조회도 켜고, 조회를 끄면 그 줄의 다른 칸도 끈다. 줄 · 기능 칸 한꺼번에 고르기도 같다(`toggleCells`). 화면에서만 맞춘다(DB 는 막지 않는다). 좁은 화면에서는 표 안에서만 옆으로 밀리고 메뉴 이름 칸이 왼쪽에 붙어 있다. 기능 이름은 교회 사무실에서 바로 알아보게 «조회 · 등록 · 수정 · 삭제 · 영구 삭제 · 엑셀로 받기 · 변경 이력 보기»([permissionMatrix](../../src/domains/admin/lib/permissionMatrix.ts) `ACTION_LABELS` — 이름표만, DB 코드 `PURGE` · `EXPORT` · `HISTORY` 는 그대로).
+  - **역할: «전체 관리» 와 그 밖의 사용자 관리자(2026-11-23 결정 — 단순화, 설계 6.4 ① · ②)**:
+    - **그룹 만들기 · 고치기(이름 · 설명 · 권한 표 · 끄기 · 켜기)는 «전체 관리» 만** — 그룹 권한이 있어도 그 밖의 사람은 못 한다. DB 가 막는다(`guard_groups` · `guard_group_permissions` — 행 권한은 그대로 두고 지키는 규칙이 «전체 관리» 가 아니면 거절). 화면: 목록의 [새 그룹], 상세의 [수정] · «더 보기» 의 끄기/켜기는 «전체 관리» 에게만 그리고, 등록 · 수정 주소는 404([requireFullAdmin](../../src/domains/admin/api/server/myGroups.server.ts)), 액션은 `actionFullAdmin` 으로 DB 전에 «권한이 없습니다». 상세의 권한 표는 누구에게나 보기 전용. 판정은 [loadMyGroups](../../src/domains/admin/api/server/myGroups.server.ts)(내 user_groups 를 한 번 읽어 «전체 관리» 인가 · 내 그룹 id — 요청마다 한 번).
+    - **그 밖의 사용자 관리자는 자기가 속한 그룹에만 사람을 넣고 뺀다**(`guard_user_groups` — `private.is_my_group`, 꺼진 내 그룹도 내 그룹). **넣고 빼는 대상도 관리할 수 있는 사람(`can_manage_user`)일 때만** — 남의 그룹에도 속한 사람에게서 내 그룹을 빼 권한을 깎지 못한다. 바꾸기 전 소속으로 본다(BEFORE 트리거 — 그룹 없는 새 계정 · save_user 의 줄마다 넣고 빼기는 그대로 된다). 같은 그룹이면 그 그룹의 권한(꺼진 메뉴의 잠자는 권한도)이 나와 같이 살고 같이 자서 따로 «그 그룹의 권한을 모두 가졌는가» 를 볼 필요가 없다 — 그 판정(`holds_group_permissions`)과 «꺼진 그룹 켜기는 권한을 모두 가졌을 때만» 규칙은 지웠다. `can_manage_user`(비밀번호 초기화 등)는 대상이 속한 그룹이 **모두** 내 그룹이고(그룹이 없어도 된다) 내 부서 범위 안일 때만. **다른 사람의 사용자 정보(이름 · 부서 · 끄기 · 켜기)도 `can_manage_user` 일 때만 고친다**(`guard_profiles` — save_user 는 사용자 정보를 그룹보다 먼저 고쳐 바꾸기 전 그룹으로 본다. 그룹 없는 새 계정도 관리할 수 있다): 상세의 [수정] 과 수정 주소는 [canEditUser](../../src/domains/admin/lib/userAccess.ts)(수정 권한 + 자기 자신이거나 관리할 수 있음 — 아니면 404), 목록의 일괄 끄기/켜기(`setUsersActive`)는 미리 확인하지 않고 한 명씩 고쳐 `guard_profiles` 에 맡기고, 다른 사람의 줄이 막히면(42501) 건너뛰어 «내가 관리할 수 없는 사용자는 바꾸지 않았습니다» 로 알린다. 사용자 폼은 [groupChoices](../../src/domains/admin/lib/groupScope.ts) 로 내 그룹만 고르게 한다(남의 그룹 사람은 수정 화면이 열리지 않아 잠긴 남의 그룹 칸은 없앴다). `createUser` · `updateUser` 는 넣거나 뺀 그룹 중 내 그룹이 아닌 것이 있으면(`outsideGroups`) Auth API · DB 전에 «내가 속한 그룹에만 넣고 뺄 수 있습니다.»(그룹 칸 오류). 내 그룹이 없으면 그룹 없이 만든다(폼은 `Empty` 로 알린다). 수정 화면의 임시저장을 되살릴 때는 지금 고를 수 있는(잠기지 않은) 그룹의 변경만 얹는다(`applySetChanges` 의 `only`).
+    - **«전체 관리» 소속은 화면에서 아무도 바꾸지 않는다(2026-11-23 결정, 설계 6.4 ⑥)** — «전체 관리» 도. `guard_user_groups` 가 로그인한 세션의 넣기 · 빼기를 막고(만능 키 · SQL 편집기 · 변경 파일처럼 `auth.uid()` 가 없으면 된다), `save_user` 는 목록에 없어도 그 소속을 지우지 않는다. 폼은 그 그룹을 내지 않고 이미 속했으면 잠긴 줄로 보여 주며, `createUser` · `updateUser` 는 넣거나 빼면(`touchesSystemGroup` · `loadSystemGroupIds`) Auth API · DB 전에 ««전체 관리» 소속은 화면에서 바꿀 수 없습니다.». 운영자 절차는 [deploy-and-env.md](../workflow/deploy-and-env.md).
+  - **내 범위보다 넓게 주지 못한다(2026-11-23 결정, 설계 6.4 ③ · ⑤)**: 부서 범위(`my_department_limit` — «전체 관리» 가 아니고 담당 부서가 있으면 그 부서)가 있으면 다른 사람의 부서는 내 부서로만 정하고 내 부서의 사용자만 고친다(`guard_profiles` · `guard_user_groups`) — 예외 없이: 범위 밖 계정(부서가 빈 방금 만든 계정 · 물러난 관리자의 꺼진 계정 등)을 내 부서로 끌어와 비밀번호를 초기화하지 못한다. `can_manage_user` 도 내 부서 범위 안일 때만. **계정 만들기는 부서를 계정과 함께 정한다**: `createUser` 가 Auth API 를 부르기 전에 내 부서인지 확인하고(부서 범위가 있으면 내 부서로만 — 만능 키라 DB 가 거르지 못한다) `user_metadata: { name, department }` 로 넘기면, 계정이 생길 때 `on_auth_user_changed` 가 사용자 정보의 부서로 넣는다(INSERT 때만 — 로그인한 사람이 `auth.updateUser({ data })` 로 자기 metadata 를 바꿔도 부서는 그대로. 목록에 없는 부서면 계정을 만들지 않는다). 그 뒤 그룹은 로그인한 사람의 세션으로 넣는다(`guard_user_groups` 가 범위 · 내 그룹인지를 본다). 부서는 «사용자 등록» 만으로 정해지므로 계정 만들기는 등록 권한으로 되고(목록의 [새 사용자] · `/admin/users/new` 모두 `users:CREATE`), 그룹을 고르면 지금처럼 «사용자 수정» 도 있어야 한다(없으면 Auth API 전에 «권한이 없습니다»). 화면: 사용자 폼은 담당 부서를 고정해 «내 담당 부서로만 정할 수 있습니다.» 를 띄우고, 범위 밖 사용자는 상세에서 [수정] 을 숨기고 수정 주소는 404.
+  - **메뉴 켜기 · 끄기는 «전체 관리» 만(2026-11-23 결정)**: 권한은 메뉴가 켜져 있을 때만 살아 있어서(`user_has_permission`) 메뉴를 켜면 잠자던 내 권한이 깨어나고 끄면 모두의 권한이 빠진다 — `guard_menus` 가 «전체 관리» 가 아닌 사람의 `is_active` 변경을 막는다(이름 · 순서는 메뉴 수정 권한으로 된다). 메뉴 관리 화면은 [loadMyGroups](../../src/domains/admin/api/server/myGroups.server.ts) 로 판정해 사용 스위치를 막고 «메뉴 켜기 · 끄기는 «전체 관리» 만 합니다.» 한 줄을 띄운다(분류 · 코드는 그대로).
 - **첫 화면**: 숫자 카드(권한 있는 것만) · 이번 주 할 일 · 아이콘 있는 바로 가기 카드.
 
-- **검색 조건**: [ListToolbar](../../src/domains/admin/components/features/AdminList/ListToolbar.tsx) — 검색어(`/` 로 이동 · 최근 검색 조건 5개, 사용자별 · 로그아웃 때 지움) · 조건 · 기간 · [검색] · [초기화] · 적용된 조건 칩. 검색 · 조건 · 정렬 · 쪽 · 개수가 주소에 남는다([listQuery.ts](../../src/domains/admin/api/listQuery.ts)). 검색어는 `orIlike` 로만 필터에 넣는다(따옴표 이스케이프 — 필터 문법 끼워 넣기 방지). 개인정보 목록은 `searchInUrl: false`.
-- **폼**: TanStack Form + 화면 · 액션이 같은 zod 스키마(`zodFormValidator` · `parseInput`). [useFormGuards](../../src/domains/admin/api/useFormGuards.ts) — 나가기 경고 · Ctrl/⌘+S · 쓰던 내용 임시 보관([formDraft](../../src/domains/admin/api/formDraft.ts): 사용자별 · 7일 · 저장 · 로그아웃 때 지움 · 사용자 등록 · 새가족 폼은 보관 안 함). 사용자 수정 · 그룹은 «내가 바꾼 것» 만 보관하고([draftChanges](../../src/domains/admin/api/draftChanges.ts)), 불러오면 새 화면 위에 얹는다 — «다른 사람이 먼저 고쳤습니다» 로 새로고침한 뒤 불러와도 남의 변경을 덮지 않는다.
-- **동시 수정**: [updateVersioned](../../src/domains/admin/api/versionedUpdate.server.ts) — 열었을 때의 `updated_at` 이 같을 때만 고친다.
+- **검색 조건**: [ListToolbar](../../src/domains/admin/components/features/AdminList/ListToolbar.tsx) — 검색어(`/` 로 이동 · 최근 검색 조건 5개, 사용자별 · 로그아웃 때 지움) · 조건 · 기간 · [검색] · [초기화] · 적용된 조건 칩. 검색 · 조건 · 정렬 · 쪽 · 개수가 주소에 남는다([listQuery.ts](../../src/domains/admin/lib/listQuery.ts)). 검색어는 `orIlike` 로만 필터에 넣는다(따옴표 이스케이프 — 필터 문법 끼워 넣기 방지). 개인정보 목록은 `searchInUrl: false`.
+- **폼**: TanStack Form + 화면 · 액션이 같은 zod 스키마(`zodFormValidator` · `parseInput`). 글자 칸은 [TextField](../../src/domains/admin/components/features/AdminForm/index.tsx)(이름 · 필수 * · 글자 수 · 오류를 한 덩어리로 — 비밀번호 칸만 따로), 서버 검사에서 틀린 칸은 토스트와 함께 그 칸 아래에도 보인다(`applyServerErrors` — 사용자 · 그룹 · 분류 · 코드 · 비밀번호 폼 모두). [useFormGuards](../../src/domains/admin/hooks/useFormGuards.ts) — 나가기 경고 · Ctrl/⌘+S · 쓰던 내용 임시 보관([formDraft](../../src/domains/admin/lib/formDraft.ts): 사용자별 · 7일 · 저장 · 로그아웃 때 지움 · 사용자 등록 · 새가족 폼은 보관 안 함). 사용자 수정 · 그룹은 «내가 바꾼 것» 만 보관하고([draftChanges](../../src/domains/admin/lib/draftChanges.ts)), 불러오면 새 화면 위에 얹는다 — «다른 사람이 먼저 고쳤습니다» 로 새로고침한 뒤 불러와도 남의 변경을 덮지 않는다.
+- **동시 수정**: [updateVersioned](../../src/domains/admin/api/server/versionedUpdate.server.ts) — 열었을 때의 `updated_at` 이 같을 때만 고친다.
 - **여러 표를 함께 저장**: 사용자(정보 + 그룹 소속) · 그룹(정보 + 권한 표)은 DB 함수 하나로 한 트랜잭션에 저장한다 — `save_user` · `save_group` · `create_group`([schema.sql](../../supabase/schemas/schema.sql)). 로그인한 사람의 권한으로 돌아(행 권한 · 지키는 규칙 그대로) 하나라도 막히면 아무것도 바뀌지 않는다. 화면을 열었을 때의 `updated_at` 과 그룹 목록 · 권한 표를 함께 보내, 그 사이 다른 사람이 바꿨으면 저장하지 않는다(null → «다른 사람이 먼저 고쳤습니다»). 열었을 때의 목록은 폼이 열릴 때 한 번만 기억한다(페이지 데이터가 새로 와도 바뀌지 않게).
-- **알림 · 확인**: 결과는 `notifyResult` 토스트(오류 원문은 [toActionError](../../src/domains/admin/api/actionResult.ts) 가 쉬운 문구로). 되돌리기 어려운 동작은 [ConfirmAction](../../src/domains/admin/components/features/ConfirmAction/index.tsx)(문구 고정).
-- **이력**: 상세 화면(메뉴 · 코드는 목록 화면) 머리의 «변경 이력» 버튼 → 오른쪽 창, 한 건마다 «항목 | 이전 | 이후» 표([HistorySheet](../../src/domains/admin/components/features/HistorySheet/index.tsx), 그 메뉴의 «이력조회» 권한이 있을 때만 버튼이 보이고 서버 액션 `loadHistory` 가 다시 확인) · 전체는 `/admin/audit`(표 + «자세히» 창). 칸 · 값은 한글로([auditFormat](../../src/domains/admin/api/auditFormat.ts) · [auditLabels](../../src/domains/admin/api/auditLabels.ts) — 표에 칸을 더하면 이름표에도 더한다), id 는 이름으로, 새가족 개인정보 칸은 «(값 숨김)».
+- **순서 바꾸기(메뉴 · 분류 · 코드)**: [SortableRows](../../src/domains/admin/components/widgets/SortableRows/index.tsx) — 줄 앞 손잡이(«<이름> 순서 옮기기»)를 끌어서 옮긴다(dnd-kit, [ADR 0025](../decisions/0025-admin-drag-reorder-dnd-kit.md)). 키보드는 손잡이에서 스페이스 · 엔터로 집고 ↑↓ 로 옮긴 뒤 스페이스 · 엔터로 놓는다(Esc 취소), 화면 낭독기 문장은 한글([sortAnnouncements](../../src/domains/admin/components/widgets/SortableRows/sortAnnouncements.ts)). 손가락은 손잡이에서 4px 넘게 움직여야 끌린다(이름 칸 · 스위치 누르기는 그대로). 놓으면 바로 그 순서로 보이고(useOptimistic) 무리 전체의 새 순서를 Server Action 한 번(`reorderMenus` · `reorderCategories` · `reorderCodes`)으로 보내, DB 함수 `reorder_rows(표, id 목록)` 가 한 트랜잭션에 10, 20, 30 … 을 매긴다(값이 바뀐 줄만 고쳐 이력도 그 줄만). 받은 목록이 무리(메뉴: 같은 영역 · 같은 상위, 분류 · 코드: 같은 묶음)와 정확히 같지 않으면(그사이 줄이 더해짐 등) 아무것도 바꾸지 않고 «목록이 그사이 바뀌었습니다» — 화면은 서버의 순서로 돌아가고 다시 읽는다. 무리의 줄을 잠가 동시에 옮기면 차례로 돈다. 잠긴 줄(«항상 켜짐»)도 순서는 옮긴다. 좁은 화면(390px)은 둘째 칸(주소 · 코드 값)을 이름 밑에 작게 보인다.
+- **알림 · 확인**: 결과는 `notifyResult` 토스트(화면은 [useAdminAction](../../src/domains/admin/hooks/useAdminAction.ts) 으로 부른다 — 기다리는 동안 pending, 끝나면 토스트, 뒤처리는 `after`)(오류 원문은 [toActionError](../../src/domains/admin/lib/actionResult.ts) 가 쉬운 문구로). 되돌리기 어려운 동작은 [ConfirmAction](../../src/domains/admin/components/features/ConfirmAction/index.tsx)(문구 고정 — 끄기는 대상마다 뜻이 달라 사용자 `deactivate` «로그인 · 선택 목록에서 빠집니다» · 그룹 `deactivateGroup` «구성원이 이 그룹으로 받은 권한을 쓸 수 없고 선택 목록에서 빠집니다»).
+- **이력**: 상세 화면(메뉴 · 코드는 목록 화면) 머리의 «변경 이력» 버튼 → 오른쪽 창, 한 건마다 «항목 | 이전 | 이후» 표([HistorySheet](../../src/domains/admin/components/features/HistorySheet/index.tsx), 그 메뉴의 «변경 이력 보기»(HISTORY) 권한이 있을 때만 버튼이 보이고 서버 액션 `loadHistory` 가 다시 확인) · 전체는 `/admin/audit`(표 + «자세히» 창). 칸 · 값은 한글로([auditFormat](../../src/domains/admin/lib/auditFormat.ts) · [auditLabels](../../src/domains/admin/lib/auditLabels.ts) — 표에 칸을 더하면 이름표에도 더한다), id 는 이름으로, 새가족 개인정보 칸은 «(값 숨김)».
 - **코드 · 분류 읽기**: 드롭다운 · 조건 · 표의 이름은 `getCodeBook()` · `getCategoryBook()`([codeBook.server.ts](../../src/shared/api/codeBook.server.ts) — 캐시 없이 그릴 때마다 DB 에서 읽고 한 요청 안에서만 중복 제거, [ADR 0023](../decisions/0023-codes-read-without-cache.md))에서 읽고 `codeOptions` · `codeLabel` · `categoryOptions`([codeBook.ts](../../src/shared/api/codeBook.ts))로 만든다. 코드 관리 · 분류 관리 화면은 고치기 위해 줄마다 판(updated_at)까지 따로 읽는다.
 - **메뉴 찾기**: ⌘K · Ctrl+K 또는 위쪽 막대 «찾기»([CommandMenu](../../src/domains/admin/components/features/CommandMenu/index.tsx), shadcn `command` · cmdk — 관리자 전용).
 
 ### 보안 헤더 · 세션
 
-- [proxy](../../src/proxy.ts) 가 `/admin` 응답마다 CSP 를 싣는다([adminCsp.ts](../../src/domains/admin/api/adminCsp.ts) — 요청마다 새 nonce, 스크립트는 nonce 를 단 것만, 연결 · 그림은 이 사이트와 Supabase 만, 틀 안에 넣기 금지).
-- 마지막 요청 뒤 8시간이 지나면 proxy 가 그 세션을 Supabase 에서 끊고 로그인 화면으로 보낸다([idleSession.ts](../../src/domains/admin/api/idleSession.ts), 쿠키 `admin_last_seen` httpOnly). Supabase 의 refresh token 은 만료가 없어서 이렇게 한다.
+- [proxy](../../src/proxy.ts) 가 `/admin` 응답마다 CSP 를 싣는다([adminCsp.ts](../../src/domains/admin/lib/adminCsp.ts) — 요청마다 새 nonce, 스크립트는 nonce 를 단 것만, 연결 · 그림은 이 사이트와 Supabase 만, 틀 안에 넣기 금지).
+- 마지막 요청 뒤 8시간이 지나면 proxy 가 그 세션을 Supabase 에서 끊고 로그인 화면으로 보낸다([idleSession.ts](../../src/domains/admin/lib/idleSession.ts), 쿠키 `admin_last_seen` httpOnly). Supabase 의 refresh token 은 만료가 없어서 이렇게 한다.
 
 - **틀**: [AdminShell](../../src/domains/admin/components/widgets/AdminShell/index.tsx) — **shadcn 의 sidebar 부품과 dashboard 배치를 원본 값 그대로 쓰고 색만 이 사이트 팔레트로 바꾼다**([ADR 0016](../decisions/0016-admin-ui-follows-shadcn.md), 사용자 결정 2026-11-18). 왼쪽 메뉴(위: 교회 표시 · 가운데: 메뉴 · 아래: 로그인한 계정과 «로그아웃») + 위쪽 막대(메뉴 버튼 · 화면 제목) + 본문. 화면 제목(`h1`)은 위쪽 막대가 지금 메뉴 이름으로 그린다 — 페이지는 제목을 따로 그리지 않는다.
   - `md`(768) 이상: 왼쪽 메뉴(256px)를 아이콘만 남기고 접을 수 있다(메뉴 버튼 · 메뉴 가장자리 · Ctrl/⌘+B — 글 편집기가 들어오면 굵게 단축키와 겹치는지 본다). 접힘 상태는 쿠키 `sidebar_state` 에 남아 다음 방문 때 같은 모양으로 그린다. 그 아래 폭: 메뉴 버튼이 왼쪽 시트를 연다.
   - 부품은 [ui/sidebar](../../src/shared/components/ui/sidebar.tsx)(shadcn base-nova 원본, Base UI — 다른 곳은 파일 머리 주석의 목록뿐이다). 메뉴 항목을 링크로 그릴 때는 `render={<Link … />}` 를 쓴다. «동작 줄이기» 설정에서는 `globals.css` 가 전환을 끈다. 색은 `--sidebar-*` 의미 토큰이 B1 을 가리킨다([color-palette.md](../design/color-palette.md)).
   - 메뉴는 DB(`menus`)에서 묶음별로 그린다. 아이콘은 화면 코드가 `key` 로 고른다([AdminSidebar](../../src/domains/admin/components/widgets/AdminShell/AdminSidebar.tsx) 의 `MENU_ICONS`). 왼쪽 메뉴 아래의 계정 메뉴에 «비밀번호 바꾸기» · «로그아웃».
   - 공개 사이트의 헤더·푸터·부드러운 스크롤은 없다(그것들은 `src/app/(site)/layout.tsx` 에만 있다).
+- **로그인 · 비밀번호 바꾸기 화면**: 둘이 같은 틀 [AuthFrame](../../src/domains/admin/components/features/AuthFrame/index.tsx) 을 쓴다 — shadcn 로그인 블록 login-03 모양(옅은 `bg-muted` 바탕 · 가운데 카드 · 위에 왼쪽 메뉴와 같은 ChurchIcon 교회 표시, 공개 사이트 HomeLogo 는 가져오지 않는다). 비밀번호 칸은 [PasswordInput](../../src/domains/admin/components/features/PasswordInput/index.tsx)(InputGroup 의 보기 · 숨기기 단추 + Caps Lock 안내 — [useCapsLock](../../src/domains/admin/hooks/useCapsLock.ts), aria-live). 로그인 화면은 글자를 줄였다(제목 아래 설명 없음, 2026-11-23 사용자) — 비밀번호 칸 이름 옆 «비밀번호를 잊으셨나요?» 링크(login-03 자리)와 카드 아래 «홈페이지로 돌아가기», 비밀번호를 꼭 바꿔야 하는 사람에게는 «로그아웃»(UserMenu 와 같은 `signOut` + 임시 보관 지우기)을 둔다.
 - **폼과 안내**: 로그인 폼은 shadcn 의 `FieldGroup` · `Field` · `Alert`, 화면은 `Card` 로 짠다 — 관리자 폼의 기본 모양이다(규칙은 [.claude/skills/shadcn](../../.claude/skills/shadcn/SKILL.md), 이 프로젝트의 추가 규칙은 `CLAUDE.md` 의 «shadcn 부품 작업»). 기다리는 동안의 버튼은 `Spinner`, 없는 주소 안내는 `Empty` 를 쓴다. 전에 이 사이트가 만든 `FormField` · `EmptyState` · sonner `Toaster` 는 지웠다(각각 `Field` · `Empty` · `toast` 로 대체).
 - **검색 제외**: `src/app/admin/layout.tsx` 가 관리자 전체에 `noindex, nofollow` 를 건다.
 - **`(panel)` 묶음**: 로그인해야 보이는 화면은 전부 `src/app/admin/(panel)/` 아래에 둔다 — 그 레이아웃이 로그인을 확인하고 틀을 그린다. 로그인 화면만 묶음 밖이다.
 
 ## 로그인 흐름
 
+> 비밀번호 찾기(메일 링크)는 만들어 두었지만 **꺼 두었다** — 메일 서비스(Resend)를 붙일 때 켠다(`PASSWORD_RESET_ENABLED`, deploy-and-env 9절).
+
 1. `/admin/*` 요청은 [src/proxy.ts](../../src/proxy.ts) 를 지난다(매처 `/admin/:path*` 하나뿐 — 공개 페이지는 지나지 않는다). proxy 는 로그인 쿠키를 갱신하고([proxySession.server.ts](../../src/shared/api/supabase/proxySession.server.ts)), 로그인하지 않았으면 `/admin/login?next=<오던 곳>` 으로 보낸다. 로그인한 사람이 로그인 화면에 오면 `next` 로 보낸다.
-2. 로그인 폼은 Server Action [signIn](../../src/domains/admin/api/authActions.ts) 을 부른다: 값 검증([loginInput.ts](../../src/domains/admin/api/loginInput.ts)) → Supabase Auth → `next` 로 이동. 실패하면 안내 문구와 적었던 이메일을 돌려준다(비밀번호는 돌려주지 않는다).
-3. `(panel)` 레이아웃과 페이지는 [requireAdminUser](../../src/domains/admin/api/session.server.ts) 로 한 번 더 확인한다.
+2. 로그인 폼은 Server Action [signIn](../../src/domains/admin/api/actions/authActions.ts) 을 부른다: 값 검증([loginInput.ts](../../src/domains/admin/lib/input/loginInput.ts)) → Supabase Auth → `next` 로 이동. 실패하면 안내 문구와 적었던 이메일을 돌려준다(비밀번호는 돌려주지 않는다).
+3. `(panel)` 레이아웃과 페이지는 [requireAdminUser](../../src/domains/admin/api/server/session.server.ts) 로 한 번 더 확인한다.
 4. «로그아웃» 은 Server Action `signOut` — 세션을 끝내고 로그인 화면으로 보낸다.
+5. **비밀번호 찾기(스스로)**: 로그인 화면의 «비밀번호를 잊으셨나요?» → `/admin/login/forgot` 에서 이메일 → Server Action [requestPasswordReset](../../src/domains/admin/api/actions/authActions.ts) 이 `resetPasswordForEmail` 을 부른다 → 메일의 링크 `<Site URL>/admin/login/confirm?token_hash=…&type=recovery` → route handler([confirm/route.ts](../../src/app/admin/login/confirm/route.ts))가 `verifyOtp` 로 그 계정에 로그인시키고(쿠키) `/admin/password` 로 → 새 비밀번호를 정하면 `/admin`. 링크 읽기 · 경로는 [passwordReset.ts](../../src/domains/admin/lib/passwordReset.ts). 만료 · 이미 쓴 링크면 `/admin/login?reason=reset_expired`.
+   - **링크는 token_hash 로 만든다**(PKCE `code` 가 아니다) — `code` 는 요청한 브라우저의 쿠키가 있어야 바꿀 수 있어서, PC 에서 요청하고 휴대폰 메일에서 열면 실패한다. 링크의 모양은 Supabase 메일 양식이 정한다: 로컬은 [supabase/templates/recovery.html](../../supabase/templates/recovery.html)(`config.toml` 의 `[auth.email.template.recovery]`), 운영은 대시보드 — 설정 절차는 [deploy-and-env.md](../workflow/deploy-and-env.md) 9절. 양식을 바꾸기 전의 기본 링크(`?code=`)도 확인 주소가 받는다(요청한 브라우저에서만 된다).
+   - **계정이 있는지 알려 주지 않는다.** 결과는 늘 «입력한 주소로 메일을 보냈습니다…» 하나다. 계정이 있을 때만 나는 거절(메일 발송 실패 · 기본 메일로 팀 밖 주소)도 같은 결과로 답하고 원인은 서버 로그에만 남긴다(이메일은 찍지 않는다). 횟수 제한(429)은 «잠시 뒤에 다시 시도해 주세요.», 연결 실패는 «메일을 보내지 못했습니다…».
+   - **확인 주소는 로그인했어도 지나간다**([authRedirect.ts](../../src/domains/admin/lib/authRedirect.ts) — 막으면 링크의 계정으로 바꿔 들지 못한다). 찾기 화면은 다른 로그인 화면처럼 로그인한 사람을 첫 화면으로 보낸다. 8시간 쉰 세션이 남은 브라우저에서 링크를 열면 proxy 가 먼저 로그아웃시키고 로그인 화면으로 보낸다 — 링크는 쓰이지 않았으니 다시 누르면 된다.
+   - **새 비밀번호를 정할 때 지금 비밀번호는 묻지 않는다**(로그인한 세션이 본인 확인 — 링크로 들어온 사람도 같은 화면 · 같은 `changePassword`). 바꾸면 «비밀번호를 바꿔야 함» 을 끄고, 같은 계정의 다른 기기 로그인을 끊는다(`signOut({ scope: 'others' })` — 이 기기는 남는다).
+   - **메일이 실제로 가려면 운영에 메일 서비스(Resend)를 붙여야 한다.** 그 전까지 Supabase 기본 메일은 프로젝트 팀 구성원 주소에만, 시간당 2통까지 간다. 코드는 그대로 두고 대시보드 설정만 하면 된다([설계](../specs/2026-11-17-admin-design.md) 12절 1 · 2번).
 
 지켜야 할 것:
 
 - **서버에서 사용자 확인은 `getClaims()` 만 쓴다.** 토큰 서명을 검증한다. `getSession()` 은 쿠키를 그대로 믿으므로 서버 코드에서 쓰지 않는다(테스트가 부르지 않는지 확인한다).
-- **`next` 는 `/admin` 안 경로만 받는다**([authRedirect.ts](../../src/domains/admin/api/authRedirect.ts) 의 `safeNextPath`). `https://…` · `//…` · `/\…` · `/admin/../…` · 제어 문자는 `/admin` 으로 바꾼다. 로그인 화면 자체로는 되돌리지 않는다.
+- **`next` 는 `/admin` 안 경로만 받는다**([authRedirect.ts](../../src/domains/admin/lib/authRedirect.ts) 의 `safeNextPath`). `https://…` · `//…` · `/\…` · `/admin/../…` · 제어 문자는 `/admin` 으로 바꾼다. 로그인 화면 자체로는 되돌리지 않는다.
 - **proxy 는 첫 관문일 뿐이다.** Server Action 은 그것을 쓰는 페이지 주소로 POST 되므로, 매처 밖 페이지에서 부르면 proxy 를 지나지 않는다. 그래서 페이지와 Server Action 이 각자 `requireAdminUser` 를 부른다.
 - **거절 문구는 한 가지다** — «이메일 또는 비밀번호가 맞지 않습니다.». 어느 쪽이 틀렸는지, 계정이 있는지 알려 주지 않는다. 다만 Supabase 가 응답하지 않거나(5xx · 연결 실패) 횟수 제한(429)에 걸린 것은 «로그인 서버에 연결하지 못했습니다…» 로 따로 알린다 — Supabase 는 이것들을 던지지 않고 오류 값으로 돌려준다.
 - **로그아웃은 `scope: 'local'`** — 서버 응답을 기다리지 않고 이 브라우저의 쿠키부터 지운다(기본값은 서버 호출이 성공해야 지워서, 연결이 끊긴 순간에는 로그인 상태가 남는다). 같은 계정의 다른 기기는 끊지 않는다.
@@ -98,7 +130,7 @@
 | DB 검사 | [supabase/tests/database](../../supabase/tests/database) — `pnpm db:test`(pgTAP: RLS 켜짐 · 외래 키 인덱스 · 파일 묶음 주인 뷰 · 방문자/권한 없는 계정/다른 부서 계정의 직접 호출) · `pnpm db:advisors`(Supabase 점검, 경고 이상이면 실패) |
 | enum 일치 검사 | [enumParity.test.ts](../../src/shared/api/supabase/enumParity.test.ts) — DB enum 과 화면의 TS 타입이 어긋나면 `pnpm typecheck` 가 실패한다 |
 
-- **환경변수가 없어도 공개 사이트는 빌드되고 열린다.** `/admin` 은 로그인 화면으로 가고, 로그인 화면은 칸 대신 «관리자 로그인이 아직 설정되지 않았습니다.» 를 보여 준다.
+- **환경변수가 없어도 공개 사이트는 빌드되고 열린다.** `/admin` 은 로그인 화면으로 가고, 로그인 화면은 칸 대신 «관리자 로그인이 아직 설정되지 않았습니다.» 안내(Alert)를 보여 준다.
 - **프로젝트 주소와 키를 코드·문서에 적지 않는다** — 환경변수로만 받는다. 지금 운영 프로젝트는 개인 계정에 있고 나중에 교회 계정으로 옮긴다.
 - 권한 판정은 DB 함수 `private.has_permission(메뉴 key, 기능)` 하나다(`private` 스키마는 API 로 열리지 않는다). 화면 · Server Action 은 `private` 을 부를 수 없으므로 `rpc('my_permissions')`(로그인한 사람의 (메뉴 key, 기능) 목록)로 받는다 — 막는 것은 여전히 RLS 다. 로그인 계정이 생기면 트리거가 `profiles` 를 만든다.
 - 만능 키(secret key)는 아직 어디에서도 쓰지 않는다. 브라우저용 클라이언트도 아직 없다(처음 쓰는 곳은 파일 올리기 — 패키지 3).

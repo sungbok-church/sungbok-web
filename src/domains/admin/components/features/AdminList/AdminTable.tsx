@@ -1,13 +1,13 @@
 'use client';
 
-import { saveListMemory } from '@/domains/admin/api/listMemory';
-import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
+import { saveListMemory } from '@/domains/admin/lib/listMemory';
+import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
 import {
   type ListQuery,
   listQueryHref,
   type ListSpec,
   PAGE_SIZES,
-} from '@/domains/admin/api/listQuery';
+} from '@/domains/admin/lib/listQuery';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {

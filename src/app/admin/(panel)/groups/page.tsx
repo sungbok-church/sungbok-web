@@ -1,14 +1,19 @@
-import { requirePermission } from '@/domains/admin/api/adminContext.server';
-import { can, screenLabel } from '@/domains/admin/api/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/api/adminScreens';
-import { readListDefaults } from '@/domains/admin/api/listDefaults.server';
-import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/api/listQuery';
+import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
+import { screenLabel } from '@/domains/admin/lib/adminNav';
+import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
+import { readListDefaults } from '@/domains/admin/api/server/listDefaults.server';
+import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
+import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
 import {
   AdminTable,
   type TableRowData,
 } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import {
+  StatusBadge,
+  STATUS_FILTER_OPTIONS,
+} from '@/domains/admin/components/features/StatusBadge';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -43,18 +48,21 @@ export default async function AdminGroupsPage({
     .range(...rangeOf(query.page, query.size));
   if (query.q) req = req.or(orIlike(['name', 'description'], query.q));
   if (query.filters.active) req = req.eq('is_active', query.filters.active === '1');
-  // 권한 확인과 함께 읽는다 — users/page.tsx 와 같다
-  const [ctx, { data, count }] = await Promise.all([requirePermission('groups', 'READ'), req]);
+  // 권한 확인과 함께 읽는다 — users/page.tsx 와 같다. 그룹 만들기는 «전체 관리» 만(설계 6.4) — 권한 확인 뒤 이어서 읽되 목록과는 함께
+  const context = requirePermission('groups', 'READ');
+  const [ctx, { fullAdmin }, { data, count }] = await Promise.all([
+    context,
+    context.then(c => loadMyGroups(c.user.id)),
+    req,
+  ]);
 
   const rows: TableRowData[] = (data ?? []).map(g => {
     const href = `${PATH}/${g.id}`;
     const members = g.user_groups?.[0]?.count ?? 0;
     const status = g.is_system ? (
       <Badge variant="accent">모든 권한</Badge>
-    ) : g.is_active ? (
-      <Badge variant="success">사용 중</Badge>
     ) : (
-      <Badge variant="neutral">꺼짐</Badge>
+      <StatusBadge active={g.is_active} />
     );
     return {
       id: g.id,
@@ -96,7 +104,7 @@ export default async function AdminGroupsPage({
         title={screenLabel(ctx.nav, 'groups', '그룹 · 권한')}
         description={SCREEN_DESCRIPTIONS.groups}
         actions={
-          can(ctx.permissions, 'groups', 'CREATE') && (
+          fullAdmin && (
             <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
               <PlusIcon data-icon="inline-start" />새 그룹
             </Button>
@@ -112,10 +120,7 @@ export default async function AdminGroupsPage({
           {
             name: 'active',
             label: '상태',
-            options: [
-              { value: '1', label: '사용 중' },
-              { value: '0', label: '꺼짐' },
-            ],
+            options: STATUS_FILTER_OPTIONS,
           },
         ]}
       />
@@ -132,9 +137,7 @@ export default async function AdminGroupsPage({
         ]}
         empty={{
           title: '그룹이 없습니다',
-          create: can(ctx.permissions, 'groups', 'CREATE')
-            ? { href: `${PATH}/new`, label: '첫 그룹 만들기' }
-            : undefined,
+          create: fullAdmin ? { href: `${PATH}/new`, label: '첫 그룹 만들기' } : undefined,
         }}
       />
     </>

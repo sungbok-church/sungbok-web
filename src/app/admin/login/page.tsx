@@ -1,10 +1,16 @@
-import { safeNextPath } from '@/domains/admin/api/authRedirect';
-import { LoginForm } from '@/domains/admin/components/widgets/LoginForm';
+import { safeNextPath } from '@/domains/admin/lib/authRedirect';
+import { AuthFrame } from '@/domains/admin/components/features/AuthFrame';
+import { type LoginReason, LoginForm } from '@/domains/admin/components/widgets/LoginForm';
 import { readSupabaseEnv } from '@/shared/api/supabase/env';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Button } from '@/shared/components/ui/button';
+import { ArrowLeftIcon } from 'lucide-react';
+import Link from 'next/link';
 
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
 export const instant = false;
+
+const REASONS: readonly LoginReason[] = ['idle', 'inactive', 'reset_expired'];
+const isReason = (v: unknown): v is LoginReason => REASONS.includes(v as LoginReason);
 
 type Props = { searchParams: Promise<{ next?: string | string[]; reason?: string | string[] }> };
 
@@ -13,21 +19,20 @@ type Props = { searchParams: Promise<{ next?: string | string[]; reason?: string
 export default async function AdminLoginPage({ searchParams }: Props) {
   const { next, reason } = await searchParams;
   return (
-    <main className="bg-background flex flex-1 items-center justify-center px-4 py-10">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle role="heading" aria-level={1}>
-            성복교회 관리자 로그인
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LoginForm
-            next={safeNextPath(typeof next === 'string' ? next : null)}
-            configured={readSupabaseEnv() !== null}
-            reason={reason === 'idle' || reason === 'inactive' ? reason : undefined}
-          />
-        </CardContent>
-      </Card>
-    </main>
+    <AuthFrame
+      title="관리자 로그인"
+      footer={
+        <Button variant="link" nativeButton={false} render={<Link href="/" prefetch={false} />}>
+          <ArrowLeftIcon data-icon="inline-start" aria-hidden />
+          홈페이지로 돌아가기
+        </Button>
+      }
+    >
+      <LoginForm
+        next={safeNextPath(typeof next === 'string' ? next : null)}
+        configured={readSupabaseEnv() !== null}
+        reason={isReason(reason) ? reason : undefined}
+      />
+    </AuthFrame>
   );
 }

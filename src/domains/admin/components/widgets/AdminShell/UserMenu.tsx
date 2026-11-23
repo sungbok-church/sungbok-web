@@ -1,9 +1,7 @@
 'use client';
 
-import { signOut } from '@/domains/admin/api/authActions';
-import { clearDrafts } from '@/domains/admin/api/formDraft';
-import { clearRecentSearches } from '@/domains/admin/api/recentSearches';
-import type { AdminUser } from '@/domains/admin/api/session.server';
+import type { AdminUser } from '@/domains/admin/api/server/session.server';
+import { useSignOut } from '@/domains/admin/hooks/useSignOut';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import {
   DropdownMenu,
@@ -22,21 +20,14 @@ import {
 } from '@/shared/components/ui/sidebar';
 import { ChevronsUpDownIcon, KeyRoundIcon, LogOutIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useTransition } from 'react';
 
 /** 왼쪽 메뉴 맨 아래의 로그인한 계정 — 누르면 «로그아웃» 이 나온다(스타터의 nav-user 와 같은 구조). */
 export const UserMenu = ({ user, name }: { user: AdminUser; name: string }) => {
   const { isMobile } = useSidebar();
-  const [pending, startTransition] = useTransition();
+  // 쓰던 내용 임시 보관 · 최근 검색 조건도 함께 지운다(useSignOut)
+  const { pending, signOut: logout } = useSignOut(user.id);
   const shown = name || user.email;
   const initial = (shown[0] ?? '?').toUpperCase();
-  const logout = () =>
-    startTransition(() => {
-      // 쓰던 내용 임시 보관 · 최근 검색 조건은 공용 PC 에 남지 않게 로그아웃 때 지운다(설계 6.10)
-      clearDrafts(window.localStorage, user.id);
-      clearRecentSearches(window.localStorage, user.id);
-      return signOut();
-    });
 
   return (
     <SidebarMenu>

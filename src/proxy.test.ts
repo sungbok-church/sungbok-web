@@ -2,7 +2,7 @@ import { updateSession } from '@/shared/api/supabase/proxySession.server';
 import { NextRequest, NextResponse } from 'next/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { IDLE_COOKIE, IDLE_LIMIT_MS } from './domains/admin/api/idleSession';
+import { IDLE_COOKIE, IDLE_LIMIT_MS } from './domains/admin/lib/idleSession';
 import { config, proxy } from './proxy';
 
 vi.mock('@/shared/api/supabase/proxySession.server', () => ({ updateSession: vi.fn() }));

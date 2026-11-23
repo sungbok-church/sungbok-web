@@ -1,6 +1,6 @@
 'use client';
 
-import { type ListMemory, neighbors, readListMemory } from '@/domains/admin/api/listMemory';
+import { type ListMemory, neighbors, readListMemory } from '@/domains/admin/lib/listMemory';
 import { Button } from '@/shared/components/ui/button';
 import { ChevronLeftIcon, ChevronRightIcon, ListIcon } from 'lucide-react';
 import Link from 'next/link';

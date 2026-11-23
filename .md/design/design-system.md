@@ -63,10 +63,10 @@
 | 입력 | `Input`·`Textarea`·`Select`(Base UI 는 `items` 를 넘긴다)·`Checkbox`·`Switch`·`RadioGroup`·`Label`·**`Field`**(`FieldGroup`·`FieldLabel`·`FieldDescription`·`FieldError`·`FieldSet` — 관리자 폼의 기본 틀) | base-nova 원본 값 그대로. 공개 화면의 입력칸은 16px 를 지킨다(그 화면이 지정) |
 | 겹침 | `Dialog`·`Sheet`·`DropdownMenu`(base-nova 원본, Base UI)·`toast`(Base UI 알림 — `Toaster` 배치는 처음 쓰는 패키지에서). 여는 버튼은 `render` 속성으로 준다(`<DialogTrigger render={<Button />}>`). 공개 화면에서 사이트 헤더 위로 덮어야 하는 뷰어·바텀시트는 `@base-ui/react/dialog` 를 `z-[60]` 으로 직접 쓴다 — 공용 것은 헤더와 같은 `z-50` | 움직임 줄이기 설정이면 즉시 열고 닫음(`globals.css`) |
 | 표시 | `Badge`(base-nova 원본 + 상태 톤 변형 `neutral·accent·success·warning·danger`), `Alert`, `Empty`(빈 목록 — 공개 화면의 자료실·앨범도 쓴다), `Spinner`, `Skeleton`, `Avatar` | 상태 색은 B1 상태 토큰만 |
-| 목록 | **`ResponsiveList`** — `md` 이상 표, 그 아래 카드 | 관리자 목록 화면의 기본 틀 |
+| 목록 | `Table`(`ui/table` — 이 사이트 것, 관리자 표들이 쓴다). 관리자 목록 화면의 틀은 관리자 도메인의 `AdminTable`(`src/domains/admin/components/features/AdminList/` — 머리 정렬 · 쪽 넘기기 · 줄 고르기 · 좁은 화면 카드). `ResponsiveList`(`md` 이상 표, 그 아래 카드)는 견본(`/design`)에만 있고 쓰는 화면이 없다 | 쪽 넘기기는 `AdminTable` 안의 것 하나뿐이다(공용 `Pagination` · `features/Table` 은 쓰는 곳이 없어 지웠다) |
 | 관리자 틀 | **`Sidebar`**(shadcn sidebar 원본) — `md` 이상은 아이콘만 남기고 접히는 왼쪽 메뉴, 그 아래는 시트 | 관리자 전용. 색만 `--sidebar-*` 의미 토큰(→ B1)으로 바꿨다(ADR 0016) |
 | 업로드 | **`ImageDropzone`** — 여러 장 선택(휴대폰 카메라·앨범), 미리보기, 앞뒤 이동, 삭제 | UI만. 축소·업로드는 부르는 쪽 |
-| 기존 | `Card`·`Tabs`·`Tooltip`·`NavigationMenu`·`Separator`(base-nova 원본), `Table`·`Pagination`(이 사이트 것 — 공개 사이트용. `Pagination` 은 칸 크기를 스스로 44px 로 지정한다) | |
+| 기존 | `Card`·`Tabs`·`Tooltip`·`NavigationMenu`·`Separator`(base-nova 원본) | |
 
 **공개 화면의 목록·열람 조작**(예배 영상·교회소식·자료실이 같이 쓴다 — 연출 위젯이 아니라 B1 토큰을 쓰는 공용 조각):
 

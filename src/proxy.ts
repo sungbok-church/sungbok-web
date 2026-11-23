@@ -1,6 +1,6 @@
-import { buildAdminCsp } from '@/domains/admin/api/adminCsp';
-import { adminAuthDecision } from '@/domains/admin/api/authRedirect';
-import { IDLE_COOKIE, IDLE_COOKIE_MAX_AGE, isIdle } from '@/domains/admin/api/idleSession';
+import { buildAdminCsp } from '@/domains/admin/lib/adminCsp';
+import { adminAuthDecision } from '@/domains/admin/lib/authRedirect';
+import { IDLE_COOKIE, IDLE_COOKIE_MAX_AGE, isIdle } from '@/domains/admin/lib/idleSession';
 import { updateSession } from '@/shared/api/supabase/proxySession.server';
 import { NextResponse, type NextRequest } from 'next/server';
 

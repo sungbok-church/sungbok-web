@@ -1,4 +1,4 @@
-import { loadAdminContext, PASSWORD_PATH } from '@/domains/admin/api/adminContext.server';
+import { loadAdminContext, PASSWORD_PATH } from '@/domains/admin/api/server/adminContext.server';
 import { AdminShell } from '@/domains/admin/components/widgets/AdminShell';
 import { Toaster } from '@/shared/components/ui/toast';
 import { cookies } from 'next/headers';

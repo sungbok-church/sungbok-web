@@ -1,11 +1,11 @@
-import { formatAdminTime } from '@/domains/admin/api/adminTime';
+import { formatAdminTime } from '@/domains/admin/lib/adminTime';
 import {
   actionLabel,
   formatChanges,
   type NameLookup,
   subjectOf,
   tableLabel,
-} from '@/domains/admin/api/auditFormat';
+} from '@/domains/admin/lib/auditFormat';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   Table,

@@ -10,7 +10,7 @@ const ruleIds = async (code: string, filePath: string) =>
 
 describe('공개 쪽 ↔ 관리자 경계', () => {
   it.each([
-    ["import { signIn } from '@/domains/admin/api/authActions';", 'src/domains/home/x.tsx'],
+    ["import { signIn } from '@/domains/admin/api/actions/authActions';", 'src/domains/home/x.tsx'],
     [
       "import { AdminShell } from '@/domains/admin/components/widgets/AdminShell';",
       'src/app/(site)/x.tsx',
@@ -22,7 +22,7 @@ describe('공개 쪽 ↔ 관리자 경계', () => {
     ["import { createServerClient } from '@supabase/ssr';", 'src/domains/news/api/x.ts'],
     ["import { createClient } from '@supabase/supabase-js';", 'src/domains/resources/api/x.ts'],
     // 상대 경로로 돌아 들어오는 길
-    ["import { signIn } from '../admin/api/authActions';", 'src/domains/home/x.tsx'],
+    ["import { signIn } from '../admin/api/actions/authActions';", 'src/domains/home/x.tsx'],
     [
       "import { AdminShell } from '../../admin/components/widgets/AdminShell';",
       'src/domains/news/api/x.ts',
@@ -30,14 +30,14 @@ describe('공개 쪽 ↔ 관리자 경계', () => {
     // 모든 공개 페이지에 실리는 파일과 공용 폴더
     ["import { createBrowserClient } from '@supabase/ssr';", 'src/app/_provider.tsx'],
     ["import { useForm } from 'react-hook-form';", 'src/app/layout.tsx'],
-    ["import { signIn } from '@/domains/admin/api/authActions';", 'src/app/not-found.tsx'],
+    ["import { signIn } from '@/domains/admin/api/actions/authActions';", 'src/app/not-found.tsx'],
     ["import { createServerClient } from '@supabase/ssr';", 'src/shared/lib/x.ts'],
     ["import { useReactTable } from '@tanstack/react-table';", 'src/shared/lib/hooks/useX.ts'],
-    ["import { signIn } from '@/domains/admin/api/authActions';", 'src/shared/config/x.ts'],
+    ["import { signIn } from '@/domains/admin/api/actions/authActions';", 'src/shared/config/x.ts'],
     ["import { createClient } from '@supabase/supabase-js';", 'src/app/api/home-video/route.ts'],
     // 연결 계층은 Supabase 라이브러리만 쓸 수 있다 — 관리자 코드를 끌어오면 공개 코드가 그 파일을 거쳐 싣게 된다
     [
-      "import { signIn } from '@/domains/admin/api/authActions';",
+      "import { signIn } from '@/domains/admin/api/actions/authActions';",
       'src/shared/api/supabase/x.server.ts',
     ],
   ])('공개 쪽에서 %s 는 막힌다', async (code, file) => {
@@ -45,14 +45,17 @@ describe('공개 쪽 ↔ 관리자 경계', () => {
   });
 
   it.each([
-    ["import { signIn } from '@/domains/admin/api/authActions';", 'src/app/admin/login/x.tsx'],
+    [
+      "import { signIn } from '@/domains/admin/api/actions/authActions';",
+      'src/app/admin/login/x.tsx',
+    ],
     ["import { useForm } from 'react-hook-form';", 'src/domains/admin/components/x.tsx'],
     ["import { createServerClient } from '@supabase/ssr';", 'src/shared/api/supabase/x.server.ts'],
     [
       "import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';",
       'src/domains/news/api/x.ts',
     ],
-    ["import { adminAuthDecision } from '@/domains/admin/api/authRedirect';", 'src/proxy.ts'],
+    ["import { adminAuthDecision } from '@/domains/admin/lib/authRedirect';", 'src/proxy.ts'],
     ["import { updateSession } from '@/shared/api/supabase/proxySession.server';", 'src/proxy.ts'],
     [
       "import { NavLinks } from './NavLinks';",

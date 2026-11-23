@@ -1,10 +1,12 @@
-import { requirePermission } from '@/domains/admin/api/adminContext.server';
-import { can, screenLabel } from '@/domains/admin/api/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/api/adminScreens';
+import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
+import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
+import { can, screenLabel } from '@/domains/admin/lib/adminNav';
+import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
 import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { type SortableRow, SortableRows } from '@/domains/admin/components/widgets/SortableRows';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import {
   Card,
   CardContent,
@@ -12,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import { LockIcon } from 'lucide-react';
 
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
 export const instant = false;
@@ -42,8 +45,11 @@ const toRow = (m: MenuRow): SortableRow => ({
 export default async function AdminMenusPage() {
   const supabase = await createSupabaseServerClient();
   // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
-  const [ctx, { data }] = await Promise.all([
-    requirePermission('menus', 'READ'),
+  // 켜기 · 끄기는 «전체 관리» 만(guard_menus) — 권한 확인 뒤 이어서 읽되 메뉴 읽기와는 함께
+  const context = requirePermission('menus', 'READ');
+  const [ctx, { fullAdmin }, { data }] = await Promise.all([
+    context,
+    context.then(c => loadMyGroups(c.user.id)),
     supabase
       .from('menus')
       .select('id, key, parent_id, label, default_label, path, is_active, is_locked, updated_at')
@@ -55,6 +61,7 @@ export default async function AdminMenusPage() {
   const tops = menus.filter(m => m.parent_id === null);
   const headers = tops.filter(m => m.path === null);
   const editable = can(ctx.permissions, 'menus', 'UPDATE');
+  const toggleable = editable && fullAdmin;
 
   return (
     <>
@@ -68,6 +75,12 @@ export default async function AdminMenusPage() {
         }
       />
       <div className="flex flex-col gap-6">
+        {editable && !fullAdmin && (
+          <Alert>
+            <LockIcon aria-hidden />
+            <AlertDescription>메뉴 켜기 · 끄기는 «전체 관리» 만 합니다.</AlertDescription>
+          </Alert>
+        )}
         <Card>
           <CardHeader>
             <CardTitle>대메뉴</CardTitle>
@@ -83,6 +96,7 @@ export default async function AdminMenusPage() {
               detailHeader="주소"
               rows={tops.map(toRow)}
               editable={editable}
+              toggleable={toggleable}
             />
           </CardContent>
         </Card>
@@ -98,6 +112,7 @@ export default async function AdminMenusPage() {
                 detailHeader="주소"
                 rows={menus.filter(m => m.parent_id === header.id).map(toRow)}
                 editable={editable}
+                toggleable={toggleable}
               />
             </CardContent>
           </Card>

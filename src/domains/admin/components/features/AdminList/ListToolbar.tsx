@@ -5,14 +5,15 @@ import {
   type ListQuery,
   listQueryHref,
   type ListSpec,
-} from '@/domains/admin/api/listQuery';
+} from '@/domains/admin/lib/listQuery';
 import {
   pushRecentSearch,
   readRecentSearches,
   type RecentSearch,
   recentKey,
-} from '@/domains/admin/api/recentSearches';
-import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
+} from '@/domains/admin/lib/recentSearches';
+import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
+import { useKeyShortcut } from '@/domains/admin/hooks/useKeyShortcut';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -27,7 +28,7 @@ import {
 import { Switch } from '@/shared/components/ui/switch';
 import { HistoryIcon, RotateCcwIcon, SearchIcon, XIcon } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 export type ListFilter = {
   name: string;
@@ -93,19 +94,10 @@ export const ListToolbar = ({
   };
 
   // `/` 로 검색칸(글을 쓰는 칸 안에서는 그대로 입력)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      const typing =
-        t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
-      if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  useKeyShortcut(
+    e => e.key === '/' && !e.metaKey && !e.ctrlKey,
+    () => inputRef.current?.focus()
+  );
 
   const submit = () => go({ q: q.trim(), from, to });
   const reset = () => {

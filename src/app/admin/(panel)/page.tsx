@@ -1,7 +1,7 @@
-import { loadAdminContext } from '@/domains/admin/api/adminContext.server';
-import { can } from '@/domains/admin/api/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/api/adminScreens';
-import { periodStart } from '@/domains/admin/api/adminTime';
+import { loadAdminContext } from '@/domains/admin/api/server/adminContext.server';
+import { can, SCREENS_READY } from '@/domains/admin/lib/adminNav';
+import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
+import { periodStart } from '@/domains/admin/lib/adminTime';
 import { MENU_ICONS } from '@/domains/admin/components/features/MenuIcon';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
@@ -24,7 +24,8 @@ type Stat = { label: string; value: number; note: string; href: string };
 
 type Todo = { key: string; title: string; description: string };
 
-// 이번 주 할 일 — 그 메뉴 권한이 있는 사람에게만. 값(올렸는지 · 몇 건인지)은 그 화면이 생기는 패키지 B · C 에서 채운다.
+// 이번 주 할 일 — 그 화면이 생겼고 권한이 있는 사람에게만(화면이 없는 «준비 중» 카드는 늘어놓지 않는다). 값(올렸는지 · 몇 건인지)은
+// 그 화면이 생기는 패키지 B · C 에서 채운다.
 const TODOS: Todo[] = [
   { key: 'bulletin', title: '이번 주 주보', description: '이번 주일 주보를 올렸는지 보여 줍니다.' },
   {
@@ -73,7 +74,7 @@ export default async function AdminHomePage() {
             .select('id', { count: 'exact', head: true })
             .eq('is_active', true)
         ).then(value => ({
-          label: '분류(칩)',
+          label: '분류',
           value,
           note: '사용 중인 분류',
           href: '/admin/categories',
@@ -90,10 +91,10 @@ export default async function AdminHomePage() {
     ])
   ).filter((s): s is Stat => Boolean(s));
 
-  const todos = TODOS.filter(t => can(permissions, t.key, 'READ'));
+  const todos = TODOS.filter(t => SCREENS_READY.has(t.key) && can(permissions, t.key, 'READ'));
   const screens = nav.flatMap(group =>
     group.items
-      .filter(item => item.key !== 'dashboard' && item.ready !== false)
+      .filter(item => item.key !== 'dashboard')
       .map(item => ({ ...item, group: group.label }))
   );
 
@@ -108,7 +109,10 @@ export default async function AdminHomePage() {
         <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(stat => (
             <li key={stat.label}>
-              <Link href={stat.href} className="block rounded-xl focus-visible:outline-none">
+              <Link
+                href={stat.href}
+                className="focus-visible:ring-ring/50 block rounded-xl outline-none focus-visible:ring-[3px]"
+              >
                 <Card className="hover:bg-muted/40 transition-colors">
                   <CardHeader>
                     <CardDescription>{stat.label}</CardDescription>
@@ -163,7 +167,7 @@ export default async function AdminHomePage() {
                 <li key={screen.key}>
                   <Link
                     href={screen.href}
-                    className="block h-full rounded-xl focus-visible:outline-none"
+                    className="focus-visible:ring-ring/50 block h-full rounded-xl outline-none focus-visible:ring-[3px]"
                   >
                     <Card className="hover:bg-muted/40 h-full transition-colors">
                       <CardHeader>

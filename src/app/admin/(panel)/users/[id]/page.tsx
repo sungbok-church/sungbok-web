@@ -1,12 +1,13 @@
-import { requirePermission } from '@/domains/admin/api/adminContext.server';
-import { can } from '@/domains/admin/api/adminNav';
-import { actorNameMap } from '@/domains/admin/api/auditRows.server';
-import { DEPARTMENTS } from '@/domains/admin/api/userInput';
+import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
+import { can } from '@/domains/admin/lib/adminNav';
+import { actorNameMap } from '@/domains/admin/api/server/auditRows.server';
+import { DEPARTMENTS } from '@/domains/admin/lib/input/userInput';
+import { canEditUser } from '@/domains/admin/lib/userAccess';
 import { DetailList } from '@/domains/admin/components/features/Detail/DetailList';
 import { ListNav } from '@/domains/admin/components/features/Detail/ListNav';
 import { RecordMeta } from '@/domains/admin/components/features/Detail/RecordMeta';
-import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { StatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import { UserDetailActions } from '@/domains/admin/components/widgets/UserDetailActions';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 import { Badge } from '@/shared/components/ui/badge';
@@ -47,6 +48,12 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     supabase.rpc('can_manage_user', { p_target: id }),
   ]);
   if (!profile) notFound();
+  // 다른 사람은 관리할 수 있을 때만 고친다(설계 6.4 — 남의 그룹 사람 · 내 부서 범위 밖은 DB 가 막는다). 자기 자신은 이름을 고친다
+  const canEdit = canEditUser({
+    canUpdate: can(ctx.permissions, 'users', 'UPDATE'),
+    isSelf: profile.id === ctx.user.id,
+    canManage: canManage === true,
+  });
   const names = await actorNameMap(supabase, [profile.created_by, profile.updated_by]);
   const groups = (profile.user_groups ?? []).flatMap(ug => (ug.groups ? [ug.groups] : []));
 
@@ -59,21 +66,21 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           actions={
             <>
               <ListNav listPath={PATH} id={profile.id} />
-              {can(ctx.permissions, 'users', 'UPDATE') && (
+              {canEdit && (
                 <Button nativeButton={false} render={<Link href={`${PATH}/${profile.id}/edit`} />}>
                   <PencilIcon data-icon="inline-start" />
                   수정
                 </Button>
               )}
+              {/* 비밀번호 초기화 · 끄기/켜기 · 변경 이력은 «더 보기» 메뉴 하나로 */}
               <UserDetailActions
                 userId={profile.id}
                 email={profile.email}
+                name={profile.name}
                 isActive={profile.is_active}
                 canManage={canManage === true}
+                canHistory={can(ctx.permissions, 'users', 'HISTORY')}
               />
-              {can(ctx.permissions, 'users', 'HISTORY') && (
-                <HistorySheet table="profiles" rowId={profile.id} subject={profile.name} />
-              )}
             </>
           }
         />
@@ -97,18 +104,23 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 { label: '이메일(로그인 아이디)', value: profile.email },
                 {
                   label: '상태',
-                  value: profile.is_active ? (
-                    <Badge variant="success">사용 중</Badge>
-                  ) : (
-                    <Badge variant="neutral">꺼짐</Badge>
-                  ),
+                  value: <StatusBadge active={profile.is_active} />,
                 },
                 {
-                  label: '다음세대 부서 범위',
-                  value: profile.department
-                    ? (DEPARTMENTS.find(d => d.value === profile.department)?.label ??
-                      profile.department)
-                    : '모든 부서',
+                  label: '담당 부서',
+                  value: (
+                    <span className="flex flex-col gap-0.5">
+                      {profile.department
+                        ? (DEPARTMENTS.find(d => d.value === profile.department)?.label ??
+                          profile.department)
+                        : '모든 부서'}
+                      <span className="text-muted-foreground text-xs font-normal">
+                        {profile.department
+                          ? '«다음세대 부서» 메뉴에서 이 부서만 고칩니다.'
+                          : '«다음세대 부서» 메뉴에서 부서를 가리지 않고 고칩니다.'}
+                      </span>
+                    </span>
+                  ),
                 },
                 {
                   label: '비밀번호',
@@ -144,7 +156,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                         g.name
                       )}
                       {g.is_system && <Badge variant="accent">모든 권한</Badge>}
-                      {!g.is_active && <Badge variant="neutral">꺼짐</Badge>}
+                      <StatusBadge active={g.is_active} onlyOff />
                     </span>
                     {g.description && (
                       <span className="text-muted-foreground text-xs">{g.description}</span>

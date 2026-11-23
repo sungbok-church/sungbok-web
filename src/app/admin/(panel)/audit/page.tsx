@@ -1,12 +1,12 @@
-import { requirePermission } from '@/domains/admin/api/adminContext.server';
-import { screenLabel } from '@/domains/admin/api/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/api/adminScreens';
-import { dayRange, formatAdminTime } from '@/domains/admin/api/adminTime';
-import { actionLabel, formatChanges, subjectOf, tableLabel } from '@/domains/admin/api/auditFormat';
-import { ACTION_NAMES, TABLE_LABELS } from '@/domains/admin/api/auditLabels';
-import { referenceNames, withActorNames } from '@/domains/admin/api/auditRows.server';
-import { readListDefaults } from '@/domains/admin/api/listDefaults.server';
-import { type ListSpec, parseListQuery, rangeOf } from '@/domains/admin/api/listQuery';
+import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
+import { screenLabel } from '@/domains/admin/lib/adminNav';
+import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
+import { dayRange, formatAdminTime } from '@/domains/admin/lib/adminTime';
+import { actionLabel, formatChanges, subjectOf, tableLabel } from '@/domains/admin/lib/auditFormat';
+import { ACTION_NAMES, TABLE_LABELS } from '@/domains/admin/lib/auditLabels';
+import { referenceNames, withActorNames } from '@/domains/admin/api/server/auditRows.server';
+import { readListDefaults } from '@/domains/admin/api/server/listDefaults.server';
+import { type ListSpec, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
 import {
   AdminTable,
   type TableRowData,

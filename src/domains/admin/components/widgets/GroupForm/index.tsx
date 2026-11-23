@@ -1,26 +1,32 @@
 'use client';
 
-import { createGroup, saveGroup } from '@/domains/admin/api/groupActions';
-import { groupCreateSchema } from '@/domains/admin/api/groupInput';
-import { notifyResult } from '@/domains/admin/api/notify';
-import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
+import { createGroup, saveGroup } from '@/domains/admin/api/actions/groupActions';
+import { groupCreateSchema } from '@/domains/admin/lib/input/groupInput';
+import { notifyResult } from '@/domains/admin/lib/notify';
+import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
 import {
   checkedKeys,
   keysToPermissions,
   type MatrixRow,
-} from '@/domains/admin/api/permissionMatrix';
+  toggleCells,
+} from '@/domains/admin/lib/permissionMatrix';
 import {
   applySetChanges,
   changedFields,
   type SetChanges,
   setChanges,
-} from '@/domains/admin/api/draftChanges';
-import { useFormDraft, useSaveShortcut, useUnsavedGuard } from '@/domains/admin/api/useFormGuards';
+} from '@/domains/admin/lib/draftChanges';
 import {
-  CharCount,
+  useFormDraft,
+  useSaveShortcut,
+  useUnsavedGuard,
+} from '@/domains/admin/hooks/useFormGuards';
+import {
+  applyServerErrors,
   DraftNotice,
   FormActions,
-  RequiredMark,
+  serverFieldError,
+  TextField,
   zodFormValidator,
 } from '@/domains/admin/components/features/AdminForm';
 import { PermissionMatrix } from '@/domains/admin/components/widgets/PermissionMatrix';
@@ -32,21 +38,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from '@/shared/components/ui/field';
-import { Input } from '@/shared/components/ui/input';
-import { Switch } from '@/shared/components/ui/switch';
-import { Textarea } from '@/shared/components/ui/textarea';
+import { FieldGroup } from '@/shared/components/ui/field';
 import { useForm, useStore } from '@tanstack/react-form';
 import { ShieldCheckIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+// 사용 여부(isActive)는 고치는 칸이 없다 — 끄고 켜기는 상세의 «더 보기» 에서만 한다(사용자와 같다).
+// 저장(save_group)이 함께 받으므로 화면을 열었을 때의 값을 그대로 보낸다 — 그 사이 누가 껐으면 updatedAt 이 달라 «충돌» 로 막힌다.
 type Values = { name: string; description: string; isActive: boolean };
 
 interface Props {
@@ -54,7 +52,7 @@ interface Props {
   initial: Values;
   /** 수정일 때 */
   editing?: { id: string; updatedAt: string; isSystem: boolean };
-  /** 권한 표 — 권한을 줄 수 있을 때(그룹 수정 권한)만. 시스템 그룹은 주지 않는다 */
+  /** 권한 표 — 시스템 그룹(모든 권한)은 주지 않는다 */
   matrix?: MatrixRow[];
 }
 
@@ -67,6 +65,7 @@ const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
 
 /**
  * 그룹 등록 · 수정(설계 6.10 «화면 흐름 표준 › 등록 · 수정») — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장한다.
+ * «전체 관리» 만 여는 화면이다(설계 6.4 — 페이지가 404 로 막고 DB 가 다시 막는다).
  * 이름 · 설명은 쓰던 내용을 임시 보관한다. 저장하면 상세로 간다.
  */
 type GroupDraft = { fields?: Partial<Values>; perms?: SetChanges };
@@ -82,37 +81,46 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
   const form = useForm({
     defaultValues: initial,
     validators: { onSubmit: zodFormValidator(groupCreateSchema) },
-    onSubmit: async ({ value, formApi }) => {
-      // 그룹 정보와 권한 표를 한 번에 저장한다(한 트랜잭션) — 하나라도 막히면 아무것도 바뀌지 않는다
-      let groupId = editing?.id;
-      if (!editing) {
-        const created = await createGroup({
-          name: value.name,
-          description: value.description,
-          permissions: keysToPermissions(keys),
-        });
-        if (!created.ok || !created.data) return notifyResult(created);
-        groupId = created.data.id;
-      } else {
-        const saved = await saveGroup({
-          ...value,
-          id: editing.id,
-          updatedAt: editing.updatedAt,
-          // 권한 표가 있으면(«전체 관리» 가 아니면) 지금 표와 화면을 열었을 때의 표를 함께 — 그 사이 바뀌었으면 저장하지 않는다
-          ...(matrix && {
-            permissions: keysToPermissions(keys),
-            seenPermissions: keysToPermissions(seenKeys),
-          }),
-        });
-        if (!saved.ok) return notifyResult(saved);
-      }
-      notifyResult({ ok: true, message: editing ? '저장했습니다.' : '그룹을 만들었습니다.' });
-      draft.clear();
-      formApi.reset(value);
-      // 상세는 요청 때 그리는 화면이라 이동하면 새로 읽는다 — router.refresh 를 또 부르지 않는다
-      navigate(`${LIST}/${groupId}`);
-    },
+    onSubmit: async ({ value }) => notifyResult(await save(value)),
   });
+
+  // 그룹 정보와 권한 표를 한 번에 저장한다(한 트랜잭션) — 하나라도 막히면 아무것도 바뀌지 않는다.
+  const save = async (value: Values) => {
+    let groupId = editing?.id;
+    if (!editing) {
+      const created = await createGroup({
+        name: value.name,
+        description: value.description,
+        permissions: keysToPermissions(keys),
+      });
+      if (!created.ok || !created.data) {
+        applyServerErrors(created, serverFieldError(form)); // 서버 검사에서 틀린 칸 — 그 칸에도 표시(UserForm 과 같게)
+        return created;
+      }
+      groupId = created.data.id;
+    } else {
+      const saved = await saveGroup({
+        ...value,
+        id: editing.id,
+        updatedAt: editing.updatedAt,
+        // 권한 표가 있으면 지금 표와 화면을 열었을 때의 표를 함께 — 그 사이 바뀌었으면 저장하지 않는다.
+        // 없으면(«전체 관리» 그룹) 보내지 않는다 — 권한은 그대로
+        ...(matrix && {
+          permissions: keysToPermissions(keys),
+          seenPermissions: keysToPermissions(seenKeys),
+        }),
+      });
+      if (!saved.ok) {
+        applyServerErrors(saved, serverFieldError(form));
+        return saved;
+      }
+    }
+    draft.clear();
+    form.reset(value);
+    // 상세는 요청 때 그리는 화면이라 이동하면 새로 읽는다 — router.refresh 를 또 부르지 않는다.
+    navigate(`${LIST}/${groupId}`);
+    return { ok: true as const, message: editing ? '저장했습니다.' : '그룹을 만들었습니다.' };
+  };
 
   const values = useStore(form.store, s => s.values);
   const dirty = useStore(form.store, s => s.isDirty);
@@ -151,83 +159,39 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
                   onRestore={() =>
                     draft.restore(saved => {
                       const fields = saved.fields ?? {};
-                      (Object.keys(fields) as (keyof Values)[]).forEach(k =>
-                        form.setFieldValue(k, fields[k] as never)
-                      );
-                      // 권한 표가 있는 그룹만(«전체 관리» 는 표가 없다) — 지금 표에 내가 넣은 것 · 뺀 것만 얹는다
+                      // 예전 임시 보관에 남은 사용 여부는 버린다(이 화면에서 바꾸지 않는다)
+                      (['name', 'description'] as const).forEach(k => {
+                        if (fields[k] !== undefined) form.setFieldValue(k, fields[k]);
+                      });
+                      // 표가 있는 그룹만 — 지금 표에 내가 넣은 것 · 뺀 것만 얹는다
                       if (matrix && saved.perms) setKeys(applySetChanges(initialKeys, saved.perms));
                     })
                   }
                 />
               )}
               <form.Field name="name">
-                {field => {
-                  const invalid = !field.state.meta.isValid;
-                  return (
-                    <Field data-invalid={invalid || undefined}>
-                      <div className="flex items-center gap-1">
-                        <FieldLabel htmlFor="group-name">
-                          그룹 이름 <RequiredMark />
-                        </FieldLabel>
-                        <CharCount value={field.state.value} max={NAME_MAX} />
-                      </div>
-                      <Input
-                        id="group-name"
-                        value={field.state.value}
-                        maxLength={NAME_MAX}
-                        onBlur={field.handleBlur}
-                        onChange={e => field.handleChange(e.target.value)}
-                        aria-invalid={invalid || undefined}
-                      />
-                      <FieldError errors={field.state.meta.errors} />
-                    </Field>
-                  );
-                }}
+                {field => (
+                  <TextField
+                    field={field}
+                    id="group-name"
+                    label="그룹 이름"
+                    required
+                    max={NAME_MAX}
+                  />
+                )}
               </form.Field>
               <form.Field name="description">
-                {field => {
-                  const invalid = !field.state.meta.isValid;
-                  return (
-                    <Field data-invalid={invalid || undefined}>
-                      <div className="flex items-center gap-1">
-                        <FieldLabel htmlFor="group-description">설명</FieldLabel>
-                        <CharCount value={field.state.value} max={DESCRIPTION_MAX} />
-                      </div>
-                      <Textarea
-                        id="group-description"
-                        value={field.state.value}
-                        maxLength={DESCRIPTION_MAX}
-                        onBlur={field.handleBlur}
-                        onChange={e => field.handleChange(e.target.value)}
-                        aria-invalid={invalid || undefined}
-                      />
-                      <FieldDescription>
-                        어떤 일을 하는 그룹인지 적어 두면 사용자에게 그룹을 고를 때 도움이 됩니다.
-                      </FieldDescription>
-                      <FieldError errors={field.state.meta.errors} />
-                    </Field>
-                  );
-                }}
+                {field => (
+                  <TextField
+                    field={field}
+                    id="group-description"
+                    label="설명"
+                    max={DESCRIPTION_MAX}
+                    multiline
+                    description="어떤 일을 하는 그룹인지 적어 두면 사용자에게 그룹을 고를 때 도움이 됩니다."
+                  />
+                )}
               </form.Field>
-              {editing && !editing.isSystem && (
-                <form.Field name="isActive">
-                  {field => (
-                    <Field orientation="horizontal">
-                      <Switch
-                        id="group-active"
-                        checked={field.state.value}
-                        onCheckedChange={checked => field.handleChange(checked)}
-                      />
-                      <FieldContent>
-                        <FieldLabel htmlFor="group-active">사용 중</FieldLabel>
-                        <FieldDescription>
-                          끄면 이 그룹의 권한이 모든 구성원에게서 멈춥니다.
-                        </FieldDescription>
-                      </FieldContent>
-                    </Field>
-                  )}
-                </form.Field>
-              )}
             </FieldGroup>
           </CardContent>
         </Card>
@@ -236,8 +200,8 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
           <CardHeader>
             <CardTitle>권한</CardTitle>
             <CardDescription>
-              메뉴마다 이 그룹이 쓸 수 있는 기능을 고릅니다. «–» 는 그 메뉴에 없는 기능, 흐린 칸은
-              내가 갖지 않아 줄 수 없는 권한입니다.
+              메뉴마다 이 그룹이 쓸 수 있는 기능을 고릅니다. 조회를 끄면 그 메뉴의 다른 기능도
+              꺼집니다. «–» 는 그 메뉴에 없는 기능입니다.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -248,23 +212,16 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
                   이 그룹은 모든 메뉴의 모든 기능을 가집니다. 끄거나 지울 수 없습니다.
                 </AlertDescription>
               </Alert>
-            ) : matrix ? (
-              <PermissionMatrix
-                rows={matrix}
-                checked={keys}
-                onToggle={(key, on) =>
-                  setKeys(prev => {
-                    const next = new Set(prev);
-                    if (on) next.add(key);
-                    else next.delete(key);
-                    return next;
-                  })
-                }
-              />
             ) : (
-              <p className="text-muted-foreground m-0 text-sm">
-                권한은 그룹 수정 권한이 있는 사람이 정합니다.
-              </p>
+              matrix && (
+                <PermissionMatrix
+                  rows={matrix}
+                  checked={keys}
+                  onToggle={(toggled, on) =>
+                    setKeys(prev => toggleCells(matrix, prev, toggled, on))
+                  }
+                />
+              )
             )}
           </CardContent>
         </Card>

@@ -1,12 +1,13 @@
-import { requirePermission } from '@/domains/admin/api/adminContext.server';
-import { can } from '@/domains/admin/api/adminNav';
-import { actorNameMap } from '@/domains/admin/api/auditRows.server';
-import { loadGroupMatrix } from '@/domains/admin/api/groupMatrix.server';
+import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
+import { can } from '@/domains/admin/lib/adminNav';
+import { actorNameMap } from '@/domains/admin/api/server/auditRows.server';
+import { loadGroupMatrix } from '@/domains/admin/api/server/groupMatrix.server';
+import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
 import { DetailList } from '@/domains/admin/components/features/Detail/DetailList';
 import { ListNav } from '@/domains/admin/components/features/Detail/ListNav';
 import { RecordMeta } from '@/domains/admin/components/features/Detail/RecordMeta';
-import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { StatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import { GroupDetailActions } from '@/domains/admin/components/widgets/GroupDetailActions';
 import { PermissionMatrix } from '@/domains/admin/components/widgets/PermissionMatrix';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
@@ -31,6 +32,7 @@ export const instant = false;
 const PATH = '/admin/groups';
 
 // 그룹 상세(보기) — 설계 6.10 «화면 흐름 표준 › 상세». 기본 정보 · 구성원 · 권한(보기 전용). 고치려면 [수정].
+// 그룹을 고치고 끄고 켜는 것은 «전체 관리» 만 한다(설계 6.4) — 그 밖의 사람에게는 [수정] · 끄기/켜기를 그리지 않는다.
 export default async function AdminGroupDetailPage({
   params,
 }: {
@@ -54,7 +56,7 @@ export default async function AdminGroupDetailPage({
   if (!group) notFound();
   const canSeeUsers = can(ctx.permissions, 'users', 'READ');
 
-  const [{ data: members }, names, matrix] = await Promise.all([
+  const [{ data: members }, names, matrix, { fullAdmin }] = await Promise.all([
     supabase
       .from('user_groups')
       .select(canSeeUsers ? 'user_id, profiles(id, name, email, is_active)' : 'user_id')
@@ -67,18 +69,14 @@ export default async function AdminGroupDetailPage({
         { merge: false }
       >(),
     actorNameMap(supabase, [group.created_by, group.updated_by]),
-    group.is_system
-      ? Promise.resolve([])
-      : loadGroupMatrix(supabase, { userId: ctx.user.id, mine: ctx.permissions }, group.id),
+    group.is_system ? Promise.resolve([]) : loadGroupMatrix(supabase, group.id),
+    loadMyGroups(ctx.user.id),
   ]);
   const people = (members ?? [])
     .flatMap(m => (m.profiles ? [m.profiles] : []))
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
   const memberCount = (members ?? []).length;
   const granted = matrix.reduce((n, r) => n + r.cells.filter(c => c.checked).length, 0);
-  const canToggle =
-    !group.is_system &&
-    (can(ctx.permissions, 'groups', 'UPDATE') || can(ctx.permissions, 'groups', 'DELETE'));
 
   return (
     <>
@@ -89,26 +87,24 @@ export default async function AdminGroupDetailPage({
           actions={
             <>
               <ListNav listPath={PATH} id={group.id} />
-              {can(ctx.permissions, 'groups', 'UPDATE') && (
+              {fullAdmin && (
                 <Button nativeButton={false} render={<Link href={`${PATH}/${group.id}/edit`} />}>
                   <PencilIcon data-icon="inline-start" />
                   수정
                 </Button>
               )}
-              {canToggle && (
-                <GroupDetailActions
-                  group={{
-                    id: group.id,
-                    name: group.name,
-                    description: group.description ?? '',
-                    isActive: group.is_active,
-                    updatedAt: group.updated_at,
-                  }}
-                />
-              )}
-              {can(ctx.permissions, 'groups', 'HISTORY') && (
-                <HistorySheet table="groups" rowId={group.id} subject={group.name} />
-              )}
+              {/* 끄기/켜기 · 변경 이력은 «더 보기» 메뉴 하나로 */}
+              <GroupDetailActions
+                group={{
+                  id: group.id,
+                  name: group.name,
+                  description: group.description ?? '',
+                  isActive: group.is_active,
+                  updatedAt: group.updated_at,
+                }}
+                canToggle={fullAdmin && !group.is_system}
+                canHistory={can(ctx.permissions, 'groups', 'HISTORY')}
+              />
             </>
           }
         />
@@ -133,10 +129,8 @@ export default async function AdminGroupDetailPage({
                   label: '상태',
                   value: group.is_system ? (
                     <Badge variant="accent">모든 권한</Badge>
-                  ) : group.is_active ? (
-                    <Badge variant="success">사용 중</Badge>
                   ) : (
-                    <Badge variant="neutral">꺼짐</Badge>
+                    <StatusBadge active={group.is_active} />
                   ),
                 },
                 { label: '설명', value: group.description || '—', wide: true },
@@ -178,7 +172,7 @@ export default async function AdminGroupDetailPage({
                       </Link>
                       <span className="text-muted-foreground truncate text-xs">{p.email}</span>
                     </div>
-                    {!p.is_active && <Badge variant="neutral">꺼짐</Badge>}
+                    <StatusBadge active={p.is_active} onlyOff />
                   </li>
                 ))}
               </ul>

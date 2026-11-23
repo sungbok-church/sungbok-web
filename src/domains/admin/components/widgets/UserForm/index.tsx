@@ -1,23 +1,31 @@
 'use client';
 
-import { notifyResult } from '@/domains/admin/api/notify';
+import { notifyResult } from '@/domains/admin/lib/notify';
 import {
   applySetChanges,
   changedFields,
   type SetChanges,
   setChanges,
-} from '@/domains/admin/api/draftChanges';
-import { useAdminNavigate } from '@/domains/admin/api/useAdminNavigate';
-import { useFormDraft, useSaveShortcut, useUnsavedGuard } from '@/domains/admin/api/useFormGuards';
-import { createUser, updateUser } from '@/domains/admin/api/userActions';
-import { DEPARTMENTS, userCreateSchema, userUpdateSchema } from '@/domains/admin/api/userInput';
+} from '@/domains/admin/lib/draftChanges';
+import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
+import {
+  useFormDraft,
+  useSaveShortcut,
+  useUnsavedGuard,
+} from '@/domains/admin/hooks/useFormGuards';
+import { createUser, updateUser } from '@/domains/admin/api/actions/userActions';
+import type { GroupOption } from '@/domains/admin/lib/groupScope';
+import {
+  DEPARTMENTS,
+  userCreateSchema,
+  userUpdateSchema,
+} from '@/domains/admin/lib/input/userInput';
 import {
   applyServerErrors,
-  CharCount,
   DraftNotice,
   FormActions,
-  RequiredMark,
   serverFieldError,
+  TextField,
   zodFormValidator,
 } from '@/domains/admin/components/features/AdminForm';
 import { TempPasswordDialog } from '@/domains/admin/components/features/TempPasswordDialog';
@@ -30,6 +38,12 @@ import {
 } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/shared/components/ui/empty';
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -37,7 +51,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/shared/components/ui/field';
-import { Input } from '@/shared/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -49,8 +62,6 @@ import {
 import { useForm, useStore } from '@tanstack/react-form';
 import { useState } from 'react';
 
-type GroupOption = { id: string; name: string; isSystem: boolean; description: string | null };
-
 export type UserFormValues = {
   name: string;
   email: string;
@@ -61,12 +72,17 @@ export type UserFormValues = {
 
 interface Props {
   mode: 'create' | 'edit';
+  /** 고를 그룹(groupChoices) — 잠긴 그룹(대상이 이미 속한 «전체 관리»)은 체크된 채 그대로 둔다 */
   groups: GroupOption[];
+  /** «전체 관리» 가 아니다 — 내가 속한 그룹에만 넣고 뺀다고 알린다(설계 6.4 ②) */
+  ownGroupsOnly?: boolean;
   initial: UserFormValues;
   /** 수정일 때 — 사용자 id 와 열었을 때의 updated_at(동시 수정 막기) */
   editing?: { id: string; updatedAt: string };
   /** 로그인한 관리자 — 수정 화면의 임시저장을 사람별로 둔다(등록 화면은 임시 비밀번호가 오가 보관하지 않는다) */
   userId?: string;
+  /** 로그인한 사람의 부서 범위(my_department_limit) — 있으면 담당 부서를 그 부서로 고정해 보여 준다(설계 6.4 ③) */
+  departmentLimit?: string | null;
 }
 
 type UserDraft = { fields?: Partial<Omit<UserFormValues, 'groupIds'>>; groups?: SetChanges };
@@ -86,7 +102,15 @@ const EMPTY: UserFormValues = { name: '', email: '', groupIds: [], department: '
  * 아래 고정 막대에 [취소] · [저장]. 사용 여부 · 비밀번호 초기화는 상세 화면에서 한다.
  * 비밀번호가 오가는 화면이라 쓰던 내용을 보관하지 않는다. 등록하면 임시 비밀번호 창에서 [상세로] · [계속 등록].
  */
-export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
+export const UserForm = ({
+  mode,
+  groups,
+  ownGroupsOnly = false,
+  initial,
+  editing,
+  userId,
+  departmentLimit,
+}: Props) => {
   const navigate = useAdminNavigate();
   const [temp, setTemp] = useState<{ password: string; email: string; id: string } | null>(null);
   // 화면을 열었을 때의 그룹 목록 — 열 때 한 번만 기억한다. 페이지 데이터가 새로 와도(router.refresh 등) 바뀌지 않아야
@@ -177,74 +201,46 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
                         (Object.keys(fields) as (keyof typeof fields)[]).forEach(k =>
                           form.setFieldValue(k, fields[k] as never)
                         );
+                        // 지금 고를 수 있는 그룹만 — 잠긴 «전체 관리» · 이제 고를 수 없는 그룹의 옛 변경은 버린다(저장마다 막히지 않게)
                         if (saved.groups)
                           form.setFieldValue('groupIds', [
-                            ...applySetChanges(initial.groupIds, saved.groups),
+                            ...applySetChanges(
+                              initial.groupIds,
+                              saved.groups,
+                              groups.filter(g => !g.locked).map(g => g.id)
+                            ),
                           ]);
                       })
                     }
                   />
                 )}
                 <form.Field name="name">
-                  {field => {
-                    const invalid = !field.state.meta.isValid;
-                    return (
-                      <Field data-invalid={invalid || undefined}>
-                        <div className="flex items-center gap-1">
-                          <FieldLabel htmlFor="user-name">
-                            이름 <RequiredMark />
-                          </FieldLabel>
-                          <CharCount value={field.state.value} max={NAME_MAX} />
-                        </div>
-                        <Input
-                          id="user-name"
-                          value={field.state.value}
-                          maxLength={NAME_MAX}
-                          onBlur={field.handleBlur}
-                          onChange={e => field.handleChange(e.target.value)}
-                          aria-invalid={invalid || undefined}
-                        />
-                        <FieldError errors={field.state.meta.errors} />
-                      </Field>
-                    );
-                  }}
+                  {field => (
+                    <TextField field={field} id="user-name" label="이름" required max={NAME_MAX} />
+                  )}
                 </form.Field>
                 <form.Field name="email">
-                  {field => {
-                    const invalid = !field.state.meta.isValid;
-                    return (
-                      <Field
-                        data-invalid={invalid || undefined}
-                        data-disabled={mode === 'edit' || undefined}
-                      >
-                        <FieldLabel htmlFor="user-email">
-                          이메일 {mode === 'create' && <RequiredMark />}
-                        </FieldLabel>
-                        <Input
-                          id="user-email"
-                          type="email"
-                          autoComplete="off"
-                          value={field.state.value}
-                          disabled={mode === 'edit'}
-                          onBlur={field.handleBlur}
-                          onChange={e => field.handleChange(e.target.value)}
-                          aria-invalid={invalid || undefined}
-                        />
-                        {mode === 'edit' && (
-                          <FieldDescription>이메일은 바꿀 수 없습니다.</FieldDescription>
-                        )}
-                        <FieldError errors={field.state.meta.errors} />
-                      </Field>
-                    );
-                  }}
+                  {field => (
+                    <TextField
+                      field={field}
+                      id="user-email"
+                      label="이메일"
+                      required={mode === 'create'}
+                      type="email"
+                      autoComplete="off"
+                      disabled={mode === 'edit'}
+                      description={mode === 'edit' && '이메일은 바꿀 수 없습니다.'}
+                    />
+                  )}
                 </form.Field>
                 <form.Field name="department">
                   {field => (
                     <Field>
-                      <FieldLabel htmlFor="user-department">다음세대 부서 범위</FieldLabel>
+                      <FieldLabel htmlFor="user-department">담당 부서</FieldLabel>
                       <Select
                         items={[{ value: ALL_DEPARTMENTS, label: '모든 부서' }, ...DEPARTMENTS]}
-                        value={field.state.value}
+                        value={departmentLimit ?? field.state.value}
+                        disabled={Boolean(departmentLimit)}
                         onValueChange={value =>
                           field.handleChange(String(value ?? ALL_DEPARTMENTS))
                         }
@@ -264,7 +260,9 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
                         </SelectContent>
                       </Select>
                       <FieldDescription>
-                        정하면 «다음세대 부서» 메뉴에서 그 부서만 고칩니다.
+                        {departmentLimit
+                          ? '내 담당 부서로만 정할 수 있습니다.'
+                          : '정하면 «다음세대 부서» 메뉴에서 그 부서만 고칩니다.'}
                       </FieldDescription>
                     </Field>
                   )}
@@ -277,14 +275,25 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
             <CardHeader>
               <CardTitle>그룹</CardTitle>
               <CardDescription>
-                속한 그룹의 권한을 합쳐 갖습니다. 내가 갖지 않은 권한이 있는 그룹에는 넣을 수
-                없습니다.
+                {ownGroupsOnly
+                  ? '속한 그룹의 권한을 합쳐 갖습니다. 내가 속한 그룹에만 넣고 뺄 수 있습니다.'
+                  : '속한 그룹의 권한을 합쳐 갖습니다.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form.Field name="groupIds">
                 {field => (
                   <Field>
+                    {groups.length === 0 && (
+                      <Empty className="border">
+                        <EmptyHeader>
+                          <EmptyTitle>넣을 수 있는 그룹이 없습니다</EmptyTitle>
+                          <EmptyDescription>
+                            그룹 없이 {mode === 'create' ? '만듭니다' : '저장합니다'}.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    )}
                     <div className="grid gap-2 sm:grid-cols-2">
                       {groups.map(g => (
                         <FieldLabel key={g.id} htmlFor={`group-${g.id}`}>
@@ -292,6 +301,7 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
                             <Checkbox
                               id={`group-${g.id}`}
                               checked={field.state.value.includes(g.id)}
+                              disabled={g.locked}
                               onCheckedChange={next =>
                                 field.handleChange(
                                   next
@@ -303,8 +313,8 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
                             <FieldContent>
                               <span className="font-medium">{g.name}</span>
                               <FieldDescription>
-                                {g.isSystem
-                                  ? '모든 메뉴 · 모든 기능'
+                                {g.locked
+                                  ? '모든 메뉴 · 모든 기능 — «전체 관리» 소속은 화면에서 바꿀 수 없습니다.'
                                   : (g.description ?? '설명 없음')}
                               </FieldDescription>
                             </FieldContent>
@@ -341,7 +351,7 @@ export const UserForm = ({ mode, groups, initial, editing, userId }: Props) => {
         }}
         onContinue={() => {
           setTemp(null);
-          form.reset(EMPTY);
+          form.reset({ ...EMPTY, department: departmentLimit ?? EMPTY.department });
         }}
       />
     </>

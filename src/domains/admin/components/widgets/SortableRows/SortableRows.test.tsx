@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SortableRows } from '.';
@@ -11,10 +12,32 @@ const m = vi.hoisted(() => ({
       message: '저장했습니다.',
     })
   ),
+  reorderMenus: vi.fn(),
+  notifyResult: vi.fn(),
+  dragEnd: null as null | ((event: DragEndEvent) => void),
 }));
-vi.mock('@/domains/admin/api/menuActions', () => ({ updateMenu: m.updateMenu, moveMenu: vi.fn() }));
-vi.mock('@/domains/admin/api/codeActions', () => ({ updateCode: vi.fn(), moveCode: vi.fn() }));
-vi.mock('@/domains/admin/api/notify', () => ({ notifyResult: vi.fn() }));
+vi.mock('@/domains/admin/api/actions/menuActions', () => ({
+  updateMenu: m.updateMenu,
+  reorderMenus: m.reorderMenus,
+}));
+vi.mock('@/domains/admin/api/actions/itemActions', () => ({
+  updateCode: vi.fn(),
+  reorderCodes: vi.fn(),
+  updateCategory: vi.fn(),
+  reorderCategories: vi.fn(),
+}));
+vi.mock('@/domains/admin/lib/notify', () => ({ notifyResult: m.notifyResult }));
+// 끌기(포인터 · 키보드)는 jsdom 에 자리(좌표)가 없어 흉내 낼 수 없다 — 놓았을 때(onDragEnd)를 직접 부른다
+vi.mock('@dnd-kit/core', async importOriginal => {
+  const real = await importOriginal<typeof import('@dnd-kit/core')>();
+  return {
+    ...real,
+    DndContext: (props: React.ComponentProps<typeof real.DndContext>) => {
+      m.dragEnd = props.onDragEnd ?? null;
+      return <real.DndContext {...props} />;
+    },
+  };
+});
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: m.refresh }) }));
 vi.mock('@/shared/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => children,
@@ -115,5 +138,92 @@ describe('SortableRows', () => {
     render(<SortableRows kind="menus" rows={[ROW]} editable caption="메뉴" detailHeader="주소" />);
     fireEvent.blur(screen.getByLabelText('코드 관리 이름'));
     expect(m.updateMenu).not.toHaveBeenCalled();
+  });
+
+  it('켜고 끌 수 없으면(toggleable=false) 사용 스위치만 막고 이름은 고친다', () => {
+    render(
+      <SortableRows
+        kind="menus"
+        rows={[ROW]}
+        editable
+        toggleable={false}
+        caption="메뉴"
+        detailHeader="주소"
+      />
+    );
+    // Base UI 스위치는 span 이라 disabled 대신 aria-disabled 로 막는다
+    expect(screen.getByRole('switch', { name: '분류 관리 사용' })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    expect(screen.getByLabelText('코드 관리 이름')).toBeEnabled();
+  });
+
+  it('기본은 사용 스위치를 켜고 끈다', () => {
+    render(<SortableRows kind="menus" rows={[ROW]} editable caption="메뉴" detailHeader="주소" />);
+    expect(screen.getByRole('switch', { name: '분류 관리 사용' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+  });
+});
+
+const ROWS = ['a', 'b', 'c'].map((name, i) => ({
+  id: `0190a0b0-0000-7000-8000-00000000000${i + 1}`,
+  label: name,
+  defaultLabel: `기본 ${name}`,
+  isActive: true,
+  updatedAt: 't1',
+}));
+const [A, B, C] = ROWS.map(r => r.id);
+const order = () => screen.getAllByRole('textbox').map(i => (i as HTMLInputElement).value);
+const drop = (active: string, over: string | null) =>
+  act(() =>
+    m.dragEnd?.({ active: { id: active }, over: over && { id: over } } as unknown as DragEndEvent)
+  );
+
+describe('SortableRows — 끌어서 순서 바꾸기', () => {
+  it('줄마다 이름을 단 손잡이가 있고, 위로 · 아래로 버튼은 없다', () => {
+    render(<SortableRows kind="menus" rows={ROWS} editable caption="메뉴" detailHeader="주소" />);
+    expect(screen.getByRole('button', { name: 'a 순서 옮기기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '위로' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '아래로' })).toBeNull();
+  });
+
+  it('고칠 권한이 없으면 손잡이를 쓸 수 없다', () => {
+    render(
+      <SortableRows kind="menus" rows={ROWS} editable={false} caption="메뉴" detailHeader="주소" />
+    );
+    expect(screen.getByRole('button', { name: 'a 순서 옮기기' })).toBeDisabled();
+  });
+
+  it('놓으면 바로 그 순서로 보이고, 무리 전체의 새 순서를 한 번에 저장한다', async () => {
+    let finish!: (v: { ok: true; message: string }) => void;
+    m.reorderMenus.mockReturnValue(new Promise(r => (finish = r)));
+    render(<SortableRows kind="menus" rows={ROWS} editable caption="메뉴" detailHeader="주소" />);
+    drop(A, C);
+    expect(m.reorderMenus).toHaveBeenCalledTimes(1);
+    expect(m.reorderMenus).toHaveBeenCalledWith({ ids: [B, C, A] });
+    expect(order()).toEqual(['b', 'c', 'a']);
+    await act(async () => finish({ ok: true, message: '순서를 바꿨습니다.' }));
+    expect(m.notifyResult).toHaveBeenCalledWith({ ok: true, message: '순서를 바꿨습니다.' });
+    expect(m.refresh).not.toHaveBeenCalled();
+  });
+
+  it('저장에 실패하면 서버의 순서로 되돌리고 알린 뒤 지금 값을 다시 읽는다', async () => {
+    const failed = { ok: false, error: { code: 'NOT_ALLOWED', message: '목록이 바뀌었습니다' } };
+    m.reorderMenus.mockResolvedValue(failed);
+    render(<SortableRows kind="menus" rows={ROWS} editable caption="메뉴" detailHeader="주소" />);
+    drop(C, A);
+    await vi.waitFor(() => expect(m.refresh).toHaveBeenCalledTimes(1));
+    expect(m.notifyResult).toHaveBeenCalledWith(failed);
+    expect(order()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('제자리 · 목록 밖에 놓으면 저장하지 않는다', () => {
+    render(<SortableRows kind="menus" rows={ROWS} editable caption="메뉴" detailHeader="주소" />);
+    drop(B, B);
+    drop(B, null);
+    expect(m.reorderMenus).not.toHaveBeenCalled();
   });
 });

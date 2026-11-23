@@ -1,6 +1,6 @@
 'use client';
 
-import { isNavigationClick, NAVIGATION_START } from '@/domains/admin/api/navigationProgress';
+import { isNavigationClick, NAVIGATION_START } from '@/domains/admin/lib/navigationProgress';
 import { cn } from '@/shared/lib/utils';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';

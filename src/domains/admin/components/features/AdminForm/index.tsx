@@ -2,12 +2,15 @@
 
 // 관리자 폼의 공통 조각 — 폼 본체는 각 화면이 TanStack Form 의 useForm 으로 쓰고, 이 조각들과
 // useFormGuards(나가기 경고 · Ctrl/⌘+S · 임시 보관)를 붙인다(설계 6.10).
-import type { ActionResult } from '@/domains/admin/api/actionResult';
-import type { ReactNode } from 'react';
+import type { ActionResult } from '@/domains/admin/lib/actionResult';
+import type { ComponentProps, ReactNode } from 'react';
 import type { ZodType } from 'zod';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { Button } from '@/shared/components/ui/button';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/shared/components/ui/field';
+import { Input } from '@/shared/components/ui/input';
 import { Spinner } from '@/shared/components/ui/spinner';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { HistoryIcon } from 'lucide-react';
 import Link from 'next/link';
 
@@ -89,6 +92,87 @@ export const CharCount = ({ value, max }: { value: string; max: number }) => (
     {value.length} / {max}
   </span>
 );
+
+/** TextField 가 쓰는 TanStack Form 칸(form.Field 의 field) — 글자 칸만 */
+type TextFieldApi = {
+  state: {
+    value: string;
+    meta: { isValid: boolean; errors: ComponentProps<typeof FieldError>['errors'] };
+  };
+  handleChange: (value: string) => void;
+  handleBlur: () => void;
+};
+
+/**
+ * 관리자 폼의 글자 칸 한 덩어리 — 이름(필수면 *) · 글자 수(max 를 주면) · 입력칸 · 도움말 · 오류.
+ * 틀리면 칸을 붉게(aria-invalid · data-invalid) 하고 오류 문구를 아래에 단다. 그 밖의 속성(type · placeholder …)은 입력칸에 그대로.
+ * 비밀번호 칸은 모양이 달라(보기 · 숨기기, 건드린 뒤에만 붉게) 이것을 쓰지 않는다(PasswordForm).
+ */
+export const TextField = ({
+  field,
+  id,
+  label,
+  required,
+  max,
+  description,
+  multiline,
+  className,
+  disabled,
+  ...inputProps
+}: {
+  field: TextFieldApi;
+  id: string;
+  label: ReactNode;
+  required?: boolean;
+  /** 주면 입력을 그 글자 수로 막고 «12 / 50» 을 보인다(글자 수 없이 막기만 하려면 maxLength) */
+  max?: number;
+  description?: ReactNode;
+  /** 여러 줄(Textarea) */
+  multiline?: boolean;
+  /** 칸 덩어리(Field)의 너비 등 */
+  className?: string;
+  disabled?: boolean;
+} & Omit<ComponentProps<'input'>, 'id' | 'value' | 'onChange' | 'onBlur'>) => {
+  const invalid = !field.state.meta.isValid || undefined;
+  const control = {
+    id,
+    value: field.state.value,
+    ...(max && { maxLength: max }),
+    disabled,
+    onBlur: field.handleBlur,
+    'aria-invalid': invalid,
+  };
+  const labelNode = (
+    <FieldLabel htmlFor={id}>
+      {label}
+      {required && (
+        <>
+          {' '}
+          <RequiredMark />
+        </>
+      )}
+    </FieldLabel>
+  );
+  return (
+    <Field data-invalid={invalid} data-disabled={disabled || undefined} className={className}>
+      {max ? (
+        <div className="flex items-center gap-1">
+          {labelNode}
+          <CharCount value={field.state.value} max={max} />
+        </div>
+      ) : (
+        labelNode
+      )}
+      {multiline ? (
+        <Textarea {...control} onChange={e => field.handleChange(e.target.value)} />
+      ) : (
+        <Input {...inputProps} {...control} onChange={e => field.handleChange(e.target.value)} />
+      )}
+      {description && <FieldDescription>{description}</FieldDescription>}
+      <FieldError errors={field.state.meta.errors} />
+    </Field>
+  );
+};
 
 /** 서버가 돌려준 칸별 오류를 TanStack Form 의 칸에 붙인다. */
 export const applyServerErrors = (

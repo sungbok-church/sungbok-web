@@ -5,8 +5,8 @@ import {
   type AdminNavGroup,
   type AdminNavItem,
   flattenNav,
-} from '@/domains/admin/api/adminNav';
-import type { AdminUser } from '@/domains/admin/api/session.server';
+} from '@/domains/admin/lib/adminNav';
+import type { AdminUser } from '@/domains/admin/api/server/session.server';
 import { MENU_ICONS } from '@/domains/admin/components/features/MenuIcon';
 import { IntentLink } from '@/domains/admin/components/features/IntentLink';
 import {
@@ -138,16 +138,10 @@ export const AdminSidebar = ({ nav, user, userName }: Props) => {
                               return (
                                 <DropdownMenuItem
                                   key={item.key}
-                                  disabled={item.ready === false}
-                                  render={
-                                    item.ready === false ? undefined : (
-                                      <IntentLink href={item.href} />
-                                    )
-                                  }
+                                  render={<IntentLink href={item.href} />}
                                 >
                                   <ItemIcon aria-hidden />
                                   {item.label}
-                                  {item.ready === false && <NotReady />}
                                 </DropdownMenuItem>
                               );
                             })}
@@ -180,16 +174,6 @@ export const AdminSidebar = ({ nav, user, userName }: Props) => {
                       <SidebarMenuSub>
                         {group.items.map(item => {
                           const isActive = item.key === active?.key;
-                          if (item.ready === false) {
-                            return (
-                              <SidebarMenuSubItem key={item.key}>
-                                <SidebarMenuSubButton aria-disabled="true" render={<span />}>
-                                  <span className="opacity-60">{item.label}</span>
-                                  <NotReady />
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            );
-                          }
                           return (
                             <SidebarMenuSubItem key={item.key}>
                               <SidebarMenuSubButton
@@ -269,6 +253,3 @@ const CountBadge = ({ count }: { count?: number }) =>
       {count}
     </span>
   ) : null;
-
-/** 화면이 아직 없는 메뉴 표시(패키지 B · C 에서 만든다) */
-const NotReady = () => <span className="text-muted-foreground ml-auto text-xs">준비 중</span>;

@@ -1,15 +1,19 @@
-import { requirePermission } from '@/domains/admin/api/adminContext.server';
-import { can, screenLabel } from '@/domains/admin/api/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/api/adminScreens';
-import { readListDefaults } from '@/domains/admin/api/listDefaults.server';
-import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/api/listQuery';
-import { DEPARTMENTS } from '@/domains/admin/api/userInput';
+import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
+import { can, screenLabel } from '@/domains/admin/lib/adminNav';
+import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
+import { readListDefaults } from '@/domains/admin/api/server/listDefaults.server';
+import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
+import { DEPARTMENTS } from '@/domains/admin/lib/input/userInput';
 import {
   AdminTable,
   type TableRowData,
 } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import {
+  StatusBadge,
+  STATUS_FILTER_OPTIONS,
+} from '@/domains/admin/components/features/StatusBadge';
 import { UserBulkActions } from '@/domains/admin/components/widgets/UserBulkActions';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 import { Badge } from '@/shared/components/ui/badge';
@@ -67,14 +71,11 @@ export default async function AdminUsersPage({
     req,
     supabase.from('groups').select('id, name').order('name'),
   ]);
+  const canCreate = can(ctx.permissions, 'users', 'CREATE');
 
   const rows: TableRowData[] = (data ?? []).map(p => {
     const groupNames = (p.user_groups ?? []).map(ug => ug.groups?.name ?? '').filter(Boolean);
-    const status = p.is_active ? (
-      <Badge variant="success">사용 중</Badge>
-    ) : (
-      <Badge variant="neutral">꺼짐</Badge>
-    );
+    const status = <StatusBadge active={p.is_active} />;
     const groupBadges =
       groupNames.length === 0 ? (
         <span className="text-muted-foreground">없음</span>
@@ -125,7 +126,7 @@ export default async function AdminUsersPage({
         title={screenLabel(ctx.nav, 'users', '사용자')}
         description={SCREEN_DESCRIPTIONS.users}
         actions={
-          can(ctx.permissions, 'users', 'CREATE') && (
+          canCreate && (
             <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
               <PlusIcon data-icon="inline-start" />새 사용자
             </Button>
@@ -145,16 +146,13 @@ export default async function AdminUsersPage({
           },
           {
             name: 'department',
-            label: '부서 범위',
+            label: '담당 부서',
             options: [{ value: 'all', label: '모든 부서' }, ...DEPARTMENTS],
           },
           {
             name: 'active',
             label: '상태',
-            options: [
-              { value: '1', label: '사용 중' },
-              { value: '0', label: '꺼짐' },
-            ],
+            options: STATUS_FILTER_OPTIONS,
           },
         ]}
       />
@@ -167,14 +165,13 @@ export default async function AdminUsersPage({
         columns={[
           { key: 'name', header: '사용자', sortField: 'name' },
           { key: 'groups', header: '그룹' },
-          { key: 'department', header: '다음세대 부서 범위' },
+          // «다음세대 부서» 메뉴에서 고칠 수 있는 부서(없으면 모든 부서) — 뜻은 상세 · 수정 화면에 한 줄로 적는다
+          { key: 'department', header: '담당 부서' },
           { key: 'status', header: '상태' },
         ]}
         empty={{
           title: '사용자가 없습니다',
-          create: can(ctx.permissions, 'users', 'CREATE')
-            ? { href: `${PATH}/new`, label: '첫 사용자 만들기' }
-            : undefined,
+          create: canCreate ? { href: `${PATH}/new`, label: '첫 사용자 만들기' } : undefined,
         }}
       />
     </>

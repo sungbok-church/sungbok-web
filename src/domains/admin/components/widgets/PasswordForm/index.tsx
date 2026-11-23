@@ -1,8 +1,12 @@
 'use client';
 
-import { changePassword } from '@/domains/admin/api/passwordActions';
-import { type PasswordInput, passwordInputSchema } from '@/domains/admin/api/passwordInput';
+import { changePassword } from '@/domains/admin/api/actions/passwordActions';
+import {
+  type PasswordInput as PasswordValues,
+  passwordInputSchema,
+} from '@/domains/admin/lib/input/passwordInput';
 import { applyServerErrors, serverFieldError } from '@/domains/admin/components/features/AdminForm';
+import { PasswordInput } from '@/domains/admin/components/features/PasswordInput';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -12,27 +16,31 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/shared/components/ui/field';
-import { Input } from '@/shared/components/ui/input';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm } from '@tanstack/react-form';
 import { CircleAlertIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-const FIELDS: { name: keyof PasswordInput; label: string; description?: string }[] = [
-  { name: 'password', label: '새 비밀번호', description: '8자 이상' },
+const FIELDS: { name: keyof PasswordValues; label: string; description?: string }[] = [
+  // 규칙은 passwordInput.ts(8~72자)와 Supabase 의 same_password 거절(passwordActions.ts)을 그대로 적는다
+  {
+    name: 'password',
+    label: '새 비밀번호',
+    description: '8자 이상 72자 이하로, 지금 쓰는 비밀번호와 다르게 정해 주세요.',
+  },
   { name: 'confirm', label: '새 비밀번호 확인' },
 ];
 
 /**
  * 비밀번호 바꾸기 — 관리자 폼의 기본 모양(TanStack Form + 같은 zod 스키마를 화면 · 서버가 함께 쓴다, ADR 0017).
- * 비밀번호 폼이라 쓰던 내용을 보관하지 않는다(설계 6.10).
+ * 비밀번호 폼이라 쓰던 내용을 보관하지 않는다(설계 6.10). 칸은 보기 · 숨기기와 Caps Lock 안내가 붙은 PasswordInput.
  */
-export const PasswordForm = ({ forced }: { forced: boolean }) => {
+export const PasswordForm = ({ forced, email }: { forced: boolean; email?: string }) => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const form = useForm({
-    defaultValues: { password: '', confirm: '' } as PasswordInput,
+    defaultValues: { password: '', confirm: '' } as PasswordValues,
     validators: { onSubmit: passwordInputSchema },
     onSubmit: async ({ value }) => {
       setError(null);
@@ -55,6 +63,8 @@ export const PasswordForm = ({ forced }: { forced: boolean }) => {
         void form.handleSubmit();
       }}
     >
+      {/* 비밀번호 관리자가 새 비밀번호를 어느 계정에 저장할지 알게 하는 숨은 칸(Chrome 권장 — 보내지 않는다) */}
+      {email && <input type="email" autoComplete="username" value={email} readOnly hidden />}
       <FieldGroup>
         {forced && (
           <Alert>
@@ -77,10 +87,9 @@ export const PasswordForm = ({ forced }: { forced: boolean }) => {
               return (
                 <Field data-invalid={invalid || undefined}>
                   <FieldLabel htmlFor={`password-${name}`}>{label}</FieldLabel>
-                  <Input
+                  <PasswordInput
                     id={`password-${name}`}
                     name={name}
-                    type="password"
                     autoComplete="new-password"
                     value={field.state.value}
                     onBlur={field.handleBlur}

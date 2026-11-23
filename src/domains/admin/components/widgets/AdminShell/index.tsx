@@ -1,5 +1,5 @@
-import type { AdminNavGroup } from '@/domains/admin/api/adminNav';
-import type { AdminUser } from '@/domains/admin/api/session.server';
+import type { AdminNavGroup } from '@/domains/admin/lib/adminNav';
+import type { AdminUser } from '@/domains/admin/api/server/session.server';
 import { Separator } from '@/shared/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/shared/components/ui/sidebar';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';

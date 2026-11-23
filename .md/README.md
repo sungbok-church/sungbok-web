@@ -148,6 +148,7 @@
 - [0022-api-response-and-error-codes.md](decisions/0022-api-response-and-error-codes.md) — 2026-11-20 — 요청 · 응답 모양 하나(성공 `{ ok: true, data?, message? }` / 실패 `{ ok: false, error: { code, message, metadata?, fields? } }`), 오류 코드는 이름 방식(영문 대문자) 목록 하나를 서버 · 화면이 함께 쓰고 서버가 문장을 완성해 보낸다. 예상된 실패는 돌려주고 던지는 것은 버그뿐
 - [0023-codes-read-without-cache.md](decisions/0023-codes-read-without-cache.md) — 2026-11-20 — 공통코드 · 분류는 캐시하지 않고 그릴 때마다 DB 에서 읽는다(`React.cache` 로 한 요청 안에서만 중복 제거). 관리자 화면은 요청 때 그리는데 그냥 `'use cache'` 는 Vercel 에서 요청 때 거의 맞지 않고, 공유 캐시(`use cache: remote`)는 DB 읽기와 같은 왕복이라 아낄 것이 없어 뺐다(Vercel 은 Hobby 로 운영해 청구가 없고, Pro 였어도 월 1센트 미만이라 비용은 이유가 아님 — 2026-11-21 근거 정정). `updateTag` · 캐시 태그 제거. ADR 0021 대체
 - [0024-cache-components.md](decisions/0024-cache-components.md) — 2026-11-20 — 캐시를 Cache Components(`cacheComponents` · `partialPrefetching`, `'use cache'` + `cacheLife`) 한 방식으로. 페이지 `revalidate` 를 없애고 데이터 쪽에서(영상 10분 · 홈 60초, 만료 없음). 서버가 받아 props 로 넘겨 HTML 에 그린다(react-query 는 브라우저에 붙은 뒤에만). 캐시 안의 실패는 값으로(`settle` · `unwrap`, 1분) — 던지면 빌드가 멈춘다. 실패 규칙은 `loadForPage`. 상세는 빌드 때 한 주소만(`oneBuildParam`). 관리자는 요청마다 그려 nonce CSP 유지. 없는 영상은 `VideoNotFound` 한 부품(첫 방문 200 + noindex)
+- [0025-admin-drag-reorder-dnd-kit.md](decisions/0025-admin-drag-reorder-dnd-kit.md) — 2026-11-23 — 메뉴 · 분류 · 코드의 순서는 ↑/↓ 대신 끌어서 놓기(`@dnd-kit/core` · `sortable` · `utilities`, 판 고정 — 손잡이 · 키보드 · 한글 낭독 · 터치), 놓은 순서는 DB 함수 `reorder_rows` 한 번(security invoker, 한 무리 전부인지 확인 · 잠금 · 한 트랜잭션). `@dnd-kit/react`(1.0 전) · motion Reorder · HTML5 끌기 탈락. ADR 0012 의 «끌어서 순서 바꾸기는 다시 본다» 를 정함
 
 ## 컨벤션
 
