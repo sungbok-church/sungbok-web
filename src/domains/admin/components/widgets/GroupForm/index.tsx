@@ -1,6 +1,6 @@
 'use client';
 
-import { createGroup, saveGroup } from '@/domains/admin/api/actions/groupActions';
+import { saveGroup } from '@/domains/admin/api/actions/groupActions';
 import { groupCreateSchema } from '@/domains/admin/lib/input/groupInput';
 import { notifyResult } from '@/domains/admin/lib/notify';
 import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
@@ -50,8 +50,7 @@ type Values = { name: string; description: string; isActive: boolean };
 interface Props {
   userId: string;
   initial: Values;
-  /** 수정일 때 */
-  editing?: { id: string; updatedAt: string; isSystem: boolean };
+  editing: { id: string; updatedAt: string; isSystem: boolean };
   /** 권한 표 — 시스템 그룹(모든 권한)은 주지 않는다 */
   matrix?: MatrixRow[];
 }
@@ -64,9 +63,9 @@ const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
   a.size === b.size && [...a].every(k => b.has(k));
 
 /**
- * 그룹 등록 · 수정(설계 6.10 «화면 흐름 표준 › 등록 · 수정») — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장한다.
+ * 그룹 수정(설계 6.10 «화면 흐름 표준 › 등록 · 수정») — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장한다.
  * «전체 관리» 만 여는 화면이다(설계 6.4 — 페이지가 404 로 막고 DB 가 다시 막는다).
- * 이름 · 설명은 쓰던 내용을 임시 보관한다. 저장하면 상세로 간다.
+ * 이름 · 설명은 쓰던 내용을 임시 보관한다. 저장하면 상세로 간다. 등록은 단계로 나눈 화면이 따로 있다(GroupCreateForm).
  */
 type GroupDraft = { fields?: Partial<Values>; perms?: SetChanges };
 
@@ -86,40 +85,26 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
 
   // 그룹 정보와 권한 표를 한 번에 저장한다(한 트랜잭션) — 하나라도 막히면 아무것도 바뀌지 않는다.
   const save = async (value: Values) => {
-    let groupId = editing?.id;
-    if (!editing) {
-      const created = await createGroup({
-        name: value.name,
-        description: value.description,
+    const saved = await saveGroup({
+      ...value,
+      id: editing.id,
+      updatedAt: editing.updatedAt,
+      // 권한 표가 있으면 지금 표와 화면을 열었을 때의 표를 함께 — 그 사이 바뀌었으면 저장하지 않는다.
+      // 없으면(«전체 관리» 그룹) 보내지 않는다 — 권한은 그대로
+      ...(matrix && {
         permissions: keysToPermissions(keys),
-      });
-      if (!created.ok || !created.data) {
-        applyServerErrors(created, serverFieldError(form)); // 서버 검사에서 틀린 칸 — 그 칸에도 표시(UserForm 과 같게)
-        return created;
-      }
-      groupId = created.data.id;
-    } else {
-      const saved = await saveGroup({
-        ...value,
-        id: editing.id,
-        updatedAt: editing.updatedAt,
-        // 권한 표가 있으면 지금 표와 화면을 열었을 때의 표를 함께 — 그 사이 바뀌었으면 저장하지 않는다.
-        // 없으면(«전체 관리» 그룹) 보내지 않는다 — 권한은 그대로
-        ...(matrix && {
-          permissions: keysToPermissions(keys),
-          seenPermissions: keysToPermissions(seenKeys),
-        }),
-      });
-      if (!saved.ok) {
-        applyServerErrors(saved, serverFieldError(form));
-        return saved;
-      }
+        seenPermissions: keysToPermissions(seenKeys),
+      }),
+    });
+    if (!saved.ok) {
+      applyServerErrors(saved, serverFieldError(form)); // 서버 검사에서 틀린 칸 — 그 칸에도 표시
+      return saved;
     }
     draft.clear();
     form.reset(value);
     // 상세는 요청 때 그리는 화면이라 이동하면 새로 읽는다 — router.refresh 를 또 부르지 않는다.
-    navigate(`${LIST}/${groupId}`);
-    return { ok: true as const, message: editing ? '저장했습니다.' : '그룹을 만들었습니다.' };
+    navigate(`${LIST}/${editing.id}`);
+    return { ok: true as const, message: '저장했습니다.' };
   };
 
   const values = useStore(form.store, s => s.values);
@@ -129,7 +114,7 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
   const [seenValues] = useState(initial);
   const draft = useFormDraft<GroupDraft>({
     userId,
-    formKey: editing ? `groups:${editing.id}` : 'groups:new',
+    formKey: `groups:${editing.id}`,
     values: { fields: changedFields(seenValues, values), perms: setChanges(seenKeys, keys) },
     dirty: dirty || permsDirty,
     enabled: true,
@@ -205,7 +190,7 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {editing?.isSystem ? (
+            {editing.isSystem ? (
               <Alert>
                 <ShieldCheckIcon aria-hidden />
                 <AlertDescription>
@@ -231,9 +216,9 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
         {submitting => (
           <FormActions
             submitting={submitting}
-            canSubmit={!editing || dirty || permsDirty}
-            cancelHref={editing ? `${LIST}/${editing.id}` : LIST}
-            submitLabel={editing ? '저장' : '그룹 만들기'}
+            canSubmit={dirty || permsDirty}
+            cancelHref={`${LIST}/${editing.id}`}
+            submitLabel="저장"
           />
         )}
       </form.Subscribe>

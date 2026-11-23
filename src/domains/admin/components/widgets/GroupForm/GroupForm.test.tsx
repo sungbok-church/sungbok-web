@@ -8,12 +8,10 @@ import { GroupForm } from '.';
 
 const m = vi.hoisted(() => ({
   saveGroup: vi.fn(async () => ({ ok: true as const, data: undefined })),
-  createGroup: vi.fn(),
   navigate: vi.fn(),
 }));
 vi.mock('@/domains/admin/api/actions/groupActions', () => ({
   saveGroup: m.saveGroup,
-  createGroup: m.createGroup,
 }));
 vi.mock('@/domains/admin/lib/notify', () => ({ notifyResult: vi.fn() }));
 vi.mock('@/domains/admin/hooks/useAdminNavigate', () => ({ useAdminNavigate: () => m.navigate }));

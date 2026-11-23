@@ -51,7 +51,6 @@ export default async function AdminUserEditPage({ params }: { params: Promise<{ 
       <PageHeader title={`${profile.name} 수정`} description={profile.email} />
       <UserForm
         key={profile.updated_at}
-        mode="edit"
         groups={groupChoices(groups ?? [], mine, memberOf)}
         ownGroupsOnly={!mine.fullAdmin}
         initial={{

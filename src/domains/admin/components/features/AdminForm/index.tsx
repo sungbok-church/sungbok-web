@@ -3,6 +3,7 @@
 // 관리자 폼의 공통 조각 — 폼 본체는 각 화면이 TanStack Form 의 useForm 으로 쓰고, 이 조각들과
 // useFormGuards(나가기 경고 · Ctrl/⌘+S · 임시 보관)를 붙인다(설계 6.10).
 import type { ActionResult } from '@/domains/admin/lib/actionResult';
+import { routeServerErrors } from '@/domains/admin/lib/formSteps';
 import type { ComponentProps, ReactNode } from 'react';
 import type { ZodType } from 'zod';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
@@ -191,13 +192,56 @@ type FieldMetaSetter = (
   name: string,
   updater: (prev: { errorMap: Record<string, unknown> }) => unknown
 ) => void;
-// 칸 이름은 서버가 준 문자열이라 폼의 칸 이름 타입으로 좁힐 수 없다 — 없는 이름이면 TanStack Form 이 무시한다
-export const serverFieldError =
-  (form: { setFieldMeta: unknown }) => (name: string, messages: string[]) =>
-    (form.setFieldMeta as FieldMetaSetter)(name, prev => ({
-      ...prev,
-      errorMap: { ...prev.errorMap, onSubmit: { message: messages[0] } },
-    }));
+type FormMetaApi = { getFieldMeta: unknown; setFieldMeta: unknown };
+
+// 칸 이름은 서버가 준 문자열이라 폼의 칸 이름 타입으로 좁힐 수 없다. 그린 적 없는 칸(«groupIds.0» · «_» 등)은 건너뛴다 —
+// 붙일 자리가 없고(TanStack Form 이 빈 칸 정보로 터진다), 붙여도 고칠 길이 없어 다음 제출이 막힌다. 문장은 알림으로 이미 보인다.
+const setSubmitError = (
+  form: FormMetaApi,
+  name: string,
+  error: { message: string } | undefined
+) => {
+  const meta = (
+    form.getFieldMeta as (name: string) => { errorMap: { onSubmit?: unknown } } | undefined
+  )(name);
+  if (!meta || (!error && !meta.errorMap.onSubmit)) return;
+  (form.setFieldMeta as FieldMetaSetter)(name, prev => ({
+    ...prev,
+    errorMap: { ...prev.errorMap, onSubmit: error },
+  }));
+};
+
+export const serverFieldError = (form: FormMetaApi) => (name: string, messages: string[]) =>
+  setSubmitError(form, name, { message: messages[0] });
+
+// ── 단계로 나눈 등록 화면(새 사용자 · 새 그룹) — 단계 상태는 lib/formSteps ──
+type StepFormApi = FormMetaApi & { state: { values: unknown } };
+
+/** 한 단계의 칸만 폼과 같은 zod 스키마로 검사한다 — 틀린 칸에 오류를 달고, 고쳐진 칸의 오류는 지운다. 모두 맞으면 true */
+export const checkFields = (form: StepFormApi, schema: ZodType, names: readonly string[]) => {
+  const errors = zodFormValidator(schema)({ value: form.state.values })?.fields ?? {};
+  names.forEach(name => setSubmitError(form, name, errors[name]));
+  return names.every(name => !errors[name]);
+};
+
+/**
+ * 다시 내기 전에 지난번 «제출 때 오류»(서버가 붙인 것 포함)를 지운다 — 폼 검증과 서버가 다시 본다.
+ * 지우지 않으면 고치지 않은(또는 고칠 수 없는) 칸의 서버 오류 때문에 TanStack Form 이 제출을 조용히 막는다.
+ */
+export const clearSubmitErrors = (form: FormMetaApi, names: readonly string[]) =>
+  names.forEach(name => setSubmitError(form, name, undefined));
+
+/** 서버가 준 칸 오류를 이 화면의 칸에 붙이고(routeServerErrors), 다시 열 단계를 돌려준다(없으면 null) */
+export const applyStepServerErrors = (
+  result: ActionResult<unknown>,
+  form: FormMetaApi,
+  fieldSteps: Readonly<Record<string, number>>
+): number | null => {
+  if (result.ok) return null;
+  const { fields, step } = routeServerErrors(fieldSteps, result.error.fields);
+  Object.entries(fields).forEach(([name, messages]) => serverFieldError(form)(name, messages));
+  return step;
+};
 
 /**
  * TanStack Form 의 폼 단위 검증기 — 화면과 Server Action 이 같은 zod 스키마를 쓴다(ADR 0017).
