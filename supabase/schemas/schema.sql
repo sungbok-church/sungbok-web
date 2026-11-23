@@ -1309,25 +1309,37 @@ $$;
 
 -- «전체 관리» 에 활성 구성원이 한 명은 남아야 한다(잠김 방지). 이미 0명인 상태(처음 만든 DB)는 막지 않는다 —
 -- 그 변경으로 0명이 될 때만 막는다.
+-- 동시에 돌면 서로의 커밋 전 변경이 안 보여 둘 다 통과할 수 있다(두 사람이 서로를 끄는 경우 등) — 표를 읽기 전에 잠금을 걸고
+-- 차례로 본다. 잠금 뒤의 읽기가 앞쪽이 커밋한 상태를 보는 것은 READ COMMITTED(Supabase 기본)라서다 — 더 높은 격리 수준으로
+-- 이 표들을 고치는 곳은 없다. 지연 검사(커밋 때)로 두고 바로 검사로 바꾸지 않는다 — 트랜잭션 중간에 잠그면 다른 행 잠금과
+-- 엇갈릴 수 있다.
 create function private.ensure_admin_remains() returns trigger
 language plpgsql security definer
 set search_path = ''
 as $$
-declare
-  removed_admin boolean;
 begin
+  -- 잠글 필요가 없는 변경은 바로 넘긴다 — 바뀐 행 값과, 바뀌지 않는 칸(그룹의 is_system)만 본다.
   -- 표마다 칸이 달라서 따로 읽는다(한 식에 섞으면 다른 표의 칸 이름을 찾다가 실패한다).
   if tg_table_name = 'user_groups' then
-    removed_admin := exists (select 1 from public.groups g where g.id = old.group_id and g.is_system);
-  else
-    -- «전체 관리» 구성원을 끈 경우만(일반 사용자를 끄는 것은 이 검사와 상관없다)
-    removed_admin := old.is_active and not new.is_active
-      and exists (
-        select 1 from public.user_groups ug join public.groups g on g.id = ug.group_id and g.is_system
-         where ug.user_id = old.id
-      );
+    if not exists (select 1 from public.groups g where g.id = old.group_id and g.is_system) then
+      return null;
+    end if;
+  elsif not (old.is_active and not new.is_active) then
+    return null;
   end if;
-  if removed_admin and not exists (
+  -- 이 검사만 쓰는 잠금 열쇠(두 칸: 이 사이트 · 이 검사 — 다른 곳의 잠금 번호와 겹치지 않게 고정 값). 트랜잭션이 끝날 때 풀린다
+  perform pg_catalog.pg_advisory_xact_lock(5355, 1);
+  -- 끈 사람이 «전체 관리» 구성원이 아니면 상관없다(일반 사용자 끄기). 같은 트랜잭션에서 그룹에서도 뺐으면 여기서는 넘기고,
+  -- 그 빼기(user_groups) 쪽 검사가 남은 인원을 본다. if 를 겹친다 — 한 식에 두면 user_groups 일 때도 old.id 를 찾다가 실패한다
+  if tg_table_name = 'profiles' then
+    if not exists (
+      select 1 from public.user_groups ug join public.groups g on g.id = ug.group_id and g.is_system
+       where ug.user_id = old.id
+    ) then
+      return null;
+    end if;
+  end if;
+  if not exists (
     select 1
       from public.user_groups ug
       join public.groups g on g.id = ug.group_id and g.is_system and g.is_active

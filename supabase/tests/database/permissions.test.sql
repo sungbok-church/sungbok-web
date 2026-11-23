@@ -551,6 +551,35 @@ select throws_ok(
   '23514', null, '«전체 관리» 의 마지막 활성 구성원은 뺄 수 없다'
 );
 
+-- 두 사람이 동시에 서로를 끄면 각자 «다른 한 명이 남아 있다» 를 보고 둘 다 통과할 수 있다(커밋 전 상태는 서로 안 보인다).
+-- 검사는 차례로 돌아야 한다 — 한 트랜잭션 안의 테스트로는 동시 실행을 만들 수 없어 잠금을 거는지만 본다
+-- (2026-11-23 로컬 DB 에서 두 연결로 확인: 잠금이 없으면 둘 다 통과해 0명, 있으면 뒤에 온 쪽이 거절돼 1명 남는다)
+-- 잠금은 사용자 · 소속을 읽기 전에 걸어야 한다(뒤에 걸면 커밋 전 상태로 이미 판단한 뒤다)
+select ok(
+  (with d as (select pg_get_functiondef('private.ensure_admin_remains'::regproc) as src),
+        p as (select strpos(src, 'perform pg_catalog.pg_advisory_xact_lock') as lock_at,
+                     strpos(src, 'from public.user_groups') as ug_at,
+                     strpos(src, 'from public.profiles') as profiles_at,
+                     strpos(src, 'join public.profiles') as profiles_join_at
+                from d)
+   select lock_at > 0 and lock_at < ug_at and (profiles_at = 0 or lock_at < profiles_at)
+      and lock_at < profiles_join_at
+     from p),
+  '«전체 관리» 남기기 검사는 사용자 · 소속을 읽기 전에 잠금을 걸고 차례로 돈다(동시에 서로를 꺼서 0명이 되지 않게)'
+);
+
+-- 한 번에 끄고 그룹에서도 빼도(사용자 수정 저장 — save_user) 마지막 구성원이면 막힌다
+select throws_ok(
+  $$set constraints all deferred;
+    update public.profiles set is_active = false where id = '00000000-0000-7000-8000-00000000000a';
+    delete from public.user_groups
+     where user_id = '00000000-0000-7000-8000-00000000000a'
+       and group_id = (select id from public.groups where key = 'admin');
+    set constraints all immediate$$,
+  '23514', null, '마지막 «전체 관리» 구성원을 끄면서 그룹에서도 빼면 막힌다'
+);
+set constraints all immediate;
+
 -- «전체 관리» 가 0명인 DB(새 프로젝트)에서도 일반 사용자는 끌 수 있다
 -- (새 프로젝트처럼 0명인 상태를 만들려고 이 검사만 잠깐 끈다 — 끝에서 되돌린다)
 alter table public.user_groups disable trigger ensure_admin_remains;
@@ -560,6 +589,7 @@ select lives_ok(
   $$update public.profiles set is_active = false where id = '00000000-0000-7000-8000-00000000000f'$$,
   '«전체 관리» 가 0명이어도 일반 사용자는 끌 수 있다'
 );
+
 select is((select count(*)::int from public.profiles p join auth.users u on u.id = p.id where u.is_anonymous), 0,
   '익명 계정에는 사용자 정보가 없다');
 insert into auth.users (id, email, is_anonymous) values ('00000000-0000-7000-8000-0000000000a0', null, true);
