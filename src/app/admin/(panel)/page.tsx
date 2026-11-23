@@ -10,7 +10,6 @@ import {
   Card,
   CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
@@ -20,7 +19,7 @@ import Link from 'next/link';
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
 export const instant = false;
 
-type Stat = { label: string; value: number; note: string; href: string };
+type Stat = { label: string; value: number; href: string };
 
 type Todo = { key: string; title: string; description: string };
 
@@ -60,13 +59,12 @@ export default async function AdminHomePage() {
         ).then(value => ({
           label: '사용 중인 계정',
           value,
-          note: '로그인할 수 있는 계정',
           href: '/admin/users',
         })),
       can(permissions, 'groups', 'READ') &&
         count(
           supabase.from('groups').select('id', { count: 'exact', head: true }).eq('is_active', true)
-        ).then(value => ({ label: '그룹', value, note: '사용 중인 그룹', href: '/admin/groups' })),
+        ).then(value => ({ label: '사용 중인 그룹', value, href: '/admin/groups' })),
       can(permissions, 'categories', 'READ') &&
         count(
           supabase
@@ -74,9 +72,8 @@ export default async function AdminHomePage() {
             .select('id', { count: 'exact', head: true })
             .eq('is_active', true)
         ).then(value => ({
-          label: '분류',
+          label: '사용 중인 분류',
           value,
-          note: '사용 중인 분류',
           href: '/admin/categories',
         })),
       can(permissions, 'audit', 'READ') &&
@@ -85,7 +82,6 @@ export default async function AdminHomePage() {
         ).then(value => ({
           label: '최근 7일 변경',
           value,
-          note: '변경 이력에 남은 건수',
           href: '/admin/audit',
         })),
     ])
@@ -100,10 +96,7 @@ export default async function AdminHomePage() {
 
   return (
     <>
-      <PageHeader
-        title={profile.name ? `${profile.name}님, 안녕하세요` : '안녕하세요'}
-        description="왼쪽 메뉴에서 고르거나 ⌘K(Ctrl+K)로 메뉴를 찾아 바로 갈 수 있습니다."
-      />
+      <PageHeader title={profile.name ? `${profile.name}님, 안녕하세요` : '안녕하세요'} />
 
       {stats.length > 0 && (
         <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4">
@@ -120,7 +113,6 @@ export default async function AdminHomePage() {
                       {stat.value.toLocaleString('ko-KR')}
                     </CardTitle>
                   </CardHeader>
-                  <CardFooter className="text-muted-foreground text-sm">{stat.note}</CardFooter>
                 </Card>
               </Link>
             </li>

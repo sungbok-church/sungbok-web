@@ -1,6 +1,5 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { screenLabel } from '@/domains/admin/lib/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
 import { readListDefaults } from '@/domains/admin/api/server/listDefaults.server';
 import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
 import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
@@ -102,7 +101,6 @@ export default async function AdminGroupsPage({
     <>
       <PageHeader
         title={screenLabel(ctx.nav, 'groups', '그룹 · 권한')}
-        description={SCREEN_DESCRIPTIONS.groups}
         actions={
           fullAdmin && (
             <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>

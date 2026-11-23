@@ -48,7 +48,7 @@ export default async function AdminUserNewPage() {
   const { menus, grants } = readMenuRows(menuRows ?? []);
   return (
     <>
-      <PageHeader title="새 사용자" description="만들면 임시 비밀번호가 한 번 보입니다." />
+      <PageHeader title="새 사용자" />
       <UserCreateForm
         groups={groupChoices(groups ?? [], mine, [])}
         ownGroupsOnly={!mine.fullAdmin}

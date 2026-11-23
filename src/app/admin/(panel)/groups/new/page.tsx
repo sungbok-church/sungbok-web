@@ -13,7 +13,7 @@ export default async function AdminGroupNewPage() {
   const matrix = await loadGroupMatrix(await createSupabaseServerClient());
   return (
     <>
-      <PageHeader title="새 그룹" description="그룹 이름과 메뉴별 권한을 정합니다." />
+      <PageHeader title="새 그룹" />
       <GroupCreateForm userId={user.id} matrix={matrix} />
     </>
   );

@@ -80,7 +80,13 @@ export const RequiredMark = () => (
   </>
 );
 
-/** 글자 수 — «12 / 50». 넘으면 붉게. */
+/** 글자 수를 보이기 시작하는 비율 — 그 전에는 숨긴다(늘 떠 있으면 읽을 것만 는다) */
+const CHAR_COUNT_FROM = 0.8;
+
+/**
+ * 글자 수 — «45 / 50». 한도의 80% 를 넘겨 쓸 때만 보이고, 넘으면 붉게.
+ * 알림 자리(aria-live)는 늘 그려 두고 내용만 채운다 — 자리가 내용과 함께 생기면 스크린리더가 읽지 않는다.
+ */
 export const CharCount = ({ value, max }: { value: string; max: number }) => (
   <span
     aria-live="polite"
@@ -90,7 +96,7 @@ export const CharCount = ({ value, max }: { value: string; max: number }) => (
         : 'text-muted-foreground ml-auto text-xs tabular-nums'
     }
   >
-    {value.length} / {max}
+    {value.length >= max * CHAR_COUNT_FROM && `${value.length} / ${max}`}
   </span>
 );
 
@@ -105,7 +111,8 @@ type TextFieldApi = {
 };
 
 /**
- * 관리자 폼의 글자 칸 한 덩어리 — 이름(필수면 *) · 글자 수(max 를 주면) · 입력칸 · 도움말 · 오류.
+ * 관리자 폼의 글자 칸 한 덩어리 — 이름(필수면 *) · 글자 수(max 를 주면, 한도 가까이에서만) · 입력칸 · 도움말 · 오류.
+ * 도움말(description)은 실수를 막는 말일 때만 단다(.md/domains/admin.md «문구 규칙»).
  * 틀리면 칸을 붉게(aria-invalid · data-invalid) 하고 오류 문구를 아래에 단다. 그 밖의 속성(type · placeholder …)은 입력칸에 그대로.
  * 비밀번호 칸은 모양이 달라(보기 · 숨기기, 건드린 뒤에만 붉게) 이것을 쓰지 않는다(PasswordForm).
  */
@@ -125,7 +132,7 @@ export const TextField = ({
   id: string;
   label: ReactNode;
   required?: boolean;
-  /** 주면 입력을 그 글자 수로 막고 «12 / 50» 을 보인다(글자 수 없이 막기만 하려면 maxLength) */
+  /** 주면 입력을 그 글자 수로 막고, 한도 가까이 쓰면 «45 / 50» 을 보인다(글자 수 없이 막기만 하려면 maxLength) */
   max?: number;
   description?: ReactNode;
   /** 여러 줄(Textarea) */

@@ -1,6 +1,5 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { can, screenLabel } from '@/domains/admin/lib/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
 import { readListDefaults } from '@/domains/admin/api/server/listDefaults.server';
 import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
 import { DEPARTMENTS } from '@/domains/admin/lib/input/userInput';
@@ -124,7 +123,6 @@ export default async function AdminUsersPage({
     <>
       <PageHeader
         title={screenLabel(ctx.nav, 'users', '사용자')}
-        description={SCREEN_DESCRIPTIONS.users}
         actions={
           canCreate && (
             <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
@@ -165,7 +163,7 @@ export default async function AdminUsersPage({
         columns={[
           { key: 'name', header: '사용자', sortField: 'name' },
           { key: 'groups', header: '그룹' },
-          // «다음세대 부서» 메뉴에서 고칠 수 있는 부서(없으면 모든 부서) — 뜻은 상세 · 수정 화면에 한 줄로 적는다
+          // «다음세대 부서» 메뉴에서 고칠 수 있는 부서(없으면 모든 부서)
           { key: 'department', header: '담당 부서' },
           { key: 'status', header: '상태' },
         ]}

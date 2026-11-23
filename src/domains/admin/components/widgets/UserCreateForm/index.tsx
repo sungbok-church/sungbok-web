@@ -39,7 +39,7 @@ import {
 } from '@/domains/admin/lib/permissionSummary';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
+import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import {
   Field,
   FieldContent,
@@ -227,7 +227,6 @@ export const UserCreateForm = ({
                   required
                   type="email"
                   autoComplete="off"
-                  description="로그인 아이디가 됩니다."
                 />
               )}
             </form.Field>
@@ -238,11 +237,8 @@ export const UserCreateForm = ({
           n={2}
           title="역할"
           {...stepProps(1)}
-          description={
-            ownGroupsOnly
-              ? '내가 속한 그룹에만 넣을 수 있습니다.'
-              : '속한 그룹의 권한을 합쳐 갖습니다.'
-          }
+          // 왜 다른 그룹이 안 보이는지 — 고를 수 있는 범위가 좁을 때만
+          description={ownGroupsOnly ? '내가 속한 그룹에만 넣을 수 있습니다.' : undefined}
           summary={[
             picked.map(g => g.name).join(' · ') || '그룹 없음',
             department && departmentLabel(department),
@@ -267,7 +263,6 @@ export const UserCreateForm = ({
                     <Empty className="border">
                       <EmptyHeader>
                         <EmptyTitle>넣을 수 있는 그룹이 없습니다</EmptyTitle>
-                        <EmptyDescription>그룹 없이 만듭니다.</EmptyDescription>
                       </EmptyHeader>
                     </Empty>
                   ) : (
@@ -308,7 +303,6 @@ export const UserCreateForm = ({
                   value={field.state.value}
                   limit={departmentLimit}
                   onChange={field.handleChange}
-                  description="정하면 그 부서 담당자가 이 사람을 관리하고, «다음세대 부서» 에서 그 부서만 다룹니다."
                   errors={field.state.meta.errors}
                 />
               )}

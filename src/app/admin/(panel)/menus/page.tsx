@@ -1,7 +1,6 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
 import { can, screenLabel } from '@/domains/admin/lib/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
 import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { type SortableRow, SortableRows } from '@/domains/admin/components/widgets/SortableRows';
@@ -35,7 +34,6 @@ const toRow = (m: MenuRow): SortableRow => ({
   id: m.id,
   label: m.label ?? '',
   defaultLabel: m.default_label,
-  detail: m.path ?? '대메뉴(묶음)',
   isActive: m.is_active,
   locked: m.is_locked,
   updatedAt: m.updated_at,
@@ -67,7 +65,6 @@ export default async function AdminMenusPage() {
     <>
       <PageHeader
         title={screenLabel(ctx.nav, 'menus', '메뉴 관리')}
-        description={SCREEN_DESCRIPTIONS.menus}
         actions={
           can(ctx.permissions, 'menus', 'HISTORY') && (
             <HistorySheet table="menus" subject={screenLabel(ctx.nav, 'menus', '메뉴 관리')} />
@@ -84,16 +81,13 @@ export default async function AdminMenusPage() {
         <Card>
           <CardHeader>
             <CardTitle>대메뉴</CardTitle>
-            <CardDescription>
-              왼쪽 메뉴 맨 위 칸의 순서입니다. 대메뉴를 끄면 그 아래 메뉴가 모두 숨겨집니다. 이름을
-              비우면 기본 이름으로 돌아갑니다.
-            </CardDescription>
+            {/* 실수를 막는 한 줄만 — 이름을 비우면 기본 이름(입력칸의 흐린 글자)으로 돌아간다 */}
+            <CardDescription>끄면 그 아래 메뉴도 모두 숨겨집니다.</CardDescription>
           </CardHeader>
           <CardContent>
             <SortableRows
               kind="menus"
               caption="대메뉴"
-              detailHeader="주소"
               rows={tops.map(toRow)}
               editable={editable}
               toggleable={toggleable}
@@ -109,7 +103,6 @@ export default async function AdminMenusPage() {
               <SortableRows
                 kind="menus"
                 caption={`${header.label ?? header.default_label} 메뉴`}
-                detailHeader="주소"
                 rows={menus.filter(m => m.parent_id === header.id).map(toRow)}
                 editable={editable}
                 toggleable={toggleable}

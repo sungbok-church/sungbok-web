@@ -1,4 +1,5 @@
-// 관리자 화면마다 머리에 붙는 한 줄 설명과 첫 화면 바로 가기 카드의 설명. 순수 데이터(메뉴 key → 문구).
+// 첫 화면 «바로 가기» 카드의 한 줄 설명(메뉴 key → 문구). 순수 데이터.
+// 각 화면의 머리에는 달지 않는다 — 화면 설명 문장은 쓰지 않는다(.md/domains/admin.md «문구 규칙»).
 export const SCREEN_DESCRIPTIONS: Record<string, string> = {
   users: '관리자 화면에 로그인하는 계정을 만들고, 그룹과 담당 부서를 정합니다.',
   groups:

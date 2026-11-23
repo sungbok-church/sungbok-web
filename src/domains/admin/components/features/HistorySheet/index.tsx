@@ -8,7 +8,7 @@ import {
 import { AuditEntry } from '@/domains/admin/components/features/AuditEntry';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { Button } from '@/shared/components/ui/button';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
+import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import {
   Sheet,
   SheetContent,
@@ -70,7 +70,7 @@ export const HistorySheet = ({ subject, open: openProp, onOpenChange, ...target 
       <SheetContent className="w-full sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>변경 이력</SheetTitle>
-          <SheetDescription>{subject} — 누가 언제 무엇을 바꿨는지(최신순)</SheetDescription>
+          <SheetDescription>{subject} · 최신순</SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-4 pb-6">
           {pending && !loaded && (
@@ -88,9 +88,6 @@ export const HistorySheet = ({ subject, open: openProp, onOpenChange, ...target 
             <Empty>
               <EmptyHeader>
                 <EmptyTitle>아직 기록이 없습니다</EmptyTitle>
-                <EmptyDescription>
-                  {target.rowId ? '이 항목을' : '이 화면에서'} 고치면 여기에 남습니다.
-                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}

@@ -11,7 +11,7 @@ import { z } from 'zod';
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
 export const instant = false;
 
-// 사용자 수정 — 상세에서 [수정] 으로 들어온다. 저장하면 상세로 돌아간다.
+// 사용자 수정 — 상세에서 [수정] 으로 들어온다. 저장하면 상세로 돌아간다. 머리는 이름만(«수정» 은 위쪽 경로 표시가 알린다).
 export default async function AdminUserEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -48,7 +48,7 @@ export default async function AdminUserEditPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <PageHeader title={`${profile.name} 수정`} description={profile.email} />
+      <PageHeader title={profile.name} />
       <UserForm
         key={profile.updated_at}
         groups={groupChoices(groups ?? [], mine, memberOf)}

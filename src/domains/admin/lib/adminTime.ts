@@ -18,6 +18,17 @@ export const formatAdminTime = (iso: string): string => {
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 };
 
+/**
+ * 상세 아래 «수정 11-20 20:57» 처럼 짧게(서울 시각) — 올해면 «MM-DD HH:mm», 그 전이면 «YYYY-MM-DD».
+ * now 는 지금 시각(ISO). 읽지 못하는 값은 그대로 돌려준다.
+ */
+export const formatShortTime = (iso: string, now: string): string => {
+  const full = formatAdminTime(iso);
+  if (full === iso) return iso;
+  const thisYear = formatAdminTime(now).slice(0, 4);
+  return full.startsWith(thisYear) ? full.slice(5) : full.slice(0, 10);
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PERIODS = { '7d': 7, '30d': 30 } as const;
 export type Period = keyof typeof PERIODS;

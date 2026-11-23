@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps } from 'react';
 
 const ALL_DEPARTMENTS = '';
 const ITEMS = [{ value: ALL_DEPARTMENTS, label: '모든 부서' }, ...DEPARTMENTS];
@@ -28,7 +28,6 @@ export const DepartmentField = ({
   value,
   limit,
   onChange,
-  description,
   errors,
 }: {
   id: string;
@@ -36,7 +35,6 @@ export const DepartmentField = ({
   /** my_department_limit — 있으면 그 부서로 고정 */
   limit: string | null;
   onChange: (value: string) => void;
-  description?: ReactNode;
   errors?: ComponentProps<typeof FieldError>['errors'];
 }) => {
   const invalid = (errors?.length ?? 0) > 0 || undefined;
@@ -62,9 +60,8 @@ export const DepartmentField = ({
           </SelectGroup>
         </SelectContent>
       </Select>
-      <FieldDescription>
-        {limit ? '내 담당 부서로만 정할 수 있습니다.' : description}
-      </FieldDescription>
+      {/* 고정된 까닭만 적는다(실수를 막는 말) — 부서가 하는 일은 «갖게 될 권한» 요약이 보여 준다 */}
+      {limit && <FieldDescription>내 담당 부서로만 정할 수 있습니다.</FieldDescription>}
       <FieldError errors={errors} />
     </Field>
   );

@@ -36,7 +36,7 @@ const renderForm = () =>
     <GroupForm
       userId="me"
       initial={{ name: '주보 담당', description: '', isActive: true }}
-      editing={{ id: GROUP_ID, updatedAt: 't1', isSystem: false }}
+      editing={{ id: GROUP_ID, updatedAt: 't1' }}
       matrix={MATRIX}
     />
   );
@@ -84,5 +84,23 @@ describe('GroupForm — 그룹 수정(«전체 관리»)', () => {
     await user.click(update);
     expect(update).toBeChecked();
     expect(read).toBeChecked();
+  });
+
+  it('글자 수는 한도의 80% 를 넘겨 쓸 때만 보인다', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    expect(screen.queryByText(/\/ 50$/)).toBeNull();
+    const name = screen.getByLabelText(/그룹 이름/);
+    // 알림 자리(aria-live)는 처음부터 비어 있는 채로 있어야 채워질 때 스크린리더가 읽는다
+    const live = name.closest('[data-slot="field"]')?.querySelector('[aria-live="polite"]');
+    expect(live).toBeInTheDocument();
+    expect(live).toBeEmptyDOMElement();
+    await user.clear(name);
+    await user.type(name, 'ㄱ'.repeat(39));
+    expect(screen.queryByText(/\/ 50$/)).toBeNull();
+    expect(live).toBeEmptyDOMElement();
+    await user.type(name, 'ㄱ');
+    expect(screen.getByText('40 / 50')).toBeInTheDocument();
+    expect(live).toHaveTextContent('40 / 50');
   });
 });

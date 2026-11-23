@@ -102,7 +102,7 @@ export const PermissionMatrix = ({ rows, checked, onToggle }: Props) => {
                       if (!cell) {
                         return (
                           <TableCell key={action} className="text-muted-foreground text-center">
-                            {/* 터치에서는 뜨지 않는다 — 카드 설명이 같은 말을 한다 */}
+                            {/* 터치에서는 뜨지 않는다 — 빈 칸 «–» 이라 고를 것이 없다는 것은 보인다 */}
                             <Tooltip>
                               <TooltipTrigger render={<span className="inline-flex" />}>
                                 <span aria-hidden>–</span>

@@ -3,13 +3,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { can, screenLabel } from '@/domains/admin/lib/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
 import { GroupNav } from '@/domains/admin/components/features/GroupNav';
 import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { SortableRows } from '@/domains/admin/components/widgets/SortableRows';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
-import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   Card,
@@ -19,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
+import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { LockIcon } from 'lucide-react';
 
 import { ItemCreateForm } from './ItemCreateForm';
@@ -114,7 +112,6 @@ export const ItemGroupsScreen = async ({
     <>
       <PageHeader
         title={title}
-        description={SCREEN_DESCRIPTIONS[kind]}
         actions={
           can(ctx.permissions, kind, 'HISTORY') && <HistorySheet table={kind} subject={title} />
         }
@@ -136,45 +133,26 @@ export const ItemGroupsScreen = async ({
         <Card>
           <CardHeader>
             <CardTitle>{current?.name ?? k.noun}</CardTitle>
-            <CardDescription>
-              {k.description ?? (
-                <>
-                  {current?.description ?? ''}
-                  {current && <span className="ml-1 font-mono text-xs">({current.key})</span>}
-                </>
-              )}
-            </CardDescription>
+            {/* 코드 묶음의 설명(DB 의 값)만 — 화면 설명 문장은 달지 않는다 */}
+            {current?.description && <CardDescription>{current.description}</CardDescription>}
             {current?.locked && (
               <CardAction>
                 <Badge variant="neutral">
                   <LockIcon aria-hidden />
-                  잠긴 묶음
+                  이름 · 순서만 바꿈
                 </Badge>
               </CardAction>
             )}
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
-            {current?.locked ? (
-              <Alert>
-                <LockIcon aria-hidden />
-                <AlertDescription>
-                  프로그램이 쓰는 값이라 {k.noun}를 더하거나 끌 수 없습니다. 화면에 보이는 이름과
-                  순서만 바꿉니다.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              current &&
-              can(ctx.permissions, kind, 'CREATE') && (
-                <ItemCreateForm key={current.key} kind={kind} groupKey={current.key} />
-              )
+            {/* 잠긴 묶음은 머리의 «이름 · 순서만 바꿈» 표가 알린다 — 더하기 칸을 그리지 않는다 */}
+            {current && !current.locked && can(ctx.permissions, kind, 'CREATE') && (
+              <ItemCreateForm key={current.key} kind={kind} groupKey={current.key} />
             )}
             {items.length === 0 ? (
               <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>아직 {k.noun}가 없습니다</EmptyTitle>
-                  <EmptyDescription>
-                    위에서 이름과 {k.fieldLabel}을 넣어 더해 주세요.
-                  </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (

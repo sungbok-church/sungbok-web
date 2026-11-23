@@ -53,7 +53,7 @@ export type SortableRow = {
   label: string;
   /** 비웠을 때 쓰는 이름(메뉴의 기본 이름) — 코드는 없다 */
   defaultLabel?: string;
-  /** 이름 옆에 작게(코드 값 · 주소) */
+  /** 둘째 칸 값(분류: slug · 코드: code) — detailHeader 를 줄 때만 보인다 */
   detail?: string;
   isActive: boolean;
   /** 사용을 끌 수 없는 줄(잠긴 메뉴 · 프로그램이 쓰는 코드) — 순서는 옮길 수 있다 */
@@ -82,8 +82,8 @@ interface Props {
   toggleable?: boolean;
   /** 접근성 이름에 쓰는 무리 이름(«콘텐츠 메뉴» 등) */
   caption: string;
-  /** 두 번째 칸 머리(«주소» · «영문 이름» · «코드 값») */
-  detailHeader: string;
+  /** 둘째 칸 제목(분류 «영문 이름» · 코드 «코드 값») — 없으면 둘째 칸을 그리지 않는다(메뉴는 주소가 개발용이라 넘기지 않는다) */
+  detailHeader?: string;
 }
 
 /**
@@ -157,7 +157,9 @@ export const SortableRows = ({
                   <span className="sr-only">순서</span>
                 </TableHead>
                 <TableHead className="sm:w-2/5">이름</TableHead>
-                <TableHead className="hidden sm:table-cell">{detailHeader}</TableHead>
+                {detailHeader && (
+                  <TableHead className="hidden sm:table-cell">{detailHeader}</TableHead>
+                )}
                 <TableHead className="w-28">사용</TableHead>
               </TableRow>
             </TableHeader>
@@ -174,6 +176,7 @@ export const SortableRows = ({
                     // 그 사이 보낸 이름 저장은 옛 판이라 «다른 사람이 먼저 고쳤습니다» 로 거절되고 고친 이름이 사라진다
                     editable={editable && !saving}
                     toggleable={toggleable}
+                    showDetail={Boolean(detailHeader)}
                   />
                 </DraggableRow>
               ))}
@@ -238,11 +241,13 @@ const RowFields = ({
   row,
   editable,
   toggleable,
+  showDetail,
 }: {
   kind: keyof typeof ACTIONS;
   row: SortableRow;
   editable: boolean;
   toggleable: boolean;
+  showDetail: boolean;
 }) => {
   const router = useRouter();
   const [label, setLabel] = useState(row.label);
@@ -307,13 +312,15 @@ const RowFields = ({
           }}
           className="max-w-xs"
         />
-        {row.detail && (
+        {showDetail && row.detail && (
           <p className="text-muted-foreground mt-1 truncate text-xs sm:hidden">{row.detail}</p>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground hidden truncate sm:table-cell">
-        {row.detail}
-      </TableCell>
+      {showDetail && (
+        <TableCell className="text-muted-foreground hidden truncate sm:table-cell">
+          {row.detail}
+        </TableCell>
+      )}
       <TableCell>
         {row.locked ? (
           <Tooltip>

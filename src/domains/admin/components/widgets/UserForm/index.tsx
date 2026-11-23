@@ -32,7 +32,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
+import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import {
   Field,
   FieldContent,
@@ -79,6 +79,7 @@ const NAME_MAX = 50;
 
 /**
  * 사용자 수정 폼(설계 6.10 «화면 흐름 표준 › 등록 · 수정») — 넓은 화면은 두 카드(기본 정보 · 그룹)를 나란히,
+ * 칸 아래 도움말은 실수를 막는 것만(부서 고정 · «전체 관리» 잠금 · 내 그룹만),
  * 아래 고정 막대에 [취소] · [저장]. 사용 여부 · 비밀번호 초기화는 상세 화면에서 한다.
  * 등록은 단계로 나눈 화면이 따로 있다(UserCreateForm).
  */
@@ -152,7 +153,6 @@ export const UserForm = ({
         <Card>
           <CardHeader>
             <CardTitle>기본 정보</CardTitle>
-            <CardDescription>이메일이 로그인 아이디입니다.</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>
@@ -185,14 +185,7 @@ export const UserForm = ({
               </form.Field>
               <form.Field name="email">
                 {field => (
-                  <TextField
-                    field={field}
-                    id="user-email"
-                    label="이메일"
-                    type="email"
-                    disabled
-                    description="이메일은 바꿀 수 없습니다."
-                  />
+                  <TextField field={field} id="user-email" label="이메일" type="email" disabled />
                 )}
               </form.Field>
               <form.Field name="department">
@@ -202,7 +195,6 @@ export const UserForm = ({
                     value={field.state.value}
                     limit={departmentLimit ?? null}
                     onChange={field.handleChange}
-                    description="정하면 «다음세대 부서» 메뉴에서 그 부서만 고칩니다."
                     errors={field.state.meta.errors}
                   />
                 )}
@@ -214,11 +206,10 @@ export const UserForm = ({
         <Card>
           <CardHeader>
             <CardTitle>그룹</CardTitle>
-            <CardDescription>
-              {ownGroupsOnly
-                ? '속한 그룹의 권한을 합쳐 갖습니다. 내가 속한 그룹에만 넣고 뺄 수 있습니다.'
-                : '속한 그룹의 권한을 합쳐 갖습니다.'}
-            </CardDescription>
+            {/* 왜 다른 그룹이 안 보이는지 — 고를 수 있는 범위가 좁을 때만 */}
+            {ownGroupsOnly && (
+              <CardDescription>내가 속한 그룹에만 넣고 뺄 수 있습니다.</CardDescription>
+            )}
           </CardHeader>
           <CardContent>
             <form.Field name="groupIds">
@@ -228,7 +219,6 @@ export const UserForm = ({
                     <Empty className="border">
                       <EmptyHeader>
                         <EmptyTitle>넣을 수 있는 그룹이 없습니다</EmptyTitle>
-                        <EmptyDescription>그룹 없이 저장합니다.</EmptyDescription>
                       </EmptyHeader>
                     </Empty>
                   )}
@@ -250,11 +240,14 @@ export const UserForm = ({
                           />
                           <FieldContent>
                             <span className="font-medium">{g.name}</span>
-                            <FieldDescription>
-                              {g.locked
-                                ? '모든 메뉴 · 모든 기능 — «전체 관리» 소속은 화면에서 바꿀 수 없습니다.'
-                                : (g.description ?? '설명 없음')}
-                            </FieldDescription>
+                            {/* 그룹 설명(값)은 있을 때만, 잠긴 «전체 관리» 는 왜 못 바꾸는지 */}
+                            {(g.locked || g.description) && (
+                              <FieldDescription>
+                                {g.locked
+                                  ? '«전체 관리» 소속은 화면에서 바꿀 수 없습니다.'
+                                  : g.description}
+                              </FieldDescription>
+                            )}
                           </FieldContent>
                         </Field>
                       </FieldLabel>

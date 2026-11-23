@@ -3,6 +3,7 @@
 import { saveListMemory } from '@/domains/admin/lib/listMemory';
 import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
 import {
+  hasConditions,
   type ListQuery,
   listQueryHref,
   type ListSpec,
@@ -105,12 +106,7 @@ export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: P
   const [selected, setSelected] = useState<string[]>([]);
   const href = (patch: Partial<ListQuery>) => listQueryHref(pathname, query, patch, spec);
   const pages = Math.max(1, Math.ceil(total / query.size));
-  const filtered =
-    query.q !== '' ||
-    Object.keys(query.filters).length > 0 ||
-    query.trash ||
-    query.from !== '' ||
-    query.to !== '';
+  const filtered = hasConditions(query);
 
   // 상세의 [목록] · 이전/다음이 쓰는 기억 — 그린 쪽이 바뀔 때마다
   const ids = useMemo(() => rows.map(r => r.id), [rows]);
@@ -149,15 +145,36 @@ export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: P
     );
   };
 
+  // 마지막 쪽을 넘긴 주소(지우고 돌아왔거나 쪽당 개수를 늘렸다) — «등록된 항목 없음» 이 아니라 1쪽으로 가는 길을
+  if (rows.length === 0 && query.page > 1) {
+    return (
+      <div className="flex flex-col gap-3">
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>이 쪽에는 항목이 없습니다</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" nativeButton={false} render={<Link href={href({ page: 1 })} />}>
+              1쪽으로
+            </Button>
+          </EmptyContent>
+        </Empty>
+        {pages > 1 && (
+          <div className="flex justify-end">
+            <Pager page={Math.min(query.page, pages)} pages={pages} href={page => href({ page })} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (rows.length === 0) {
     return (
       <Empty className="border">
         <EmptyHeader>
           <EmptyTitle>{filtered ? '조건에 맞는 항목이 없습니다' : empty.title}</EmptyTitle>
-          {filtered ? (
-            <EmptyDescription>조건을 바꾸거나 초기화해 보세요.</EmptyDescription>
-          ) : (
-            empty.description && <EmptyDescription>{empty.description}</EmptyDescription>
+          {!filtered && empty.description && (
+            <EmptyDescription>{empty.description}</EmptyDescription>
           )}
         </EmptyHeader>
         <EmptyContent>

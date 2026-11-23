@@ -113,11 +113,55 @@ export const rangeOf = (page: number, size: number = PAGE_SIZE): [number, number
   page * size - 1,
 ];
 
+/** 적용된 조건(검색어 · 필터 · 기간 · 휴지통)이 하나라도 있는가 — 빈 목록이 «조건에 맞는 항목이 없습니다» 를 띄울지 */
+export const hasConditions = (query: ListQuery): boolean =>
+  query.q !== '' ||
+  Object.keys(query.filters).length > 0 ||
+  query.from !== '' ||
+  query.to !== '' ||
+  query.trash;
+
+/**
+ * 검색 줄에 [초기화] 를 보일까 — 조건이 있거나, 정렬 · 방향 · 쪽당 개수가 목록의 기본값(spec · PAGE_SIZE)과 다를 때.
+ * 쪽 번호만 넘긴 것은 «조건» 이 아니라 넣지 않는다.
+ */
+export const canResetList = (query: ListQuery, spec: ListSpec): boolean =>
+  hasConditions(query) ||
+  query.sort !== spec.defaultSort ||
+  query.dir !== spec.defaultDir ||
+  query.size !== PAGE_SIZE;
+
+/**
+ * 기간 칸의 값이 «다 고른 날짜» 인가 — [적용] 을 보일지. 날짜 칸에서 연도를 치는 동안에는 0002 · 0020 · 0202 같은
+ * 값이 차례로 들어오므로 1900년 이후만 완성으로 본다.
+ */
+export const isCompleteDate = (value: string): boolean =>
+  DATE.test(value) && Number(value.slice(0, 4)) >= 1900;
+
+type DateRange = { from: string; to: string };
+
+/**
+ * 기간 칸의 [적용] 을 보일까 — 적용된 값과 다르고, 두 칸이 각각 비었거나 다 고른 날짜일 때만
+ * (날짜를 치는 중인 값은 칸에만 둔다).
+ */
+export const canApplyDates = (
+  draft: DateRange,
+  applied: DateRange,
+  /** 날짜 칸이 고치는 중이라 잠깐 빈 값인가(input.validity.badInput) — 그때의 '' 는 «비움» 이 아니다 */
+  partial: { from?: boolean; to?: boolean } = {}
+): boolean =>
+  (draft.from !== applied.from || draft.to !== applied.to) &&
+  !(partial.from && draft.from === '') &&
+  !(partial.to && draft.to === '') &&
+  [draft.from, draft.to].every(v => v === '' || isCompleteDate(v)) &&
+  // 시작일이 끝일보다 늦으면 늘 빈 목록이다 — 적용하지 않는다(날짜 고르개의 min · max 는 손으로 친 값을 막지 못한다)
+  !(draft.from !== '' && draft.to !== '' && draft.from > draft.to);
+
 export type Condition = { key: string; label: string; value: string };
 
 /**
- * 적용된 조건 — 목록 위에 칩(«상태: 임시저장 ✕»)으로 보인다. 필터 값은 filterLabels 로 사람이 읽는 이름으로.
- * 칩을 누르면 그 조건만 뺀다(key 가 q · from · to · trash 또는 필터 이름).
+ * 적용된 조건 — 최근 검색 조건의 이름(«상태: 사용 중 · 검색어: 홍»)에 쓴다. 필터 값은 filterLabels 로 사람이 읽는 이름으로.
+ * key 는 q · from · to · trash 또는 필터 이름.
  */
 export const activeConditions = (
   query: ListQuery,

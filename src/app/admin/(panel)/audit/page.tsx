@@ -1,6 +1,5 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { screenLabel } from '@/domains/admin/lib/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
 import { dayRange, formatAdminTime } from '@/domains/admin/lib/adminTime';
 import { actionLabel, formatChanges, subjectOf, tableLabel } from '@/domains/admin/lib/auditFormat';
 import { ACTION_NAMES, TABLE_LABELS } from '@/domains/admin/lib/auditLabels';
@@ -117,10 +116,7 @@ export default async function AdminAuditPage({
 
   return (
     <>
-      <PageHeader
-        title={screenLabel(ctx.nav, 'audit', '변경 이력')}
-        description={SCREEN_DESCRIPTIONS.audit}
-      />
+      <PageHeader title={screenLabel(ctx.nav, 'audit', '변경 이력')} />
       <ListToolbar
         userId={ctx.user.id}
         query={query}

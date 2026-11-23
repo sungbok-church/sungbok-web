@@ -131,7 +131,7 @@ describe('UserCreateForm — 단계로 나눈 새 사용자', () => {
     const user = userEvent.setup();
     renderForm();
     await fillBasic(user);
-    expect(screen.getByText(/그 부서 담당자가 이 사람을 관리/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '담당 부서' })).toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: /주보 담당/ }));
     await user.click(screen.getByRole('combobox', { name: '담당 부서' }));
     await user.click(await screen.findByRole('option', { name: '유치부' }));

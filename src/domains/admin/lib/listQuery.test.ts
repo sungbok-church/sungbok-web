@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   activeConditions,
+  canApplyDates,
+  canResetList,
+  hasConditions,
+  isCompleteDate,
   type ListSpec,
   listQueryHref,
   orIlike,
@@ -182,7 +186,7 @@ describe('쪽당 개수 · 기간', () => {
 });
 
 describe('activeConditions', () => {
-  it('적용된 조건을 칩으로 보일 목록(이름 · 값)', () => {
+  it('적용된 조건 목록(이름 · 값) — 최근 검색 조건의 이름이 된다', () => {
     const DATED: ListSpec = { ...SPEC, dateRange: true };
     const q = parseListQuery({ q: '홍', status: 'draft', from: '2026-11-01' }, DATED);
     expect(
@@ -192,5 +196,83 @@ describe('activeConditions', () => {
       { key: 'status', label: '상태', value: '임시저장' },
       { key: 'from', label: '시작일', value: '2026-11-01' },
     ]);
+  });
+});
+
+describe('hasConditions · canResetList', () => {
+  const base = parseListQuery({}, SPEC);
+
+  it('기본 상태면 조건도 없고 [초기화] 도 없다', () => {
+    expect(hasConditions(base)).toBe(false);
+    expect(canResetList(base, SPEC)).toBe(false);
+  });
+
+  it('검색어 · 필터 · 기간 · 휴지통은 조건이다', () => {
+    for (const patch of [
+      { q: '홍' },
+      { filters: { status: 'draft' } },
+      { from: '2026-01-01' },
+      { to: '2026-01-31' },
+      { trash: true },
+    ]) {
+      const query = { ...base, ...patch };
+      expect(hasConditions(query)).toBe(true);
+      expect(canResetList(query, SPEC)).toBe(true);
+    }
+  });
+
+  it('정렬 · 방향 · 쪽당 개수가 기본값과 다르면 조건은 아니지만 [초기화] 를 보인다', () => {
+    for (const patch of [{ sort: 'name' }, { dir: 'asc' as const }, { size: 50 }]) {
+      const query = { ...base, ...patch };
+      expect(hasConditions(query)).toBe(false);
+      expect(canResetList(query, SPEC)).toBe(true);
+    }
+  });
+
+  it('쪽 번호만 넘긴 것은 [초기화] 대상이 아니다', () => {
+    expect(canResetList({ ...base, page: 3 }, SPEC)).toBe(false);
+  });
+});
+
+describe('isCompleteDate', () => {
+  it('YYYY-MM-DD 이고 1900년 이후면 완성된 날짜', () => {
+    expect(isCompleteDate('2026-11-24')).toBe(true);
+    expect(isCompleteDate('1900-01-01')).toBe(true);
+  });
+
+  it('비었거나 연도를 치는 중(0002 · 0202)이면 아니다', () => {
+    expect(isCompleteDate('')).toBe(false);
+    expect(isCompleteDate('0002-11-24')).toBe(false);
+    expect(isCompleteDate('0202-11-24')).toBe(false);
+    expect(isCompleteDate('2026-13-01')).toBe(false);
+  });
+});
+
+describe('canApplyDates', () => {
+  const applied = { from: '2026-01-01', to: '' };
+  it('적용된 값과 다르고 두 칸이 각각 비었거나 다 고른 날짜일 때만', () => {
+    expect(canApplyDates({ from: '2026-02-01', to: '' }, applied)).toBe(true);
+    expect(canApplyDates({ from: '', to: '' }, applied)).toBe(true);
+    expect(canApplyDates({ from: '2026-01-01', to: '2026-03-01' }, applied)).toBe(true);
+  });
+
+  it('적용된 값과 같으면 아니다', () => {
+    expect(canApplyDates({ from: '2026-01-01', to: '' }, applied)).toBe(false);
+  });
+
+  it('시작일이 끝일보다 늦으면 아니다(늘 빈 목록이 된다)', () => {
+    expect(canApplyDates({ from: '2026-06-01', to: '2026-01-01' }, applied)).toBe(false);
+    expect(canApplyDates({ from: '2026-01-01', to: '2026-01-01' }, { from: '', to: '' })).toBe(
+      true
+    );
+  });
+
+  it('고치는 중이라 날짜 칸이 잠깐 빈 값이면(badInput) 비운 것으로 보지 않는다', () => {
+    expect(canApplyDates({ from: '', to: '' }, applied, { from: true })).toBe(false);
+  });
+
+  it('치는 중인 값(연도 0002 · 틀린 날짜)이 한 칸이라도 있으면 아니다', () => {
+    expect(canApplyDates({ from: '0002-01-01', to: '' }, applied)).toBe(false);
+    expect(canApplyDates({ from: '2026-02-01', to: '2026-13-01' }, applied)).toBe(false);
   });
 });

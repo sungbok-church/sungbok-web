@@ -30,17 +30,9 @@ import {
   zodFormValidator,
 } from '@/domains/admin/components/features/AdminForm';
 import { PermissionMatrix } from '@/domains/admin/components/widgets/PermissionMatrix';
-import { Alert, AlertDescription } from '@/shared/components/ui/alert';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { FieldGroup } from '@/shared/components/ui/field';
 import { useForm, useStore } from '@tanstack/react-form';
-import { ShieldCheckIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 // 사용 여부(isActive)는 고치는 칸이 없다 — 끄고 켜기는 상세의 «더 보기» 에서만 한다(사용자와 같다).
@@ -50,7 +42,7 @@ type Values = { name: string; description: string; isActive: boolean };
 interface Props {
   userId: string;
   initial: Values;
-  editing: { id: string; updatedAt: string; isSystem: boolean };
+  editing: { id: string; updatedAt: string };
   /** 권한 표 — 시스템 그룹(모든 권한)은 주지 않는다 */
   matrix?: MatrixRow[];
 }
@@ -66,6 +58,7 @@ const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
  * 그룹 수정(설계 6.10 «화면 흐름 표준 › 등록 · 수정») — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장한다.
  * «전체 관리» 만 여는 화면이다(설계 6.4 — 페이지가 404 로 막고 DB 가 다시 막는다).
  * 이름 · 설명은 쓰던 내용을 임시 보관한다. 저장하면 상세로 간다. 등록은 단계로 나눈 화면이 따로 있다(GroupCreateForm).
+ * 권한 표가 없는 «전체 관리» 그룹은 이름 · 설명 카드 하나만 그린다(모든 권한 — 상세 머리의 표가 알린다).
  */
 type GroupDraft = { fields?: Partial<Values>; perms?: SetChanges };
 
@@ -131,11 +124,13 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
         void form.handleSubmit();
       }}
     >
-      <div className="grid items-start gap-6 xl:grid-cols-3">
+      <div className={matrix ? 'grid items-start gap-6 xl:grid-cols-3' : 'max-w-xl'}>
         <Card>
-          <CardHeader>
-            <CardTitle>기본 정보</CardTitle>
-          </CardHeader>
+          {matrix && (
+            <CardHeader>
+              <CardTitle>기본 정보</CardTitle>
+            </CardHeader>
+          )}
           <CardContent>
             <FieldGroup>
               {draft.available && (
@@ -173,7 +168,6 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
                     label="설명"
                     max={DESCRIPTION_MAX}
                     multiline
-                    description="어떤 일을 하는 그룹인지 적어 두면 사용자에게 그룹을 고를 때 도움이 됩니다."
                   />
                 )}
               </form.Field>
@@ -181,35 +175,20 @@ export const GroupForm = ({ userId, initial, editing, matrix }: Props) => {
           </CardContent>
         </Card>
 
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>권한</CardTitle>
-            <CardDescription>
-              메뉴마다 이 그룹이 쓸 수 있는 기능을 고릅니다. 조회를 끄면 그 메뉴의 다른 기능도
-              꺼집니다. «–» 는 그 메뉴에 없는 기능입니다.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {editing.isSystem ? (
-              <Alert>
-                <ShieldCheckIcon aria-hidden />
-                <AlertDescription>
-                  이 그룹은 모든 메뉴의 모든 기능을 가집니다. 끄거나 지울 수 없습니다.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              matrix && (
-                <PermissionMatrix
-                  rows={matrix}
-                  checked={keys}
-                  onToggle={(toggled, on) =>
-                    setKeys(prev => toggleCells(matrix, prev, toggled, on))
-                  }
-                />
-              )
-            )}
-          </CardContent>
-        </Card>
+        {matrix && (
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <CardTitle>권한</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PermissionMatrix
+                rows={matrix}
+                checked={keys}
+                onToggle={(toggled, on) => setKeys(prev => toggleCells(matrix, prev, toggled, on))}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <form.Subscribe selector={s => s.isSubmitting}>

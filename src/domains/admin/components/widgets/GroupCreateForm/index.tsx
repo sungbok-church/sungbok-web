@@ -32,14 +32,7 @@ import {
   toggleCells,
 } from '@/domains/admin/lib/permissionMatrix';
 import { Button } from '@/shared/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/shared/components/ui/card';
 import { FieldGroup } from '@/shared/components/ui/field';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm, useStore } from '@tanstack/react-form';
@@ -134,14 +127,7 @@ export const GroupCreateForm = ({ userId, matrix }: Props) => {
     >
       <Stepper steps={STEPS} current={steps.open} />
       <Card>
-        <CardHeader>
-          <CardTitle>{first ? '어떤 그룹인가요?' : '무엇을 할 수 있나요?'}</CardTitle>
-          <CardDescription>
-            {first
-              ? '사람을 넣을 때 이 이름과 설명이 보입니다.'
-              : '다른 기능을 켜면 조회도 켜집니다. «–» 는 그 메뉴에 없는 기능입니다.'}
-          </CardDescription>
-        </CardHeader>
+        {/* 단계 이름은 위 단계 표시가 알린다 — 카드에 제목 · 설명을 또 달지 않는다 */}
         <CardContent>
           {first ? (
             <FieldGroup>
@@ -183,7 +169,6 @@ export const GroupCreateForm = ({ userId, matrix }: Props) => {
                     label="설명"
                     max={DESCRIPTION_MAX}
                     multiline
-                    description="한 줄이면 충분합니다."
                   />
                 )}
               </form.Field>
