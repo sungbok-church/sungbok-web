@@ -8,6 +8,7 @@ import {
 } from '@/domains/admin/api/adminNav';
 import type { AdminUser } from '@/domains/admin/api/session.server';
 import { MENU_ICONS } from '@/domains/admin/components/features/MenuIcon';
+import { IntentLink } from '@/domains/admin/components/features/IntentLink';
 import {
   Collapsible,
   CollapsibleContent,
@@ -39,7 +40,6 @@ import {
   useSidebar,
 } from '@/shared/components/ui/sidebar';
 import { ChevronRightIcon, ChurchIcon, CircleIcon } from 'lucide-react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { UserMenu } from './UserMenu';
@@ -75,7 +75,7 @@ export const AdminSidebar = ({ nav, user, userName }: Props) => {
             <SidebarMenuButton
               size="lg"
               tooltip="관리자 첫 화면"
-              render={<Link href="/admin" onClick={closeSheet} />}
+              render={<IntentLink href="/admin" onClick={closeSheet} />}
             >
               <span className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
                 <ChurchIcon aria-hidden />
@@ -140,7 +140,9 @@ export const AdminSidebar = ({ nav, user, userName }: Props) => {
                                   key={item.key}
                                   disabled={item.ready === false}
                                   render={
-                                    item.ready === false ? undefined : <Link href={item.href} />
+                                    item.ready === false ? undefined : (
+                                      <IntentLink href={item.href} />
+                                    )
                                   }
                                 >
                                   <ItemIcon aria-hidden />
@@ -193,7 +195,7 @@ export const AdminSidebar = ({ nav, user, userName }: Props) => {
                               <SidebarMenuSubButton
                                 isActive={isActive}
                                 render={
-                                  <Link
+                                  <IntentLink
                                     href={item.href}
                                     onClick={closeSheet}
                                     aria-current={isActive ? 'page' : undefined}
@@ -240,7 +242,11 @@ const LeafItem = ({
         isActive={active}
         tooltip={item.label}
         render={
-          <Link href={item.href} onClick={onNavigate} aria-current={active ? 'page' : undefined} />
+          <IntentLink
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={active ? 'page' : undefined}
+          />
         }
       >
         <Icon aria-hidden />
