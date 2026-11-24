@@ -6,6 +6,7 @@ import {
   PREVIEW_WIDTHS,
   readPreviewMessage,
   toPreviewIssue,
+  toPreviewSermon,
 } from './preview';
 
 const ORIGIN = 'http://127.0.0.1:3011';
@@ -72,5 +73,62 @@ describe('PREVIEW_WIDTHS', () => {
       ['태블릿', 768],
       ['휴대폰', 375],
     ]);
+  });
+});
+
+describe('readPreviewMessage — 영상(주일광고 · 성복의 뜰)', () => {
+  it('두 메뉴의 값도 받는다, 모르는 메뉴는 버린다', () => {
+    const values = {
+      title: 't',
+      categoryLabel: '주일광고',
+      date: '2026-11-29',
+      videoId: null,
+      description: '',
+    };
+    expect(
+      readPreviewMessage(
+        { origin: ORIGIN, data: { type: PREVIEW_VALUES, menu: 'garden', values } },
+        ORIGIN
+      )
+    ).toEqual({ type: PREVIEW_VALUES, menu: 'garden', values });
+    expect(
+      readPreviewMessage(
+        { origin: ORIGIN, data: { type: PREVIEW_VALUES, menu: 'users', values } },
+        ORIGIN
+      )
+    ).toBeNull();
+  });
+});
+
+describe('toPreviewSermon', () => {
+  it('폼의 값 → 공개 «영상 한 편» 화면의 영상 — 분류 이름이 묶음 자리에', () => {
+    expect(
+      toPreviewSermon({
+        title: '11월 29일 주일 광고',
+        categoryLabel: '주일광고',
+        date: '2026-11-29',
+        videoId: 'Cm0wL9_z9uM',
+        description: '광고',
+      })
+    ).toEqual({
+      id: 'Cm0wL9_z9uM',
+      title: '11월 29일 주일 광고',
+      series: '주일광고',
+      date: '2026-11-29',
+      dateFrom: 'sermon',
+      thumbnail: 'https://i.ytimg.com/vi/Cm0wL9_z9uM/hqdefault.jpg',
+      poster: 'https://i.ytimg.com/vi/Cm0wL9_z9uM/hqdefault.jpg',
+    });
+  });
+  it('영상이 없으면 null(그릴 것이 없다)', () => {
+    expect(
+      toPreviewSermon({
+        title: 't',
+        categoryLabel: '',
+        date: '2026-11-29',
+        videoId: null,
+        description: '',
+      })
+    ).toBeNull();
   });
 });

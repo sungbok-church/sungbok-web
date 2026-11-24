@@ -57,7 +57,7 @@ export default async function AdminHomePage() {
 
   // 숫자는 권한 확인(loadAdminContext)을 기다리지 않고 함께 센다 — DB 를 한 번 덜 기다린다. 막는 것은 어차피 DB(RLS)이고,
   // 권한이 없는 숫자는 아래에서 버린다.
-  const [{ profile, permissions, nav }, users, groups, categories, changes, thisWeek] =
+  const [{ profile, permissions, nav }, users, groups, categories, changes, thisWeek, thisAd] =
     await Promise.all([
       loadAdminContext(),
       active('profiles'),
@@ -72,6 +72,16 @@ export default async function AdminHomePage() {
         .select('id, status')
         .eq('date', sunday)
         .is('deleted_at', null)
+        .maybeSingle(),
+      // 이번 주일 주일광고 — 여럿이면 공개된 것부터
+      supabase
+        .from('news_videos')
+        .select('id, status')
+        .eq('feed', 'ANNOUNCEMENTS')
+        .eq('date', sunday)
+        .is('deleted_at', null)
+        .order('status', { ascending: false })
+        .limit(1)
         .maybeSingle(),
     ]);
   const stats: Stat[] = [
@@ -98,22 +108,26 @@ export default async function AdminHomePage() {
   ].filter((s): s is Stat => Boolean(s));
 
   const todos = TODOS.filter(t => SCREENS_READY.has(t.key) && can(permissions, t.key, 'READ'));
-  // 할 일 카드의 값 — 화면이 생긴 것만(주보). 누르면 그 글로, 없으면 날짜를 채운 등록 화면으로(등록 권한이 있을 때)
-  const bulletin = thisWeek.data;
+  // 할 일 카드의 값 — 화면이 생긴 것만(주보 · 주일광고). 누르면 그 글로, 없으면 날짜를 채운 등록 화면으로(등록 권한이 있을 때)
+  const weekly = (
+    menu: string,
+    row: { id: string; status: 'DRAFT' | 'PUBLISHED' } | null
+  ): { detail: string; badge: ReactNode; href?: string } => ({
+    detail: issueLongDate(sunday),
+    badge: row ? (
+      <ContentStatusBadge status={row.status} />
+    ) : (
+      <Badge variant="warning">아직 없음</Badge>
+    ),
+    href: row
+      ? `/admin/${menu}/${row.id}`
+      : can(permissions, menu, 'CREATE')
+        ? `/admin/${menu}/new?date=${sunday}`
+        : undefined,
+  });
   const todoState: Record<string, { detail: string; badge: ReactNode; href?: string }> = {
-    bulletin: {
-      detail: issueLongDate(sunday),
-      badge: bulletin ? (
-        <ContentStatusBadge status={bulletin.status} />
-      ) : (
-        <Badge variant="warning">아직 없음</Badge>
-      ),
-      href: bulletin
-        ? `/admin/bulletin/${bulletin.id}`
-        : can(permissions, 'bulletin', 'CREATE')
-          ? `/admin/bulletin/new?date=${sunday}`
-          : undefined,
-    },
+    bulletin: weekly('bulletin', thisWeek.data),
+    announcements: weekly('announcements', thisAd.data),
   };
   const screens = nav.flatMap(group =>
     group.items

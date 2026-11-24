@@ -1,9 +1,9 @@
-// 교회소식의 공개 자료 읽기 — 주일광고·성복의 뜰(영상), 주보, 교회앨범. 주보는 DB(bulletinLoad.server), 나머지는 아직 시드(data/).
+// 교회소식의 공개 자료 읽기 — 주일광고·성복의 뜰(영상), 주보, 교회앨범. 주보 · 주일광고 · 성복의 뜰은 DB, 앨범은 아직 시드(data/).
 // 관리자 화면이 생기는 대로 load 만 DB 조회로 바꾼다(부르는 쪽은 그대로). 서버에서만 부른다(DB 읽기가 server-only).
 // 임시저장과 보여 줄 것이 없는 글(영상 id·그림이 빈 글)은 여기서 걸러 공개 화면에 나가지 않는다.
 import { ALBUM_SEED } from '../data/albumSeed';
-import { NEWS_VIDEOS_SEED } from '../data/newsVideosSeed';
 import { loadIssues } from './bulletinLoad.server';
+import { loadNewsVideos } from './newsVideosLoad.server';
 import type { Album, BulletinIssue, NewsVideo, NewsVideoFeed } from './news.types';
 
 type Loaders = {
@@ -29,7 +29,7 @@ export const createNewsRepository = (load: Loaders) => ({
 });
 
 export const newsRepository = createNewsRepository({
-  videos: async () => NEWS_VIDEOS_SEED,
+  videos: loadNewsVideos,
   issues: loadIssues,
   albums: async () => ALBUM_SEED,
 });

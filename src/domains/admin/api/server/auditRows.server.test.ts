@@ -83,6 +83,24 @@ describe('referenceNames', () => {
     expect(names).toEqual({ [L1]: '파일 2개', [L2]: '파일 1개', [L3]: '파일 정리됨' });
   });
 
+  it('분류 칸(category_id)은 분류 이름으로', async () => {
+    const C1 = '01a1f5c5-0000-7000-8000-0000000000d1';
+    const client = {
+      from: (t: string) => ({
+        select: () => ({
+          in: async () => ({
+            data: t === 'categories' ? [{ id: C1, label: '부흥집회' }] : [],
+            error: null,
+          }),
+        }),
+      }),
+      rpc: vi.fn(),
+    };
+    expect(await referenceNames(client as never, [{ changes: { category_id: C1 } }])).toEqual({
+      [C1]: '부흥집회',
+    });
+  });
+
   it('찾을 id 가 없으면 DB 를 부르지 않는다', async () => {
     const client = { from: vi.fn(), rpc: vi.fn() };
     expect(await referenceNames(client as never, [{ changes: { name: '가' } }])).toEqual({});

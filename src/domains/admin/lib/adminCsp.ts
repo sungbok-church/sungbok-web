@@ -20,9 +20,12 @@ export const buildAdminCsp = ({
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? ` 'unsafe-eval'` : ''}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' blob: data:${supabase}`,
+    // 유튜브 썸네일 — 주일광고 · 성복의 뜰 등록 · 상세가 보인다
+    `img-src 'self' blob: data:${supabase} https://i.ytimg.com`,
     `font-src 'self'`,
     `connect-src 'self'${supabase}`,
+    // 유튜브 플레이어 틀 — 콘텐츠 미리보기 틀(공개 «영상 한 편» 화면을 그린다)에서만
+    `frame-src 'self'${framable ? ' https://www.youtube-nocookie.com https://www.youtube.com' : ''}`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

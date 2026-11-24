@@ -4,13 +4,12 @@ import { createBulletin, updateBulletin } from '@/domains/admin/api/actions/bull
 import {
   applyServerErrors,
   DraftNotice,
-  FormActions,
   RequiredMark,
   serverFieldError,
   TextField,
   zodFormValidator,
 } from '@/domains/admin/components/features/AdminForm';
-import { ConfirmAction } from '@/domains/admin/components/features/ConfirmAction';
+import { ContentFormActions } from '@/domains/admin/components/features/ContentFormActions';
 import { FileListField } from '@/domains/admin/components/features/FileListField';
 import { PreviewDialog } from '@/domains/admin/components/features/PreviewDialog';
 import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
@@ -23,7 +22,6 @@ import type { ActionResult } from '@/domains/admin/lib/actionResult';
 import { bulletinCreateSchema } from '@/domains/admin/lib/input/bulletinInput';
 import type { FileItem } from '@/domains/admin/lib/input/fileInput';
 import { notifyResult } from '@/domains/admin/lib/notify';
-import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/components/ui/field';
 import { useForm, useStore } from '@tanstack/react-form';
@@ -50,7 +48,6 @@ const LIST = '/admin/bulletin';
 export const BulletinForm = ({ userId, initial, editing }: Props) => {
   const navigate = useAdminNavigate();
   const [uploading, setUploading] = useState(false);
-  const [confirmUnpublish, setConfirmUnpublish] = useState(false);
   const current: Status = editing?.status ?? 'DRAFT';
 
   // 이번 제출의 상태는 제출할 때 함께 넘긴다(onSubmitMeta) — 단추가 정하고, 그 밖의 제출(Enter · Ctrl/⌘+S)은 지금 상태 그대로.
@@ -159,62 +156,20 @@ export const BulletinForm = ({ userId, initial, editing }: Props) => {
       </Card>
 
       <form.Subscribe selector={s => s.isSubmitting}>
-        {submitting =>
-          current === 'PUBLISHED' ? (
-            <FormActions
-              submitting={submitting}
-              canSubmit={dirty && !uploading}
-              cancelHref={editing ? `${LIST}/${editing.id}` : LIST}
-              submitLabel="저장"
-              onSubmitClick={() => submitAs('PUBLISHED')}
-              extra={
-                <>
-                  <PreviewDialog menu="bulletin" values={values} disabled={uploading} />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={submitting || uploading}
-                    onClick={() => setConfirmUnpublish(true)}
-                  >
-                    임시저장으로 돌리기
-                  </Button>
-                </>
-              }
-            />
-          ) : (
-            <FormActions
-              submitting={submitting}
-              canSubmit={!uploading}
-              cancelHref={editing ? `${LIST}/${editing.id}` : LIST}
-              submitLabel="공개"
-              onSubmitClick={() => submitAs('PUBLISHED')}
-              extra={
-                <>
-                  <PreviewDialog menu="bulletin" values={values} disabled={uploading} />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={submitting || uploading}
-                    onClick={() => submitAs('DRAFT')}
-                  >
-                    임시저장
-                  </Button>
-                </>
-              }
-            />
-          )
-        }
+        {submitting => (
+          <ContentFormActions
+            current={current}
+            submitting={submitting}
+            canSave={canSave}
+            busy={uploading}
+            cancelHref={editing ? `${LIST}/${editing.id}` : LIST}
+            preview={<PreviewDialog payload={{ menu: 'bulletin', values }} disabled={uploading} />}
+            onSubmitAs={submitAs}
+            // 확인 창이 결과를 토스트로 알린다 — 폼의 제출(토스트)을 거치지 않고 바로 저장한다(서버가 다시 검사한다)
+            onUnpublish={() => save(form.state.values, 'DRAFT')}
+          />
+        )}
       </form.Subscribe>
-
-      {current === 'PUBLISHED' && (
-        <ConfirmAction
-          kind="unpublish"
-          open={confirmUnpublish}
-          onOpenChange={setConfirmUnpublish}
-          // 확인 창이 결과를 토스트로 알린다 — 폼의 제출(토스트)을 거치지 않고 바로 저장한다(서버가 다시 검사한다)
-          onConfirm={() => save(form.state.values, 'DRAFT')}
-        />
-      )}
     </form>
   );
 };

@@ -2,7 +2,7 @@
 
 import {
   ADMIN_PREVIEW_PATH,
-  type BulletinPreviewValues,
+  type PreviewPayload,
   PREVIEW_READY,
   PREVIEW_VALUES,
   PREVIEW_WIDTHS,
@@ -21,21 +21,21 @@ type Width = (typeof PREVIEW_WIDTHS)[number]['key'];
  * 저장하지 않은 지금 값을 틀에 보낸다(postMessage, 같은 출처) — 서버에 아무것도 남기지 않는다. 칸을 고치면 다시 보낸다.
  */
 export const PreviewDialog = ({
-  menu,
-  values,
+  payload,
   disabled,
 }: {
-  menu: 'bulletin';
-  values: BulletinPreviewValues;
+  /** 메뉴와 저장 전 값 */
+  payload: PreviewPayload;
   disabled?: boolean;
 }) => {
+  const { menu } = payload;
   const [open, setOpen] = useState(false);
   const [width, setWidth] = useState<Width>('pc');
   const frame = useRef<HTMLIFrameElement>(null);
 
   const send = useEffectEvent(() =>
     frame.current?.contentWindow?.postMessage(
-      { type: PREVIEW_VALUES, menu, values },
+      { type: PREVIEW_VALUES, ...payload },
       window.location.origin
     )
   );
@@ -51,10 +51,11 @@ export const PreviewDialog = ({
     return () => window.removeEventListener('message', onMessage);
   }, [open]);
 
-  // 열린 채로 값이 바뀌면 다시 보낸다
+  // 열린 채로 값이 바뀌면 다시 보낸다 — 부모가 그릴 때마다 새 객체를 넘기므로 내용(글자)으로 비교한다
+  const content = JSON.stringify(payload);
   useEffect(() => {
     if (open) send();
-  }, [open, values]);
+  }, [open, content]);
 
   const px = PREVIEW_WIDTHS.find(w => w.key === width)?.width ?? 1280;
 

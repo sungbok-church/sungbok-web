@@ -14,9 +14,11 @@ describe('buildAdminCsp', () => {
     expect(directive('script-src')).toBe("script-src 'self' 'nonce-abc123' 'strict-dynamic'");
   });
 
-  it('연결 · 그림은 이 사이트와 Supabase 만', () => {
+  it('연결은 이 사이트와 Supabase 만, 그림은 거기에 유튜브 썸네일만 더', () => {
     expect(directive('connect-src')).toBe("connect-src 'self' https://x.supabase.co");
-    expect(directive('img-src')).toBe("img-src 'self' blob: data: https://x.supabase.co");
+    expect(directive('img-src')).toBe(
+      "img-src 'self' blob: data: https://x.supabase.co https://i.ytimg.com"
+    );
   });
 
   it('미리보기 틀(/admin/preview)만 이 사이트가 틀 안에 넣을 수 있다 — 다른 관리자 화면은 아무도', () => {
@@ -26,6 +28,20 @@ describe('buildAdminCsp', () => {
     expect(
       buildAdminCsp({ nonce: 'n', supabaseUrl: undefined, isDev: false, framable: false })
     ).toContain("frame-ancestors 'none'");
+  });
+
+  it('유튜브 썸네일(i.ytimg.com)은 어느 관리자 화면에서나, 유튜브 플레이어 틀은 미리보기 틀에서만', () => {
+    expect(directive('img-src')).toContain('https://i.ytimg.com');
+    expect(directive('frame-src')).toBe("frame-src 'self'");
+    const preview = buildAdminCsp({
+      nonce: 'n',
+      supabaseUrl: undefined,
+      isDev: false,
+      framable: true,
+    });
+    expect(preview).toContain(
+      "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com"
+    );
   });
 
   it('다른 사이트가 틀 안에 넣지 못하고, 폼은 이 사이트로만 보낸다', () => {

@@ -65,6 +65,15 @@ describe('loadHistory', () => {
     expect(m.permission).toHaveBeenCalledWith('users', 'HISTORY');
   });
 
+  it('주일광고 · 성복의 뜰(한 표)은 두 메뉴 중 한쪽의 이력조회 권한 — 어느 글인지는 DB 가 거른다', async () => {
+    m.permission.mockResolvedValueOnce(null);
+    expect(await loadHistory({ table: 'news_videos', rowId: ID })).toMatchObject({ ok: true });
+    expect(m.permission).toHaveBeenCalledWith('announcements', 'HISTORY');
+    expect(m.permission).toHaveBeenCalledWith('garden', 'HISTORY');
+    m.permission.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    expect(await loadHistory({ table: 'news_videos', rowId: ID })).toMatchObject({ ok: false });
+  });
+
   it('주보 한 호의 이력은 «주보» 메뉴의 이력조회 권한', async () => {
     await loadHistory({ table: 'bulletins', rowId: ID });
     expect(m.permission).toHaveBeenCalledWith('bulletin', 'HISTORY');

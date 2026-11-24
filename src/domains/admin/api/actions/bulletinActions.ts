@@ -11,6 +11,7 @@ import { addDays, seoulToday, upcomingSunday } from '../../lib/content';
 import { uuidV7 } from '../../lib/fileUpload';
 import { bulletinCreateSchema, bulletinUpdateSchema } from '../../lib/input/bulletinInput';
 import { actionPermission, NO_PERMISSION } from '../server/adminContext.server';
+import { purgeRow, setTrashed } from '../server/contentState.server';
 import { copyFileList, writeFileList } from '../server/fileList.server';
 import { updateVersioned } from '../server/versionedUpdate.server';
 
@@ -79,44 +80,35 @@ export const updateBulletin = async (
   return status === 'DRAFT' ? { ...res, message: '임시저장했습니다.' } : res;
 };
 
-/** 휴지통 · 복구 — «삭제» 권한(guard_content 도 막는다). 바뀐 줄이 없으면 그사이 누가 먼저 한 것 */
-const setTrashed = async (raw: unknown, trashed: boolean): Promise<ActionResult> => {
+/** 휴지통 · 복구 — «삭제» 권한(guard_content 도 막는다) */
+const trashOrRestore = async (raw: unknown, trashed: boolean): Promise<ActionResult> => {
   if (!(await actionPermission('bulletin', 'DELETE'))) return NO_PERMISSION;
   const input = parseInput(idSchema, raw);
   if (!input.ok) return input;
   const supabase = await createSupabaseServerClient();
-  const base = supabase
-    .from('bulletins')
-    .update({ deleted_at: trashed ? new Date().toISOString() : null })
-    .eq('id', input.data.id);
-  const { data, error } = await (
-    trashed ? base.is('deleted_at', null) : base.not('deleted_at', 'is', null)
-  ).select('id');
-  if (error) return saveError(error, '그 날짜의 주보가 이미 있어 복구할 수 없습니다.');
-  if (!data?.length) return fail('NOT_FOUND');
-  changed();
-  return { ok: true, message: trashed ? '휴지통으로 보냈습니다.' : '복구했습니다.' };
+  const res = await setTrashed(
+    supabase,
+    'bulletins',
+    input.data.id,
+    trashed,
+    {},
+    '그 날짜의 주보가 이미 있어 복구할 수 없습니다.'
+  );
+  if (res.ok) changed();
+  return res;
 };
 
-export const trashBulletin = async (raw: unknown) => setTrashed(raw, true);
-export const restoreBulletin = async (raw: unknown) => setTrashed(raw, false);
+export const trashBulletin = async (raw: unknown) => trashOrRestore(raw, true);
+export const restoreBulletin = async (raw: unknown) => trashOrRestore(raw, false);
 
-/** 완전 삭제 — «완전 삭제» 권한, 휴지통에 든 것만(RLS 도 같다). 쪽 묶음은 주인 없는 묶음이 되어 예약 작업이 지운다 */
+/** 완전 삭제 — «완전 삭제» 권한, 휴지통에 든 것만(RLS 도 같다) */
 export const purgeBulletin = async (raw: unknown): Promise<ActionResult> => {
   if (!(await actionPermission('bulletin', 'PURGE'))) return NO_PERMISSION;
   const input = parseInput(idSchema, raw);
   if (!input.ok) return input;
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('bulletins')
-    .delete()
-    .eq('id', input.data.id)
-    .not('deleted_at', 'is', null)
-    .select('id');
-  if (error) return { ok: false, error: toActionError(error) };
-  if (!data?.length) return fail('NOT_FOUND');
-  revalidatePath(PATH, 'layout');
-  return { ok: true, message: '완전히 지웠습니다.' };
+  const res = await purgeRow(await createSupabaseServerClient(), 'bulletins', input.data.id, {});
+  if (res.ok) revalidatePath(PATH, 'layout');
+  return res;
 };
 
 /** 빈 날짜를 찾을 때 몇 주까지 넘겨 보는가 */

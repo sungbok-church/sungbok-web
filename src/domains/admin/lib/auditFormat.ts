@@ -37,6 +37,8 @@ const VALUE_LABELS: Record<string, Record<string, string>> = {
   actions: ACTION_LABELS,
   department: DEPARTMENT_LABELS,
   status: CONTENT_STATUS_LABELS,
+  feed: { ANNOUNCEMENTS: '주일광고', GARDEN: '성복의 뜰' },
+  date_from: { EVENT: '행사 날짜', UPLOAD: '유튜브 업로드' },
 };
 
 /** 등록 때는 늘 비어 있어 보일 것이 없는 칸(휴지통) */

@@ -1,6 +1,6 @@
 import { AppProvider } from '@/app/_provider';
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
-import { BulletinPreviewFrame } from '@/domains/admin/components/features/PreviewFrame';
+import { PreviewFrame } from '@/domains/admin/components/features/PreviewFrame';
 import { Footer } from '@/shared/components/layout/Footer';
 import { Header } from '@/shared/components/layout/Header';
 import { SectionShell } from '@/shared/components/layout/SectionShell';
@@ -12,7 +12,11 @@ import { notFound } from 'next/navigation';
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
 export const instant = false;
 
-const MENUS = { bulletin: { section: 'news', path: '/news/bulletin' } } as const;
+const MENUS = {
+  bulletin: { section: 'news', path: '/news/bulletin' },
+  announcements: { section: 'news', path: '/news/announcements' },
+  garden: { section: 'news', path: '/news/garden' },
+} as const;
 
 export default async function AdminPreviewPage({ params }: { params: Promise<{ menu: string }> }) {
   const { menu } = await params;
@@ -24,7 +28,7 @@ export default async function AdminPreviewPage({ params }: { params: Promise<{ m
       <Header />
       <main className="flex-1">
         <SectionShell section={target.section} pathname={target.path}>
-          <BulletinPreviewFrame />
+          <PreviewFrame menu={menu as keyof typeof MENUS} />
         </SectionShell>
       </main>
       <Footer />

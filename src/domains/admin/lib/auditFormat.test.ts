@@ -62,6 +62,20 @@ describe('formatChanges', () => {
     ]);
   });
 
+  it('주일광고 · 성복의 뜰 — 메뉴(feed) · 날짜 출처는 한글로', () => {
+    expect(
+      formatChanges({
+        table_name: 'news_videos',
+        action: 'INSERT',
+        changes: { feed: 'GARDEN', date_from: 'UPLOAD', thumbnail: 'https://i.ytimg.com/x' },
+      })
+    ).toEqual([
+      { field: '메뉴', before: '', after: '성복의 뜰' },
+      { field: '날짜 출처', before: '', after: '유튜브 업로드' },
+      { field: '썸네일', before: '', after: 'https://i.ytimg.com/x' },
+    ]);
+  });
+
   it('id 칸은 이름표가 있으면 이름으로, 기능 · 부서는 한글로', () => {
     const names = { 'menu-1': '주보', 'group-1': '콘텐츠 담당' };
     expect(

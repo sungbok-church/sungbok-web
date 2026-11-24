@@ -6,6 +6,13 @@ import {
   restoreBulletin,
   trashBulletin,
 } from '@/domains/admin/api/actions/bulletinActions';
+import {
+  duplicateNewsVideo,
+  purgeNewsVideo,
+  restoreNewsVideo,
+  trashNewsVideo,
+} from '@/domains/admin/api/actions/newsVideoActions';
+import { NEWS_FEEDS, type NewsFeedKey } from '@/domains/admin/lib/newsFeed';
 import { ConfirmAction } from '@/domains/admin/components/features/ConfirmAction';
 import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { useAdminAction } from '@/domains/admin/hooks/useAdminAction';
@@ -30,17 +37,31 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
+type Id = { id: string };
+
+/** 주일광고 · 성복의 뜰 — 한 표를 나눠 쓰므로 액션에 메뉴(feed)를 붙여 부른다 */
+const newsKind = (feed: NewsFeedKey) => ({
+  table: 'news_videos' as const,
+  list: NEWS_FEEDS[feed].adminPath,
+  duplicate: (a: Id) => duplicateNewsVideo({ ...a, feed }),
+  trash: (a: Id) => trashNewsVideo({ ...a, feed }),
+  restore: (a: Id) => restoreNewsVideo({ ...a, feed }),
+  purge: (a: Id) => purgeNewsVideo({ ...a, feed }),
+});
+
 /** 콘텐츠 종류마다 표 · 목록 주소 · Server Action — 화면이 생길 때 더한다 */
 const KINDS = {
   bulletin: {
-    table: 'bulletins',
+    table: 'bulletins' as const,
     list: '/admin/bulletin',
     duplicate: duplicateBulletin,
     trash: trashBulletin,
     restore: restoreBulletin,
     purge: purgeBulletin,
   },
-} as const;
+  announcements: newsKind('announcements'),
+  garden: newsKind('garden'),
+};
 
 interface Props {
   kind: keyof typeof KINDS;

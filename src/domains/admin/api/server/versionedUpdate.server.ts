@@ -23,14 +23,17 @@ export const updateVersioned = async <T extends VersionedTable>(
   table: T,
   id: string,
   expectedUpdatedAt: string,
-  patch: Tables[T]['Update']
+  patch: Tables[T]['Update'],
+  /** 같은 표를 나눠 쓰는 메뉴의 범위(주일광고 · 성복의 뜰의 feed) — 다른 메뉴의 글이면 0줄(충돌로 본다) */
+  scope: Record<string, string> = {}
 ): Promise<ActionResult<{ updatedAt: string }>> => {
-  const { data, error } = await client
+  let query = client
     .from(table)
     .update(patch as never)
     .eq('id' as never, id as never)
-    .eq('updated_at' as never, expectedUpdatedAt as never)
-    .select('updated_at');
+    .eq('updated_at' as never, expectedUpdatedAt as never);
+  for (const [k, v] of Object.entries(scope)) query = query.eq(k as never, v as never);
+  const { data, error } = await query.select('updated_at');
   if (error) return { ok: false, error: toActionError(error) };
   const row = (data as unknown as { updated_at: string }[] | null)?.[0];
   if (!row) return fail('CONFLICT');

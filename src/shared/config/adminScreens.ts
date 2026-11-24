@@ -5,6 +5,8 @@
 export const ADMIN_SCREENS_READY: ReadonlySet<string> = new Set([
   'dashboard',
   'bulletin',
+  'announcements',
+  'garden',
   'users',
   'groups',
   'menus',

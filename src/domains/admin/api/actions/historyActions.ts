@@ -14,11 +14,24 @@ const LIMIT = 30;
  * 이력을 여는 표 → 그 화면의 메뉴(«이력조회» 권한을 이 메뉴로 본다). 화면이 생길 때 더한다.
  * 상세가 있는 화면(사용자 · 그룹)은 한 건의 이력, 목록만 있는 화면(메뉴 · 분류 · 코드)은 그 표 전체의 이력.
  */
-const ROW_HISTORY = { profiles: 'users', groups: 'groups', bulletins: 'bulletin' } as const;
-const TABLE_HISTORY = { menus: 'menus', categories: 'categories', codes: 'codes' } as const;
+const ROW_HISTORY: Record<string, readonly string[]> = {
+  profiles: ['users'],
+  groups: ['groups'],
+  bulletins: ['bulletin'],
+  // 한 표를 두 메뉴가 나눠 쓴다 — 어느 한쪽의 «이력조회» 로 열고, 그 글의 메뉴인지는 DB(can_read_history — feed 로)가 거른다
+  news_videos: ['announcements', 'garden'],
+};
+const TABLE_HISTORY: Record<string, readonly string[]> = {
+  menus: ['menus'],
+  categories: ['categories'],
+  codes: ['codes'],
+};
 
 const inputSchema = z.union([
-  z.object({ table: z.enum(['profiles', 'groups', 'bulletins']), rowId: z.uuid() }),
+  z.object({
+    table: z.enum(['profiles', 'groups', 'bulletins', 'news_videos']),
+    rowId: z.uuid(),
+  }),
   z.object({ table: z.enum(['menus', 'categories', 'codes']), rowId: z.undefined().optional() }),
 ]);
 export type HistoryTarget = z.infer<typeof inputSchema>;
@@ -44,10 +57,9 @@ export const loadHistory = async (
   const input = parseInput(inputSchema, raw);
   if (!input.ok) return fail('NOT_FOUND');
   const target = input.data;
-  const menu = target.rowId
-    ? ROW_HISTORY[target.table as keyof typeof ROW_HISTORY]
-    : TABLE_HISTORY[target.table as keyof typeof TABLE_HISTORY];
-  if (!(await actionPermission(menu, 'HISTORY'))) return NO_PERMISSION;
+  const menus = (target.rowId ? ROW_HISTORY : TABLE_HISTORY)[target.table] ?? [];
+  const allowed = await Promise.all(menus.map(menu => actionPermission(menu, 'HISTORY')));
+  if (!allowed.some(Boolean)) return NO_PERMISSION;
 
   const supabase = await createSupabaseServerClient();
   const base = supabase.from('audit_log').select('id, table_name, action, at, changes, actor_id');
