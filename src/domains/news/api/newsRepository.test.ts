@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Album, BulletinIssue, NewsVideo } from './news.types';
-import { createNewsRepository, newsRepository } from './newsRepository';
+import { createNewsRepository } from './newsRepository';
 
 const video = (over: Partial<NewsVideo>): NewsVideo => ({
   id: 'v',
@@ -65,10 +65,5 @@ describe('newsRepository', () => {
 
   it('앨범 — 공개된 것만, 그림이 없는 것은 싣지 않는다', async () => {
     expect((await repo.albums()).map(a => a.id)).toEqual(['1']);
-  });
-
-  // 주보 · 주일광고 · 성복의 뜰은 DB 로 옮겼다(2026-11-24)
-  it('시드: 앨범 4건', async () => {
-    expect((await newsRepository.albums()).length).toBe(4);
   });
 });

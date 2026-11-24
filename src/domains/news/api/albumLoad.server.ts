@@ -9,7 +9,6 @@ import { createSupabaseReadClient } from '@/shared/api/supabase/readClient.serve
 import { storagePublicUrl } from '@/shared/lib/storageUrl';
 import { cacheLife, cacheTag } from 'next/cache';
 
-import { ALBUM_SEED } from '../data/albumSeed';
 import type { Album } from './news.types';
 import { ALBUMS_TAG } from './newsTags';
 
@@ -52,16 +51,6 @@ export const toAlbums = (rows: readonly Row[], baseUrl: string): Album[] =>
       : [];
   });
 
-/** 옮긴 앨범의 번호 — 새 앨범은 1000 부터(DB 시퀀스) */
-const isMigrated = (a: Album) => Number(a.id) < 1000;
-
-/**
- * 옮기기가 끝나기 전까지 — 옮긴 앨범(번호 1000 미만)이 DB 에 하나라도 있으면 DB 만, 없으면 DB 의 새 앨범 아래에 시드.
- * 운영 옮기기를 확인한 뒤 시드와 함께 없앤다(패키지 B 계획 B3).
- */
-export const mergeAlbumsWithSeed = (db: readonly Album[], seed: readonly Album[]): Album[] =>
-  db.some(isMigrated) ? [...db] : [...db, ...seed];
-
 const readAlbums = async (): Promise<Album[]> => {
   const env = readSupabaseEnv();
   const client = env ? createSupabaseReadClient() : null;
@@ -88,9 +77,6 @@ const cachedAlbums = async () => {
   return settled;
 };
 
-/** 공개 교회앨범 — 최신 등록이 위. DB 를 못 읽으면 운영에서는 직전 페이지를 유지한다 */
+/** 공개 교회앨범 — 최신 등록이 위. DB 를 못 읽으면 운영에서는 직전 페이지를 유지하고, 빌드 · 개발에서는 빈 목록 */
 export const loadAlbums = async (): Promise<Album[]> =>
-  mergeAlbumsWithSeed(
-    (await loadForPage(async () => unwrap(await cachedAlbums()))) ?? [],
-    ALBUM_SEED
-  );
+  (await loadForPage(async () => unwrap(await cachedAlbums()))) ?? [];

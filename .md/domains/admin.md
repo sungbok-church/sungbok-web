@@ -203,8 +203,8 @@
 
 - 칸: 제목 · 분류 · 그림(1~30장, 순서). 날짜 칸이 없다 — 목록 · 공개 화면은 등록 순서의 반대(최신이 위). 공개 주소는 번호(`slug`) — 옮긴 앨범은 기존 번호(1 · 2 · 4 · 5), 새 앨범은 DB 시퀀스(1000 부터).
 - 액션 · 저장 규칙은 주보와 같다(그림은 저장할 때마다 새 묶음, 복제는 같은 Storage 파일을 가리키는 새 묶음).
-- **공개 화면**: [albumLoad.server](../../src/domains/news/api/albumLoad.server.ts) — 주보와 같은 서버 캐시(태그 `albums`, stale 300 · revalidate 60), 저장하면 `updateTag`. 옮기기 전까지는 시드와 합친다(옮긴 앨범 — 번호 1000 미만 — 이 DB 에 있으면 DB 만).
-- **기존 앨범 옮기기**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-albums.mjs [--local] [--apply]` — 시드 4건 + `public/files/album` 을 DB · Storage 로, 오래된 것부터(공개 순서가 그대로). 같은 번호(휴지통 포함)는 건너뛴다. 운영은 승인 뒤.
+- **공개 화면**: [albumLoad.server](../../src/domains/news/api/albumLoad.server.ts) — 주보와 같은 서버 캐시(태그 `albums`, stale 300 · revalidate 60), 저장하면 `updateTag`.
+- **기존 앨범 옮기기(끝, 2026-11-24)**: 시드 4건 + `public/files/album` 을 일회용 스크립트(`scripts/import-albums.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮기고(공개 그림 4장 모두 Storage, 옛 주소 1 · 2 · 4 · 5 열림 확인) 시드 · 그림 · 합치기 코드 · 스크립트를 지웠다. 이로써 교회소식 시드(`src/domains/news/data`)가 모두 없어졌다.
 
 ## 아직 없는 것
 
