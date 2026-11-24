@@ -1,7 +1,7 @@
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/components/ui/badge';
 import { LockIcon } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 
 export type GroupNavItem = {
   key: string;

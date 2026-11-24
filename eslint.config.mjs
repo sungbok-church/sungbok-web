@@ -112,6 +112,31 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // 관리자 화면의 링크는 손을 올렸을 때만 미리 받는다(IntentLink) — next/link 기본(보이면 미리 받기)이면 첫 화면 카드 · 목록 줄마다
+  // 서버 요청이 나가고(운영 실측: 첫 화면 12건), 무엇을 저장할 때마다 그것들이 다시 받아진다. 로그인 화면 쪽(로그인 전)은 예외.
+  {
+    files: ['src/domains/admin/**/*.{ts,tsx}', 'src/app/admin/**/*.{ts,tsx}'],
+    ignores: [
+      'src/domains/admin/components/features/IntentLink/**',
+      'src/domains/admin/components/widgets/LoginForm/**',
+      'src/app/admin/login/**',
+      '**/*.test.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'next/link',
+              message:
+                '관리자 화면은 IntentLink 를 쓴다(@/domains/admin/components/features/IntentLink) — 보이는 링크마다 미리 받지 않게.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // 연결 계층은 Supabase 라이브러리를 쓸 수 있다. 관리자 코드는 여기서도 못 가져온다 —
   // 공개 코드가 이 폴더를 자유롭게 import 하므로, 여기가 관리자 코드를 끌어오면 그대로 방문자 번들로 나간다.
   {

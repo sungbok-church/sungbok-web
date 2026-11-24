@@ -3,7 +3,7 @@
 import { type ListMemory, neighbors, readListMemory } from '@/domains/admin/lib/listMemory';
 import { Button } from '@/shared/components/ui/button';
 import { ChevronLeftIcon, ChevronRightIcon, ListIcon } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { useMemo, useSyncExternalStore } from 'react';
 
 interface Props {

@@ -68,3 +68,28 @@ describe('공개 쪽 ↔ 관리자 경계', () => {
     expect(await ruleIds(code, file)).not.toContain('no-restricted-imports');
   });
 });
+
+// 관리자 화면의 링크는 손을 올렸을 때만 미리 받는다(IntentLink) — next/link 를 직접 쓰면 보이는 링크마다 서버 요청이 나간다.
+describe('관리자 화면은 next/link 대신 IntentLink', () => {
+  const code = "import Link from 'next/link';\nexport const X = Link;\n";
+
+  it.each([
+    'src/app/admin/(panel)/page.tsx',
+    'src/app/admin/(panel)/users/[id]/page.tsx',
+    'src/domains/admin/components/features/AdminList/AdminTable.tsx',
+    'src/domains/admin/components/widgets/AdminShell/UserMenu.tsx',
+    'src/app/admin/password/page.tsx',
+  ])('%s 에서는 막힌다', async file => {
+    expect(await ruleIds(code, file)).toContain('no-restricted-imports');
+  });
+
+  it.each([
+    // IntentLink 자신 · 로그인 전 화면(로그인 · 비밀번호 찾기)
+    'src/domains/admin/components/features/IntentLink/index.tsx',
+    'src/domains/admin/components/widgets/LoginForm/index.tsx',
+    'src/app/admin/login/page.tsx',
+    'src/app/admin/login/forgot/page.tsx',
+  ])('%s 에서는 쓸 수 있다', async file => {
+    expect(await ruleIds(code, file)).not.toContain('no-restricted-imports');
+  });
+});

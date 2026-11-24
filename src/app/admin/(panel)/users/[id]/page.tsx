@@ -14,7 +14,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { PencilIcon } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 

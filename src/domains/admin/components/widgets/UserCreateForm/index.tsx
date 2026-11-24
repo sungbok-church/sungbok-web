@@ -53,7 +53,7 @@ import {
 } from '@/shared/components/ui/field';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm, useStore } from '@tanstack/react-form';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { useMemo, useState } from 'react';
 import { GrantSummary } from './GrantSummary';
 

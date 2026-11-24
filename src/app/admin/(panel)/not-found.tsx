@@ -6,7 +6,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/shared/components/ui/empty';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 
 // 관리자 안에서 없는 주소를 열었을 때(꺼진 메뉴·지워진 글의 옛 링크 등).
 export default function AdminNotFound() {

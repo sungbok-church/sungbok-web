@@ -19,7 +19,7 @@ import {
 } from '@/shared/components/ui/sheet';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { CircleAlertIcon, HistoryIcon } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { useEffect, useEffectEvent, useState, useTransition } from 'react';
 
 type Loaded = { items: HistoryItem[]; names: Record<string, string>; hasMore: boolean };

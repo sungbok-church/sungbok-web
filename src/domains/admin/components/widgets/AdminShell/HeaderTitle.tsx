@@ -9,7 +9,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/shared/components/ui/breadcrumb';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { usePathname } from 'next/navigation';
 import { Fragment } from 'react';
 

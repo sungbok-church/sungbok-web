@@ -13,7 +13,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { HistoryIcon } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 
 /** 다시 열었을 때 쓰던 내용이 남아 있으면 «불러오기 / 버리기» 를 묻는다. */
 export const DraftNotice = ({

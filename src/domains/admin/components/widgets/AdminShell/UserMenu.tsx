@@ -19,7 +19,7 @@ import {
   useSidebar,
 } from '@/shared/components/ui/sidebar';
 import { ChevronsUpDownIcon, KeyRoundIcon, LogOutIcon } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 
 /** 왼쪽 메뉴 맨 아래의 로그인한 계정 — 누르면 «로그아웃» 이 나온다(스타터의 nav-user 와 같은 구조). */
 export const UserMenu = ({ user, name }: { user: AdminUser; name: string }) => {

@@ -43,7 +43,7 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
 } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
@@ -154,7 +154,11 @@ export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: P
             <EmptyTitle>이 쪽에는 항목이 없습니다</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" nativeButton={false} render={<Link href={href({ page: 1 })} />}>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href={href({ page: 1 })} />}
+            >
               1쪽으로
             </Button>
           </EmptyContent>

@@ -37,7 +37,7 @@ import { FieldGroup } from '@/shared/components/ui/field';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm, useStore } from '@tanstack/react-form';
 import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react';
-import Link from 'next/link';
+import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { useState } from 'react';
 
 type Values = { name: string; description: string };
