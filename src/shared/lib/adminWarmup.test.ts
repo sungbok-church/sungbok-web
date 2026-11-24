@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { ADMIN_WARM_INTERVAL_MS, hasAdminSessionCookie, shouldWarmAdmin } from './adminWarmup';
+import {
+  ADMIN_WARM_INTERVAL_MS,
+  adminWarmPaths,
+  hasAdminSessionCookie,
+  shouldWarmAdmin,
+} from './adminWarmup';
 
 describe('hasAdminSessionCookie — 이 브라우저에 관리자 로그인 쿠키가 있는가', () => {
   it('Supabase 로그인 쿠키(나눠 담은 .0 · .1 포함)를 알아본다', () => {
@@ -32,5 +37,21 @@ describe('shouldWarmAdmin — 깨운 지 얼마 안 됐으면 다시 부르지 �
   it('적힌 시각이 미래(시계가 바뀐 경우)거나 숫자가 아니면 부른다', () => {
     expect(shouldWarmAdmin(now + 60_000, now)).toBe(true);
     expect(shouldWarmAdmin(Number.NaN, now)).toBe(true);
+  });
+});
+
+describe('adminWarmPaths — 이어서 불러 둘 관리자 화면', () => {
+  it('순서대로, 만든 화면만, 정한 개수까지 /admin/<key> 로', () => {
+    const ready = new Set(['dashboard', 'users', 'groups', 'audit', 'bulletin']);
+    const order = ['bulletin', 'newcomers', 'users', 'groups', 'audit'];
+    expect(adminWarmPaths(ready, order, 3)).toEqual([
+      '/admin/bulletin',
+      '/admin/users',
+      '/admin/groups',
+    ]);
+  });
+
+  it('첫 화면은 넣지 않는다(따로 먼저 그린다)', () => {
+    expect(adminWarmPaths(new Set(['dashboard']), ['dashboard'], 6)).toEqual([]);
   });
 });

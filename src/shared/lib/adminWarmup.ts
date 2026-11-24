@@ -34,3 +34,18 @@ export const shouldWarmAdmin = (lastAt: number | null, now: number): boolean =>
   !Number.isFinite(lastAt) ||
   lastAt > now ||
   now - lastAt >= ADMIN_WARM_INTERVAL_MS;
+
+/**
+ * 첫 화면 다음으로 이어서 불러 둘 관리자 화면 주소 — 순서(order)대로, 만든 화면(ready)만, limit 개까지. 첫 화면은 따로 먼저 그린다.
+ * 화면마다 서버 코드를 처음 부를 때 0.3~0.8초가 더 든다(Vercel 은 서버가 켜질 때 화면 코드를 미리 부르지 않는다 —
+ * Next 의 preloadEntriesOnStart 가 Vercel 방식(minimal mode)에서는 꺼진다). 운영 실측(사용자 추가 화면): 처음 1.04초 · 다시 0.22초.
+ */
+export const adminWarmPaths = (
+  ready: ReadonlySet<string>,
+  order: readonly string[],
+  limit: number
+): string[] =>
+  order
+    .filter(key => key !== 'dashboard' && ready.has(key))
+    .slice(0, limit)
+    .map(key => `${ADMIN_WARM_PATH}/${key}`);

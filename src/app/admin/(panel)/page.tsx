@@ -1,6 +1,6 @@
 import { loadAdminContext } from '@/domains/admin/api/server/adminContext.server';
 import { can, SCREENS_READY } from '@/domains/admin/lib/adminNav';
-import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/adminScreens';
+import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/screenDescriptions';
 import { periodStart } from '@/domains/admin/lib/adminTime';
 import { MENU_ICONS } from '@/domains/admin/components/features/MenuIcon';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';

@@ -1,6 +1,7 @@
 // 관리자 왼쪽 메뉴 — DB 의 menus(area = admin)와 로그인한 사람의 권한으로 만든다(설계 6.4 · 6.5).
 // 메뉴 행과 권한 목록은 서버(adminContext.server.ts)가 읽어 넘기고, 여기서는 «무엇을 보일지» 만 정한다.
 import type { Database } from '@/shared/api/supabase/database.types';
+import { ADMIN_SCREENS_READY } from '@/shared/config/adminScreens';
 
 export type PermissionAction = Database['public']['Enums']['permission_action'];
 
@@ -33,16 +34,8 @@ export type AdminNavGroup = { key: string; label: string; items: AdminNavItem[] 
 
 const DASHBOARD = 'dashboard';
 
-/** 화면이 만들어진 관리자 메뉴 — 패키지 B · C 에서 화면을 만들 때 여기에 더한다(모두 만들면 이 목록을 지운다). */
-export const SCREENS_READY: ReadonlySet<string> = new Set([
-  DASHBOARD,
-  'users',
-  'groups',
-  'menus',
-  'categories',
-  'codes',
-  'audit',
-]);
+/** 화면이 만들어진 관리자 메뉴 — 목록은 shared/config/adminScreens(공개 페이지의 서버 미리 깨우기도 쓴다) */
+export const SCREENS_READY: ReadonlySet<string> = ADMIN_SCREENS_READY;
 const ROOT = '/admin';
 
 export const can = (perms: readonly Permission[], menuKey: string, action: PermissionAction) =>
