@@ -67,15 +67,10 @@ describe('newsRepository', () => {
     expect((await repo.albums()).map(a => a.id)).toEqual(['1']);
   });
 
-  it('시드: 주일광고 87편 · 성복의 뜰 30편 · 주보 90호 · 앨범 4건', async () => {
+  // 주보는 DB 로 옮겼다(2026-11-24 — 날짜마다 하나는 DB 의 유일 인덱스가 지킨다)
+  it('시드: 주일광고 87편 · 성복의 뜰 30편 · 앨범 4건', async () => {
     expect((await newsRepository.videos('announcements')).length).toBe(87);
     expect((await newsRepository.videos('garden')).length).toBe(30);
-    const issues = await newsRepository.issues();
-    expect(issues.length).toBe(90);
-    expect(issues[0].date).toBe('2026-11-15');
-    expect(issues.at(-1)?.date).toBe('2025-03-02');
-    // 호마다 날짜가 하나씩 — 주소(/news/bulletin/날짜)가 겹치지 않는다
-    expect(new Set(issues.map(i => i.id)).size).toBe(90);
     expect((await newsRepository.albums()).length).toBe(4);
   });
 });

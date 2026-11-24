@@ -12,7 +12,6 @@ import { createSupabaseReadClient } from '@/shared/api/supabase/readClient.serve
 import { storagePublicUrl } from '@/shared/lib/storageUrl';
 import { cacheLife, cacheTag } from 'next/cache';
 
-import { BULLETIN_SEED } from '../data/bulletinSeed';
 import type { BulletinIssue } from './news.types';
 import { BULLETINS_TAG } from './newsTags';
 
@@ -42,23 +41,6 @@ export const toIssues = (rows: readonly Row[], baseUrl: string): BulletinIssue[]
       : [];
   });
 
-/**
- * 옮기기가 끝나기 전까지 — DB 의 새 호에 시드를 더한다(최신 주일부터). DB 에 시드 기간(시드의 마지막 주일까지)의 호가
- * 하나라도 있으면 옮긴 것으로 보고 DB 만 쓴다 — 그래야 휴지통 · 임시저장으로 내린 호가 시드로 되살아나지 않는다.
- * 운영 옮기기를 확인한 뒤 시드와 함께 없앤다(설계 7 · 패키지 B 계획 Task 6).
- */
-export const mergeWithSeed = (
-  db: readonly BulletinIssue[],
-  seed: readonly BulletinIssue[]
-): BulletinIssue[] => {
-  const lastSeed = seed.reduce((max, i) => (i.date > max ? i.date : max), '');
-  if (db.some(i => i.date <= lastSeed)) return [...db];
-  const dates = new Set(db.map(i => i.date));
-  return [...db, ...seed.filter(i => !dates.has(i.date))].sort((a, b) =>
-    b.date.localeCompare(a.date)
-  );
-};
-
 const readIssues = async (): Promise<BulletinIssue[]> => {
   const env = readSupabaseEnv();
   const client = env ? createSupabaseReadClient() : null;
@@ -81,6 +63,6 @@ const cachedIssues = async () => {
   return settled;
 };
 
-/** 공개 주보 — 최신 주일부터. DB 를 못 읽으면 운영에서는 직전 페이지를 유지하고, 빌드 · 개발에서는 시드만 */
+/** 공개 주보 — 최신 주일부터. DB 를 못 읽으면 운영에서는 직전 페이지를 유지하고, 빌드 · 개발에서는 빈 목록(«아직 등록된 주보가 없습니다») */
 export const loadIssues = async (): Promise<BulletinIssue[]> =>
-  mergeWithSeed((await loadForPage(async () => unwrap(await cachedIssues()))) ?? [], BULLETIN_SEED);
+  (await loadForPage(async () => unwrap(await cachedIssues()))) ?? [];

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { BulletinIssue } from './news.types';
-import { mergeWithSeed, toIssues } from './bulletinLoad.server';
+import { toIssues } from './bulletinLoad.server';
 
 const BASE = 'https://x.supabase.co';
 const file = (sort: number, kind = 'IMAGE') => ({
@@ -48,33 +47,5 @@ describe('toIssues', () => {
         BASE
       )
     ).toEqual([]);
-  });
-});
-
-describe('mergeWithSeed — 옮기기 전까지(시드를 지우면 함께 없앤다)', () => {
-  const issue = (date: string, src: string): BulletinIssue => ({
-    id: date,
-    status: 'published',
-    date,
-    pages: [{ src, width: 1, height: 1 }],
-  });
-  it('옮기기 전(DB 에 시드 기간의 호가 없음) — DB 의 새 호 + 시드, 최신 주일부터', () => {
-    const merged = mergeWithSeed(
-      [issue('2026-11-29', 'db')],
-      [issue('2026-11-15', 'seed'), issue('2026-11-08', 'seed')]
-    );
-    expect(merged.map(i => [i.date, i.pages[0].src])).toEqual([
-      ['2026-11-29', 'db'],
-      ['2026-11-15', 'seed'],
-      ['2026-11-08', 'seed'],
-    ]);
-  });
-
-  it('옮긴 뒤(DB 에 시드 기간의 호가 하나라도 있음) — DB 만. 휴지통 · 임시저장으로 내린 호가 시드로 되살아나지 않는다', () => {
-    const merged = mergeWithSeed(
-      [issue('2026-11-29', 'db'), issue('2026-11-08', 'db')],
-      [issue('2026-11-15', 'seed'), issue('2026-11-08', 'seed')]
-    );
-    expect(merged.map(i => i.date)).toEqual(['2026-11-29', '2026-11-08']);
   });
 });

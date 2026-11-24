@@ -99,7 +99,7 @@ B2~B4 의 세부 과제는 앞 단계가 끝난 뒤 이 문서에 덧붙인다 �
 
 - [x] `loadIssues()` — 읽기 전용 연결로 `bulletins`(공개 · 삭제 안 됨, RLS 가 거른다) + `files` 를 읽어 `BulletinIssue[]` 로(그림 주소는 `storagePublicUrl`). `'use cache'` + `cacheTag('bulletins')` + `cacheLife`(만료 없음), 실패는 값으로.
 - [x] 저장 액션이 `bulletins` 태그를 갱신한다 — **`updateTag`**(Next 16 문서: Server Action 전용, 다음 요청이 새 값을 기다려 받는다).
-- [x] (구현하며 정함) `cacheLife({ stale: 300, revalidate: 60 })` — stale 30 이면 빠른 이동용 틀(App Shell)에서 빠진다(개발 알림). 운영 옮기기 전까지는 시드와 합친다(같은 날짜는 DB 것).
+- [x] (구현하며 정함) `cacheLife({ stale: 300, revalidate: 60 })` — stale 30 이면 빠른 이동용 틀(App Shell)에서 빠진다(개발 알림). 운영 옮기기 전까지는 시드와 합쳤다(옮긴 뒤 지움).
 - [x] `[date]` 의 `generateStaticParams` 는 최신 한 호만(`oneBuildParam`).
 - [x] 시드를 읽는 테스트는 가짜 load 로 바꾼다.
 
@@ -109,7 +109,7 @@ B2~B4 의 세부 과제는 앞 단계가 끝난 뒤 이 문서에 덧붙인다 �
 
 - [x] `bulletinSeed` + `public/files/bulletin`(360장, 40MB)을 Storage · DB 로. 여러 번 돌려도 같은 결과 — 같은 주일이 이미 있으면 건너뛴다(관리자에 있는 것이 이긴다). 등록자는 «시스템»(비움). 처음에는 «돌리면 무엇을 할지» 만 보이는 모드로.
 - [x] 로컬 DB 에 돌려 공개 화면 90호 · 기존 주소 확인.
-- [ ] **운영: 사용자 승인 뒤** 실행 → 운영에서 확인 → 다음 커밋에서 `bulletinSeed.ts` · `public/files/bulletin` 지움.
+- [x] **운영: 사용자 승인 뒤** 실행(2026-11-24, 90호 · 360장 약 100초) → 운영에서 확인(공개 주보 그림 360개 모두 Storage, 옛 주소 열림) → 다음 커밋에서 `bulletinSeed.ts` · `public/files/bulletin` · 시드 합치기 · 일회용 스크립트 지움.
 - [ ] 기존 사이트를 다시 읽어 오는 가져오기(오픈 직전, 설계 7)는 기존 사이트 스크립트를 레포로 옮길 때 함께 — 이번에는 시드에서만.
 
 ### Task 7: 첫 화면 · 마무리

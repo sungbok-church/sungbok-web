@@ -183,9 +183,9 @@
 
 - 같은 날짜에 하나(휴지통에 든 것은 빼고 — DB). 날짜는 요일을 묻지 않는다(성탄절 등 평일 주보). 쪽은 1~20장.
 - 복제하면 날짜는 이번 주일과 원본 다음 주 중 늦은 날, 그 날짜에 주보가 있으면 비는 주일까지 넘긴다.
-- **공개 화면**: [bulletinLoad.server](../../src/domains/news/api/bulletinLoad.server.ts) 가 «공개 + 휴지통 아님» 을 공개 키로 읽는다 — `'use cache'` + 태그 `bulletins` · `cacheLife({ stale: 300, revalidate: 60 })`(stale 30 이면 빠른 이동용 틀에서 빠진다). 옮기기가 끝나기 전까지는 시드와 합친다(같은 날짜는 DB 것) — 시드를 지울 때 함께 없앤다.
-- **기존 주보 옮기기**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-bulletins.mjs [--local] [--apply]` — 시드 + `public/files/bulletin` 을 DB · Storage 로. 기본은 미리 보기, `--apply` 로 쓴다. 이미 있는 날짜(휴지통 포함)는 건너뛴다(여러 번 돌려도 같다). 운영은 `SUPABASE_URL` · `SUPABASE_SECRET_KEY` 를 주고 **사용자 승인 뒤**에. 로컬 90호 · 360장 약 8초.
+- **공개 화면**: [bulletinLoad.server](../../src/domains/news/api/bulletinLoad.server.ts) 가 «공개 + 휴지통 아님» 을 공개 키로 읽는다 — `'use cache'` + 태그 `bulletins` · `cacheLife({ stale: 300, revalidate: 60 })`(stale 30 이면 빠른 이동용 틀에서 빠진다). DB 를 못 읽으면 운영에서는 직전 페이지를 유지한다(빌드 · 개발에서는 «아직 등록된 주보가 없습니다»).
+- **기존 주보 옮기기(끝, 2026-11-24)**: 시드 90호(360장)를 일회용 스크립트(`scripts/import-bulletins.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮기고 확인한 뒤 시드 · `public/files/bulletin`(40MB) · 합치기 코드를 지웠다. 오픈 직전에 기존 사이트를 다시 읽어 오는 가져오기(설계 7)는 기존 사이트 스크립트를 레포로 옮길 때 새로 만든다.
 
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(주일광고 · 성복의 뜰 → 교회앨범 → 설교 시트지 → ⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다. 운영의 주보는 아직 시드다(옮기기는 승인 뒤).
+설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(주일광고 · 성복의 뜰 → 교회앨범 → 설교 시트지 → ⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
