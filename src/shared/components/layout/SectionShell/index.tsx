@@ -8,6 +8,8 @@ import type { PropsWithChildren } from 'react';
 
 interface Props {
   section: SectionSlug;
+  /** 이 주소의 페이지처럼 그린다 — 관리자 미리보기 틀(/admin/preview)이 공개 주소를 넘긴다. 없으면 지금 주소 */
+  pathname?: string;
 }
 
 /* 등장 — 제목은 홈 히어로 텍스트(hh-in-text)와 같은 어휘: blur 12→0 · X -32→0, 1500ms EXPO.
@@ -34,11 +36,12 @@ const ENTRANCE = `
  * 알약을 한 줄(SubNav)로 — 휴대폰에서 본문 시작이 427px → 약 211px. 줄 모양·꺾쇠·미끄러지는 활성 표시는 SubNav 참고.
  * 근거: .md/specs/2026-10-10-site-nav-skeleton-design.md §4
  */
-export const SectionShell = ({ section, children }: PropsWithChildren<Props>) => {
+export const SectionShell = ({ section, pathname, children }: PropsWithChildren<Props>) => {
   // as const 유니온 → 넓힌 타입으로 받아야 children 접근이 된다(하위 없는 섹션엔 키가 없음)
   const s: NavSection | undefined = siteNav.find(x => x.slug === section);
   if (!s) throw new Error(`siteNav 에 없는 섹션: ${section}`);
-  const child = findChild(usePathname());
+  const current = usePathname();
+  const child = findChild(pathname ?? current);
   const subs = s.children ?? [];
   const title = child?.label ?? s.label;
 

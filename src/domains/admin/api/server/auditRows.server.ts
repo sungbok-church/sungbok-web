@@ -34,6 +34,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MENU_FIELDS = new Set(['menu_id', 'parent_id']);
 const GROUP_FIELDS = new Set(['group_id']);
 const USER_FIELDS = new Set(['user_id', 'handled_by', 'deleted_by']);
+/** 글이 가리키는 파일 묶음 칸 — 저장할 때마다 새 묶음으로 바뀌므로 id 대신 «파일 n개» 로 보인다 */
+export const LIST_FIELDS = new Set([
+  'pages_list_id',
+  'images_list_id',
+  'file_list_id',
+  'photos_list_id',
+  'photo_list_id',
+]);
 
 /**
  * 바뀐 칸에 나온 다른 행의 id(메뉴 · 그룹 · 사람)를 이름표로 만든다 — 이력에 uuid 대신 이름이 보이게(설계 6.7).
@@ -46,6 +54,7 @@ export const referenceNames = async (
   const menus = new Set<string>();
   const groups = new Set<string>();
   const users = new Set<string>();
+  const lists = new Set<string>();
   for (const row of rows) {
     if (!row.changes || typeof row.changes !== 'object') continue;
     for (const [field, value] of Object.entries(row.changes as Record<string, unknown>)) {
@@ -55,14 +64,17 @@ export const referenceNames = async (
           ? groups
           : USER_FIELDS.has(field)
             ? users
-            : null;
+            : LIST_FIELDS.has(field)
+              ? lists
+              : null;
       if (!target) continue;
       for (const v of Array.isArray(value) ? value : [value])
         if (typeof v === 'string' && UUID.test(v)) target.add(v);
     }
   }
   const names: Record<string, string> = {};
-  const [menuRes, groupRes, userRes] = await Promise.all([
+  const listIds = [...lists];
+  const [menuRes, groupRes, userRes, listRes, fileRes] = await Promise.all([
     menus.size > 0
       ? client
           .from('menus')
@@ -76,10 +88,18 @@ export const referenceNames = async (
           .in('id', [...groups])
       : null,
     users.size > 0 ? client.rpc('actor_names', { p_ids: [...users] }) : null,
+    lists.size > 0 ? client.from('file_lists').select('id').in('id', listIds) : null,
+    lists.size > 0 ? client.from('files').select('list_id').in('list_id', listIds) : null,
   ]);
   for (const m of menuRes?.data ?? []) names[m.id] = m.label ?? m.default_label;
   for (const g of groupRes?.data ?? []) names[g.id] = g.name;
   for (const u of userRes?.data ?? []) names[u.id] = u.name;
+  // 예약 작업이 지운(주인 없는 지 하루 넘은) 앞 묶음은 남아 있지 않다
+  const alive = new Set((listRes?.data ?? []).map(l => l.id));
+  const counts = new Map<string, number>();
+  for (const f of fileRes?.data ?? []) counts.set(f.list_id, (counts.get(f.list_id) ?? 0) + 1);
+  for (const id of listIds)
+    names[id] = alive.has(id) ? `파일 ${counts.get(id) ?? 0}개` : '파일 정리됨';
   return names;
 };
 

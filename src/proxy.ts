@@ -1,4 +1,5 @@
 import { buildAdminCsp } from '@/domains/admin/lib/adminCsp';
+import { ADMIN_PREVIEW_PATH } from '@/domains/admin/lib/preview';
 import { adminAuthDecision } from '@/domains/admin/lib/authRedirect';
 import { IDLE_COOKIE, IDLE_COOKIE_MAX_AGE, isIdle } from '@/domains/admin/lib/idleSession';
 import { updateSession } from '@/shared/api/supabase/proxySession.server';
@@ -18,7 +19,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const isDev = process.env.NODE_ENV === 'development';
   const nonce = btoa(crypto.randomUUID());
-  const csp = buildAdminCsp({ nonce, supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, isDev });
+  const csp = buildAdminCsp({
+    nonce,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    isDev,
+    // 콘텐츠 미리보기 틀만 관리자 화면이 iframe 으로 연다(설계 6.10)
+    framable: request.nextUrl.pathname.startsWith(ADMIN_PREVIEW_PATH),
+  });
   const now = Date.now();
 
   const session = await updateSession(request, {

@@ -7,10 +7,13 @@ export const buildAdminCsp = ({
   nonce,
   supabaseUrl,
   isDev,
+  framable = false,
 }: {
   nonce: string;
   supabaseUrl: string | undefined;
   isDev: boolean;
+  /** 이 사이트가 틀(iframe) 안에 넣을 수 있는가 — 콘텐츠 미리보기 틀(/admin/preview)만. 다른 관리자 화면은 누구도 못 넣는다 */
+  framable?: boolean;
 }): string => {
   const supabase = supabaseUrl ? ` ${new URL(supabaseUrl).origin}` : '';
   return [
@@ -23,7 +26,7 @@ export const buildAdminCsp = ({
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
-    `frame-ancestors 'none'`,
+    `frame-ancestors ${framable ? "'self'" : "'none'"}`,
     ...(isDev ? [] : ['upgrade-insecure-requests']),
   ].join('; ');
 };

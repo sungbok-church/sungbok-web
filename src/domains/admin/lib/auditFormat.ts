@@ -1,5 +1,6 @@
 // 변경 이력 한 줄을 사람이 읽는 «칸: 이전 → 이후» 목록으로(설계 6.7).
 // changes 모양: 등록 = 새 값, 삭제 = 지워진 값, 수정 = {칸: [이전, 이후]}, 개인정보 칸 = null(값 숨김), 엑셀 = {count}.
+import { formatAdminTime } from './adminTime';
 import {
   ACTION_NAMES,
   FIELD_LABELS,
@@ -28,11 +29,18 @@ export type NameLookup = Readonly<Record<string, string>>;
 const DEPARTMENT_LABELS: Record<string, string> = Object.fromEntries(
   DEPARTMENTS.map(d => [d.value, d.label])
 );
+/** 콘텐츠 상태(content_status) */
+const CONTENT_STATUS_LABELS: Record<string, string> = { DRAFT: '임시저장', PUBLISHED: '공개' };
+
 const VALUE_LABELS: Record<string, Record<string, string>> = {
   action: ACTION_LABELS,
   actions: ACTION_LABELS,
   department: DEPARTMENT_LABELS,
+  status: CONTENT_STATUS_LABELS,
 };
+
+/** 등록 때는 늘 비어 있어 보일 것이 없는 칸(휴지통) */
+const EMPTY_ON_INSERT = new Set(['deleted_at', 'deleted_by']);
 
 /** 비어 있을 때의 뜻이 정해진 칸 — 부서 범위가 비면 «모든 부서»(설계 6.4) */
 const EMPTY_LABELS: Record<string, string> = { department: '모든 부서' };
@@ -44,6 +52,8 @@ const show = (value: unknown, field = '', names: NameLookup = {}): string => {
   if (typeof value === 'object') return JSON.stringify(value);
   const text = String(value);
   if (REFERENCE_FIELDS.has(field)) return names[text] ?? text;
+  // 시각 칸(…_at)은 서울 시각으로
+  if (field.endsWith('_at')) return formatAdminTime(text);
   return VALUE_LABELS[field]?.[text] ?? text;
 };
 
@@ -54,7 +64,10 @@ export const formatChanges = (
   const masked = new Set(MASKED_FIELDS[table_name] ?? []);
   const entries = Object.entries(
     changes && typeof changes === 'object' ? (changes as Record<string, unknown>) : {}
-  ).filter(([field]) => !SKIP.has(field));
+  ).filter(
+    ([field, value]) =>
+      !SKIP.has(field) && !(action === 'INSERT' && value === null && EMPTY_ON_INSERT.has(field))
+  );
 
   if (action === 'EXPORT') {
     const count = (changes as { count?: unknown } | null)?.count;

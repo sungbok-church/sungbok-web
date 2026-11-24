@@ -4,6 +4,7 @@
 /** 화면이 만들어진 관리자 메뉴 — 패키지 B · C 에서 화면을 만들 때 여기에 더한다(모두 만들면 이 목록을 지운다). */
 export const ADMIN_SCREENS_READY: ReadonlySet<string> = new Set([
   'dashboard',
+  'bulletin',
   'users',
   'groups',
   'menus',

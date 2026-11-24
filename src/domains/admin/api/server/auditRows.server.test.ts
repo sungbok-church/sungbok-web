@@ -58,6 +58,31 @@ describe('referenceNames', () => {
     expect(names).toEqual({ [M1]: '주보', [G1]: '콘텐츠 담당', [U1]: '홍길동' });
   });
 
+  it('글의 파일 묶음 칸(쪽 · 사진 · 파일)은 «파일 n개» 로 — 정리돼 없어진 묶음은 «파일 정리됨»', async () => {
+    const L1 = '01a1f5c5-0000-7000-8000-0000000000c1';
+    const L2 = '01a1f5c5-0000-7000-8000-0000000000c2';
+    const L3 = '01a1f5c5-0000-7000-8000-0000000000c3';
+    const client = {
+      from: (t: string) => ({
+        select: () => ({
+          in: async () => ({
+            data:
+              t === 'file_lists'
+                ? [{ id: L1 }, { id: L2 }]
+                : [{ list_id: L1 }, { list_id: L1 }, { list_id: L2 }],
+            error: null,
+          }),
+        }),
+      }),
+      rpc: vi.fn(),
+    };
+    const names = await referenceNames(client as never, [
+      { changes: { pages_list_id: [L1, L2] } },
+      { changes: { images_list_id: L3 } },
+    ]);
+    expect(names).toEqual({ [L1]: '파일 2개', [L2]: '파일 1개', [L3]: '파일 정리됨' });
+  });
+
   it('찾을 id 가 없으면 DB 를 부르지 않는다', async () => {
     const client = { from: vi.fn(), rpc: vi.fn() };
     expect(await referenceNames(client as never, [{ changes: { name: '가' } }])).toEqual({});

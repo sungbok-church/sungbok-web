@@ -19,6 +19,15 @@ describe('buildAdminCsp', () => {
     expect(directive('img-src')).toBe("img-src 'self' blob: data: https://x.supabase.co");
   });
 
+  it('미리보기 틀(/admin/preview)만 이 사이트가 틀 안에 넣을 수 있다 — 다른 관리자 화면은 아무도', () => {
+    expect(
+      buildAdminCsp({ nonce: 'n', supabaseUrl: undefined, isDev: false, framable: true })
+    ).toContain("frame-ancestors 'self'");
+    expect(
+      buildAdminCsp({ nonce: 'n', supabaseUrl: undefined, isDev: false, framable: false })
+    ).toContain("frame-ancestors 'none'");
+  });
+
   it('다른 사이트가 틀 안에 넣지 못하고, 폼은 이 사이트로만 보낸다', () => {
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("form-action 'self'");

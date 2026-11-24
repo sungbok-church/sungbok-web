@@ -48,12 +48,18 @@ export const FormActions = ({
   cancelHref,
   submitLabel = '저장',
   extra,
+  onSubmitClick,
 }: {
   submitting: boolean;
   canSubmit?: boolean;
   cancelHref: string;
   submitLabel?: string;
   extra?: ReactNode;
+  /**
+   * 주면 저장 단추가 폼의 제출 단추가 아니라 이것을 부르는 단추가 된다 — 콘텐츠의 [공개] 는 이 단추로만 한다.
+   * 제출 단추로 두면 칸에서 Enter 를 칠 때 브라우저가 첫 제출 단추(= 공개)를 눌러 공개돼 버린다(HTML 의 암묵적 제출).
+   */
+  onSubmitClick?: () => void;
 }) => (
   <div className="bg-background/95 sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
     <span className="text-muted-foreground mr-auto hidden text-xs sm:inline">
@@ -63,7 +69,11 @@ export const FormActions = ({
       취소
     </Button>
     {extra}
-    <Button type="submit" disabled={submitting || !canSubmit}>
+    <Button
+      type={onSubmitClick ? 'button' : 'submit'}
+      disabled={submitting || !canSubmit}
+      onClick={onSubmitClick}
+    >
       {submitting && <Spinner data-icon="inline-start" />}
       {submitLabel}
     </Button>

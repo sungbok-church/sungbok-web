@@ -16,3 +16,25 @@ export const StatusBadge = ({ active, onlyOff }: { active: boolean; onlyOff?: bo
   ) : (
     <Badge variant="neutral">꺼짐</Badge>
   );
+
+/** 콘텐츠 상태 조건의 선택지(설계 6.6 — 휴지통은 «삭제된 항목» 스위치로 따로 본다) */
+export const CONTENT_STATUS_OPTIONS = [
+  { value: 'PUBLISHED', label: '공개' },
+  { value: 'DRAFT', label: '임시저장' },
+];
+
+/** 콘텐츠 5종의 상태 — «공개»(초록) · «임시저장»(회색) · 휴지통에 들었으면 «휴지통» */
+export const ContentStatusBadge = ({
+  status,
+  trashed,
+}: {
+  status: 'DRAFT' | 'PUBLISHED';
+  trashed?: boolean;
+}) =>
+  trashed ? (
+    <Badge variant="danger">휴지통</Badge>
+  ) : status === 'PUBLISHED' ? (
+    <Badge variant="success">공개</Badge>
+  ) : (
+    <Badge variant="neutral">임시저장</Badge>
+  );

@@ -2,6 +2,8 @@ import { loadAdminContext } from '@/domains/admin/api/server/adminContext.server
 import { can, SCREENS_READY } from '@/domains/admin/lib/adminNav';
 import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/screenDescriptions';
 import { periodStart } from '@/domains/admin/lib/adminTime';
+import { seoulToday, upcomingSunday } from '@/domains/admin/lib/content';
+import { issueLongDate } from '@/domains/news/api/bulletinList';
 import { MENU_ICONS } from '@/domains/admin/components/features/MenuIcon';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
@@ -13,7 +15,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import { ContentStatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import { CircleIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
@@ -44,22 +48,32 @@ export default async function AdminHomePage() {
   const supabase = await createSupabaseServerClient();
   // 요청마다 지금 시각 기준(서버 컴포넌트)
   // eslint-disable-next-line react-hooks/purity
-  const weekAgo = periodStart('7d', Date.now()) ?? '';
+  const now = Date.now();
+  const weekAgo = periodStart('7d', now) ?? '';
+  const sunday = upcomingSunday(seoulToday(now));
   const count = async (query: PromiseLike<{ count: number | null }>) => (await query).count ?? 0;
   const active = (table: 'profiles' | 'groups' | 'categories') =>
     count(supabase.from(table).select('id', { count: 'exact', head: true }).eq('is_active', true));
 
   // 숫자는 권한 확인(loadAdminContext)을 기다리지 않고 함께 센다 — DB 를 한 번 덜 기다린다. 막는 것은 어차피 DB(RLS)이고,
   // 권한이 없는 숫자는 아래에서 버린다.
-  const [{ profile, permissions, nav }, users, groups, categories, changes] = await Promise.all([
-    loadAdminContext(),
-    active('profiles'),
-    active('groups'),
-    active('categories'),
-    count(
-      supabase.from('audit_log').select('id', { count: 'exact', head: true }).gte('at', weekAgo)
-    ),
-  ]);
+  const [{ profile, permissions, nav }, users, groups, categories, changes, thisWeek] =
+    await Promise.all([
+      loadAdminContext(),
+      active('profiles'),
+      active('groups'),
+      active('categories'),
+      count(
+        supabase.from('audit_log').select('id', { count: 'exact', head: true }).gte('at', weekAgo)
+      ),
+      // 이번 주일 주보(휴지통 아닌 것) — 주보 조회 권한이 없으면 RLS 가 비워 준다
+      supabase
+        .from('bulletins')
+        .select('id, status')
+        .eq('date', sunday)
+        .is('deleted_at', null)
+        .maybeSingle(),
+    ]);
   const stats: Stat[] = [
     can(permissions, 'users', 'READ') && {
       label: '사용 중인 계정',
@@ -84,6 +98,23 @@ export default async function AdminHomePage() {
   ].filter((s): s is Stat => Boolean(s));
 
   const todos = TODOS.filter(t => SCREENS_READY.has(t.key) && can(permissions, t.key, 'READ'));
+  // 할 일 카드의 값 — 화면이 생긴 것만(주보). 누르면 그 글로, 없으면 날짜를 채운 등록 화면으로(등록 권한이 있을 때)
+  const bulletin = thisWeek.data;
+  const todoState: Record<string, { detail: string; badge: ReactNode; href?: string }> = {
+    bulletin: {
+      detail: issueLongDate(sunday),
+      badge: bulletin ? (
+        <ContentStatusBadge status={bulletin.status} />
+      ) : (
+        <Badge variant="warning">아직 없음</Badge>
+      ),
+      href: bulletin
+        ? `/admin/bulletin/${bulletin.id}`
+        : can(permissions, 'bulletin', 'CREATE')
+          ? `/admin/bulletin/new?date=${sunday}`
+          : undefined,
+    },
+  };
   const screens = nav.flatMap(group =>
     group.items
       .filter(item => item.key !== 'dashboard')
@@ -122,19 +153,38 @@ export default async function AdminHomePage() {
             이번 주 할 일
           </h2>
           <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
-            {todos.map(todo => (
-              <li key={todo.key}>
-                <Card className="h-full">
+            {todos.map(todo => {
+              const state = todoState[todo.key];
+              const card = (
+                <Card
+                  className={state?.href ? 'hover:bg-muted/40 h-full transition-colors' : 'h-full'}
+                >
                   <CardHeader>
                     <CardTitle>{todo.title}</CardTitle>
-                    <CardDescription>{todo.description}</CardDescription>
+                    <CardDescription className="tabular-nums">
+                      {state?.detail ?? todo.description}
+                    </CardDescription>
                     <CardAction>
-                      <Badge variant="neutral">준비 중</Badge>
+                      {state?.badge ?? <Badge variant="neutral">준비 중</Badge>}
                     </CardAction>
                   </CardHeader>
                 </Card>
-              </li>
-            ))}
+              );
+              return (
+                <li key={todo.key}>
+                  {state?.href ? (
+                    <Link
+                      href={state.href}
+                      className="focus-visible:ring-ring/50 block h-full rounded-xl outline-none focus-visible:ring-[3px]"
+                    >
+                      {card}
+                    </Link>
+                  ) : (
+                    card
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

@@ -4,9 +4,9 @@
 
 > 배경 결정: [ADR 0008](../decisions/0008-admin-backend-vercel-supabase.md)(Vercel + Supabase, 같은 앱 `/admin`) · [ADR 0012](../decisions/0012-date-temporal-and-admin-libraries.md)(날짜·라이브러리) · [ADR 0016](../decisions/0016-admin-ui-follows-shadcn.md)(shadcn 원본 + 색만 교체) · [ADR 0017](../decisions/0017-admin-reference-next-starter-and-tanstack-form.md)(참고 대상 · 폼은 TanStack Form · 화면 색은 의미 토큰만) · [ADR 0018](../decisions/0018-ui-primitives-base-ui.md)(UI 기반은 Base UI · shadcn 부품은 base-nova 원본)
 
-## 지금 있는 것 (패키지 1 준비 + 패키지 A 기반)
+## 지금 있는 것 (패키지 1 준비 + 패키지 A 기반 + 패키지 B 주보)
 
-로그인 · 권한별 메뉴 · 시스템 화면 5개가 있다. 콘텐츠 · 사이트 화면 · 새가족 화면은 아직 없다(패키지 B · C — 메뉴는 DB 에 있지만 `SCREENS_READY` 에 없어 숨겨진다).
+로그인 · 권한별 메뉴 · 시스템 화면 5개 · 주보가 있다. 나머지 콘텐츠 · 사이트 화면 · 새가족 화면은 아직 없다(패키지 B · C — 메뉴는 DB 에 있지만 `ADMIN_SCREENS_READY` 에 없어 숨겨진다). 패키지 B 의 진행은 [계획](../specs/2026-11-24-admin-pb-content-plan.md).
 
 | 주소 | 내용 | 권한 |
 |---|---|---|
@@ -15,7 +15,9 @@
 | `/admin/login/confirm` | 그 메일의 링크가 오는 곳(route handler) — 링크로 로그인시키고 `/admin/password` 로 | — |
 | `/admin/password` | 비밀번호 바꾸기 — 첫 로그인 · 초기화 뒤에는 다른 화면으로 못 간다 | 로그인 |
 | `/admin/logout` | 서버가 로그아웃시킬 때 지나가는 주소(route handler) | — |
-| `/admin` | 첫 화면 — 숫자 카드 · 이번 주 할 일(주보 · 주일광고 · 처리 안 된 새가족 — 값은 패키지 B · C, 지금은 «준비 중») · 바로 가기 | 로그인 |
+| `/admin` | 첫 화면 — 숫자 카드 · 이번 주 할 일(주보: 이번 주일 날짜 + 공개 · 임시저장 · 아직 없음 — 누르면 그 주보, 없으면 날짜를 채운 등록 화면. 주일광고 · 새가족은 화면이 생길 때) · 바로 가기 | 로그인 |
+| `/admin/bulletin` · `/new` · `/[id]` · `/[id]/edit` | 콘텐츠 › 주보 — 목록(연도 · 상태 · 삭제된 항목, 검색어 칸 없음) · 등록(한 장: 주일 날짜(이번 주일로 채움 — 아무 날짜나) + 쪽 그림 · [미리보기] · [임시저장] · [공개]) · 상세(쪽 그림 · 머리 [복제해서 새로 쓰기] · [사이트에서 보기] · [수정] · «더 보기»: 휴지통 · 복구 · 완전 삭제 · 이력) · 수정(공개된 글은 [임시저장으로 돌리기] · [저장]) | `bulletin` |
+| `/admin/preview/[menu]` | 콘텐츠 미리보기 틀 — 등록 · 수정 화면의 [미리보기] 창이 iframe 으로 연다(지금은 `bulletin`) | 그 메뉴 조회 |
 | `/admin/users` · `/new` · `/[id]` · `/[id]/edit` | 목록(줄 체크 켜기 · 끄기) · 계정 만들기(단계: 기본 정보 → 역할 → 확인, 임시 비밀번호 한 번 · 상세로 / 계속 등록) · 상세(«더 보기» 메뉴: 비밀번호 초기화 · 끄기/켜기 · 이력) · 수정(이름 · 그룹 · 담당 부서) | `users` |
 | `/admin/groups` · `/new` · `/[id]` · `/[id]/edit` | 목록 · 만들기(두 단계: 이름 · 설명 → 메뉴 권한 표) · 상세(구성원 · 권한 표 보기 · «더 보기» 메뉴: 끄기/켜기 · 이력) · 수정 — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장(끄고 켜기는 사용자처럼 상세에서만, 수정 화면에는 없다) | `groups` |
 | `/admin/menus` | 관리자 메뉴의 이름 · 사용 여부 · 순서(홈페이지 탭은 패키지 D) · 화면 전체의 변경 이력 | `menus` |
@@ -158,6 +160,32 @@
 - 예외는 관리자 자신(`src/domains/admin/**` · `src/app/admin/**` · `src/proxy.ts`)뿐이다. 연결 계층(`src/shared/api/supabase/**` — 공개 화면의 저장소 계층이 서버에서 DB 를 읽을 때 쓴다, 패키지 3 부터)은 Supabase 라이브러리만 쓸 수 있고 관리자 코드는 못 가져온다.
 - `import()` · `require()` 는 이 규칙이 잡지 못한다 — 검토에서 본다.
 
+## 콘텐츠(패키지 B)
+
+### 파일 올리기 통로(설계 6.8)
+
+- **바이트는 서버를 거치지 않는다.** 화면이 처음 파일을 고를 때 올리는 자리(빈 묶음)를 하나 만들고(`createUploadList`), 파일마다 서버가 로그인한 사람의 세션으로 «한 번 쓰는 올리기 주소» 를 만든다(`signUpload` — Storage 권한 규칙 `media_insert` 가 이때 경로의 메뉴 · 묶음을 본다. 다른 메뉴 경로 · 방문자는 거절, 로컬 Storage 로 확인). 브라우저는 그 주소로 XHR PUT(진행 표시 — [putFile](../../src/domains/admin/components/features/FileListField/putFile.ts)). 경로는 `<메뉴>/<묶음 id>/<파일 id(uuid v7)>.<확장자>`, 1년 캐시(내용이 바뀌지 않는 주소).
+- **그림은 올리기 전에 줄인다**([prepareImage](../../src/domains/admin/components/features/FileListField/prepareImage.ts)): 긴 변 2000px 를 넘거나 PNG 면 WebP(품질 0.85)로 다시 만든다 — 브라우저가 WebP 를 못 만들면(일부 Safari) JPEG. 한도 안의 WebP · JPEG 는 그대로. 사진의 회전 정보를 반영한다. 줄였으면 한 번 알린다.
+- **파일 줄은 저장할 때 한 번에 적는다**([fileList.server](../../src/domains/admin/api/server/fileList.server.ts) `writeFileList`): 화면은 쪽 목록(순서 · 빼기)만 들고 있다가, 저장하면 서버가 **새 묶음**을 만들어 그 순서대로 적고 글이 새 묶음을 가리키게 바꾼다. 그래서 저장하기 전에는 공개 화면이 바뀌지 않고, 다시 시도해도 안전하며, 순서 바꾸기에 DB 함수가 필요 없다. 앞 묶음은 주인 없는 묶음이 되어 예약 작업(패키지 D)이 지운다 — Storage 파일은 가리키는 줄이 하나도 없을 때만. 글이 가리킬 수 있는 경로는 **그 메뉴 아래**뿐이다(`isAllowedPath` — 고치기 · 복제는 앞 묶음의 파일을 그대로 가리킨다, 다른 메뉴의 파일은 못 가리킨다).
+- 새 묶음의 id 는 서버가 만들고 돌려받지 않는다 — 넣는 문장 안에서는 읽기 규칙(`can_read_list`)이 새 묶음을 아직 못 봐서 «넣고 돌려받기» 가 권한 오류가 된다(로컬에서 확인).
+- 칸: [FileListField](../../src/domains/admin/components/features/FileListField/index.tsx) — 고르기 · 끌어 놓기, 하나씩 차례로, 실패한 파일은 줄에 까닭과 [다시 올리기] · [빼기], 순서는 화살표 단추(휴대폰에서도 끌 필요 없음). 올리는 동안 폼은 저장을 막는다. 순서 · 실패 처리는 [useFileUploads](../../src/domains/admin/hooks/useFileUploads.ts).
+
+### 콘텐츠 화면 공통
+
+- **상태**: 임시저장 · 공개, 휴지통은 따로(`deleted_at`). 목록의 «삭제된 항목» 스위치로 휴지통을 본다. 배지 `ContentStatusBadge`.
+- **등록 · 수정은 한 장 폼**(사용자 결정 2026-11-24). 아래 막대: 새 글 · 임시저장 글은 [미리보기] · [임시저장] · [공개], 공개된 글은 [미리보기] · [임시저장으로 돌리기](확인 창) · [저장]. Enter · Ctrl/⌘+S 는 지금 상태 그대로 저장한다(새 글은 임시저장) — 공개는 [공개] 단추로만.
+- **상세 머리**(사용자 결정 2026-11-24, [ContentDetailActions](../../src/domains/admin/components/widgets/ContentDetailActions/index.tsx)): [목록] · 이전/다음 · [복제해서 새로 쓰기](등록 권한 — 새 임시저장 글의 수정 화면으로) · (공개면) [사이트에서 보기] · [수정] · «더 보기»(휴지통으로 + 토스트 «되돌리기» / 휴지통에 들었으면 복구 · 완전히 지우기 · 변경 이력). 휴지통에 든 글은 고치지 않는다(수정 주소 404 — 복구한 뒤에).
+- **저장하면 공개 화면이 바로 바뀐다**: Server Action 이 `updateTag(태그)` — 공개 화면의 다음 요청은 새 값을 기다려 받는다.
+- **미리보기**([PreviewDialog](../../src/domains/admin/components/features/PreviewDialog/index.tsx)): 화면 전체 창 + PC(1280) · 태블릿(768) · 휴대폰(375) 폭. 창 안의 iframe 이 `/admin/preview/<메뉴>` 를 열고, 화면이 저장 전 값을 `postMessage`(같은 출처만)로 보낸다 — 서버에 아무것도 남기지 않는다. 틀은 공개 사이트의 헤더 · 푸터 · 섹션 머리와 공개 화면 부품을 그대로 그린다. 이 주소만 CSP 가 `frame-ancestors 'self'`(나머지 관리자 화면은 `'none'`).
+- **변경 이력**: 글의 파일 묶음 칸(쪽 · 사진 · 파일)은 «파일 4개 → 파일 3개» 로, 상태는 «공개 · 임시저장» 으로, 시각 칸은 서울 시각으로 보인다. 등록 때 늘 빈 휴지통 칸은 보이지 않는다.
+
+### 주보
+
+- 같은 날짜에 하나(휴지통에 든 것은 빼고 — DB). 날짜는 요일을 묻지 않는다(성탄절 등 평일 주보). 쪽은 1~20장.
+- 복제하면 날짜는 이번 주일과 원본 다음 주 중 늦은 날, 그 날짜에 주보가 있으면 비는 주일까지 넘긴다.
+- **공개 화면**: [bulletinLoad.server](../../src/domains/news/api/bulletinLoad.server.ts) 가 «공개 + 휴지통 아님» 을 공개 키로 읽는다 — `'use cache'` + 태그 `bulletins` · `cacheLife({ stale: 300, revalidate: 60 })`(stale 30 이면 빠른 이동용 틀에서 빠진다). 옮기기가 끝나기 전까지는 시드와 합친다(같은 날짜는 DB 것) — 시드를 지울 때 함께 없앤다.
+- **기존 주보 옮기기**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-bulletins.mjs [--local] [--apply]` — 시드 + `public/files/bulletin` 을 DB · Storage 로. 기본은 미리 보기, `--apply` 로 쓴다. 이미 있는 날짜(휴지통 포함)는 건너뛴다(여러 번 돌려도 같다). 운영은 `SUPABASE_URL` · `SUPABASE_SECRET_KEY` 를 주고 **사용자 승인 뒤**에. 로컬 90호 · 360장 약 8초.
+
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 콘텐츠 5종(패키지 B — 파일 올리기 통로 · 공개 화면 교체 · 기존 자료 옮기기) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 `adminNav.ts` 의 `SCREENS_READY` 에 메뉴 key 를 더한다.
+설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(주일광고 · 성복의 뜰 → 교회앨범 → 설교 시트지 → ⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다. 운영의 주보는 아직 시드다(옮기기는 승인 뒤).

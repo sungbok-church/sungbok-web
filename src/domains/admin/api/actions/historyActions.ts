@@ -14,11 +14,11 @@ const LIMIT = 30;
  * 이력을 여는 표 → 그 화면의 메뉴(«이력조회» 권한을 이 메뉴로 본다). 화면이 생길 때 더한다.
  * 상세가 있는 화면(사용자 · 그룹)은 한 건의 이력, 목록만 있는 화면(메뉴 · 분류 · 코드)은 그 표 전체의 이력.
  */
-const ROW_HISTORY = { profiles: 'users', groups: 'groups' } as const;
+const ROW_HISTORY = { profiles: 'users', groups: 'groups', bulletins: 'bulletin' } as const;
 const TABLE_HISTORY = { menus: 'menus', categories: 'categories', codes: 'codes' } as const;
 
 const inputSchema = z.union([
-  z.object({ table: z.enum(['profiles', 'groups']), rowId: z.uuid() }),
+  z.object({ table: z.enum(['profiles', 'groups', 'bulletins']), rowId: z.uuid() }),
   z.object({ table: z.enum(['menus', 'categories', 'codes']), rowId: z.undefined().optional() }),
 ]);
 export type HistoryTarget = z.infer<typeof inputSchema>;

@@ -1,0 +1,60 @@
+// 콘텐츠 미리보기(설계 6.10 — 사용자 결정 2026-11-20) — 등록 · 수정 화면이 저장하지 않은 지금 값을 미리보기 틀(iframe)에 보낸다.
+// 서버에 아무것도 남기지 않는다. 틀은 같은 출처(관리자 주소 아래)이고, 같은 출처의 메시지만 받는다.
+import type { BulletinIssue } from '@/domains/news/api/news.types';
+import { storagePublicUrl } from '@/shared/lib/storageUrl';
+
+import { MEDIA_BUCKET } from './fileUpload';
+import type { FileItem } from './input/fileInput';
+
+/** 미리보기 틀의 주소(뒤에 메뉴 key) — 이 주소만 관리자 화면이 iframe 으로 연다(CSP frame-ancestors 'self') */
+export const ADMIN_PREVIEW_PATH = '/admin/preview/';
+
+/** 틀이 준비됐다(틀 → 화면) — 화면이 지금 값을 보낸다 */
+export const PREVIEW_READY = 'admin:preview-ready';
+/** 지금 값(화면 → 틀) — 칸을 고칠 때마다 다시 보낸다 */
+export const PREVIEW_VALUES = 'admin:preview-values';
+
+/** 미리보기 폭 — 실제 기기처럼 배치가 바뀌게 틀의 폭을 바꾼다 */
+export const PREVIEW_WIDTHS = [
+  { key: 'pc', label: 'PC', width: 1280 },
+  { key: 'tablet', label: '태블릿', width: 768 },
+  { key: 'phone', label: '휴대폰', width: 375 },
+] as const;
+
+export type BulletinPreviewValues = { date: string; pages: FileItem[] };
+
+export type PreviewMessage =
+  | { type: typeof PREVIEW_READY }
+  | { type: typeof PREVIEW_VALUES; menu: 'bulletin'; values: BulletinPreviewValues };
+
+/** postMessage 를 받을 때 — 같은 출처 · 정한 모양만. 아니면 null */
+export const readPreviewMessage = (
+  event: { origin: string; data: unknown },
+  origin: string
+): PreviewMessage | null => {
+  if (event.origin !== origin) return null;
+  const data = event.data as { type?: unknown; menu?: unknown; values?: unknown } | null;
+  if (!data || typeof data !== 'object') return null;
+  if (data.type === PREVIEW_READY) return { type: PREVIEW_READY };
+  if (data.type === PREVIEW_VALUES && data.menu === 'bulletin' && data.values)
+    return {
+      type: PREVIEW_VALUES,
+      menu: 'bulletin',
+      values: data.values as BulletinPreviewValues,
+    };
+  return null;
+};
+
+/** 주보 폼의 지금 값 → 공개 화면(BulletinPage)이 그리는 호 하나 */
+export const toPreviewIssue = (values: BulletinPreviewValues, baseUrl: string): BulletinIssue => ({
+  id: values.date,
+  status: 'published',
+  date: values.date,
+  pages: values.pages
+    .filter(p => p.kind === 'IMAGE' && p.width && p.height)
+    .map(p => ({
+      src: storagePublicUrl(baseUrl, MEDIA_BUCKET, p.path),
+      width: p.width as number,
+      height: p.height as number,
+    })),
+});

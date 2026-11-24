@@ -1,0 +1,220 @@
+'use client';
+
+import { createBulletin, updateBulletin } from '@/domains/admin/api/actions/bulletinActions';
+import {
+  applyServerErrors,
+  DraftNotice,
+  FormActions,
+  RequiredMark,
+  serverFieldError,
+  TextField,
+  zodFormValidator,
+} from '@/domains/admin/components/features/AdminForm';
+import { ConfirmAction } from '@/domains/admin/components/features/ConfirmAction';
+import { FileListField } from '@/domains/admin/components/features/FileListField';
+import { PreviewDialog } from '@/domains/admin/components/features/PreviewDialog';
+import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
+import {
+  useFormDraft,
+  useSaveShortcut,
+  useUnsavedGuard,
+} from '@/domains/admin/hooks/useFormGuards';
+import type { ActionResult } from '@/domains/admin/lib/actionResult';
+import { bulletinCreateSchema } from '@/domains/admin/lib/input/bulletinInput';
+import type { FileItem } from '@/domains/admin/lib/input/fileInput';
+import { notifyResult } from '@/domains/admin/lib/notify';
+import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/components/ui/field';
+import { useForm, useStore } from '@tanstack/react-form';
+import { useState } from 'react';
+
+type Status = 'DRAFT' | 'PUBLISHED';
+type Values = { date: string; pages: FileItem[] };
+
+interface Props {
+  userId: string;
+  initial: Values;
+  /** 고치는 주보(없으면 새 주보) */
+  editing?: { id: string; updatedAt: string; status: Status };
+}
+
+const LIST = '/admin/bulletin';
+
+/**
+ * 주보 등록 · 수정(설계 6.10 — 한 장 폼). 주일 날짜(기본값은 이번 주일, 아무 날짜나 고를 수 있다) + 쪽 그림(올리기 · 순서 · 빼기).
+ * 아래 막대: 새 주보 · 임시저장 글은 [임시저장] · [공개], 공개된 글은 [임시저장으로 돌리기](확인 창) · [저장].
+ * Enter 로 제출되면 지금 상태 그대로(새 글은 임시저장) — 공개는 [공개] 단추로만 한다. 파일을 올리는 중에는 저장을 막는다.
+ * 쓰던 내용은 임시 보관한다(사용자별 · 저장하면 지움 — 설계 6.10).
+ */
+export const BulletinForm = ({ userId, initial, editing }: Props) => {
+  const navigate = useAdminNavigate();
+  const [uploading, setUploading] = useState(false);
+  const [confirmUnpublish, setConfirmUnpublish] = useState(false);
+  const current: Status = editing?.status ?? 'DRAFT';
+
+  // 이번 제출의 상태는 제출할 때 함께 넘긴다(onSubmitMeta) — 단추가 정하고, 그 밖의 제출(Enter · Ctrl/⌘+S)은 지금 상태 그대로.
+  // 남겨 두는 값(ref)으로 들고 있으면 검사에 걸려 제출이 멈췄을 때 «공개» 가 남아 다음 Ctrl/⌘+S 가 공개해 버린다.
+  const form = useForm({
+    defaultValues: initial,
+    onSubmitMeta: { status: current } as { status: Status },
+    validators: {
+      onSubmit: zodFormValidator(bulletinCreateSchema.omit({ status: true })),
+    },
+    onSubmit: async ({ value, meta }) => notifyResult(await save(value, meta.status)),
+  });
+
+  const save = async (value: Values, status: Status): Promise<ActionResult<unknown>> => {
+    const result = editing
+      ? await updateBulletin({ ...value, status, id: editing.id, updatedAt: editing.updatedAt })
+      : await createBulletin({ ...value, status });
+    if (!result.ok) {
+      applyServerErrors(result, serverFieldError(form));
+      return result;
+    }
+    draft.clear();
+    form.reset(value);
+    const id = editing?.id ?? (result.data as { id: string } | undefined)?.id;
+    navigate(id ? `${LIST}/${id}` : LIST);
+    return result;
+  };
+
+  const submitAs = (status: Status) => void form.handleSubmit({ status });
+
+  const values = useStore(form.store, s => s.values);
+  const dirty = useStore(form.store, s => s.isDirty);
+  const draft = useFormDraft<Values>({
+    userId,
+    formKey: `bulletin:${editing?.id ?? 'new'}`,
+    values,
+    dirty,
+    enabled: true,
+  });
+  useUnsavedGuard(dirty || uploading);
+  // 단추 밖의 저장(칸에서 Enter · Ctrl/⌘+S)도 단추와 같은 조건 — 올리는 중이 아니고, 공개된 글은 바뀐 것이 있을 때만.
+  // 폼에 제출 단추가 없어 날짜 칸의 Enter 는 브라우저가 바로 제출한다(막아 주던 꺼진 단추가 없다)
+  const canSave = !uploading && (current !== 'PUBLISHED' || dirty);
+  const saveAsIs = () => {
+    if (canSave) void form.handleSubmit();
+  };
+  useSaveShortcut(saveAsIs);
+
+  return (
+    <form
+      noValidate
+      className="flex flex-col gap-6"
+      onSubmit={e => {
+        e.preventDefault();
+        saveAsIs();
+      }}
+    >
+      <Card>
+        <CardContent>
+          <FieldGroup>
+            {draft.available && (
+              <DraftNotice
+                onDiscard={draft.discard}
+                onRestore={() =>
+                  draft.restore(saved => {
+                    if (saved.date) form.setFieldValue('date', saved.date);
+                    if (saved.pages) form.setFieldValue('pages', saved.pages);
+                  })
+                }
+              />
+            )}
+            <form.Field name="date">
+              {field => (
+                <TextField
+                  field={field}
+                  id="bulletin-date"
+                  label="주일 날짜"
+                  required
+                  type="date"
+                  className="max-w-48"
+                />
+              )}
+            </form.Field>
+            <form.Field name="pages">
+              {field => (
+                <Field data-invalid={!field.state.meta.isValid || undefined}>
+                  <FieldLabel id="bulletin-pages-label" htmlFor="bulletin-pages">
+                    쪽 <RequiredMark />
+                  </FieldLabel>
+                  <FileListField
+                    id="bulletin-pages"
+                    labelId="bulletin-pages-label"
+                    menuKey="bulletin"
+                    kinds={['IMAGE']}
+                    value={field.state.value}
+                    onChange={next => field.handleChange(next)}
+                    onBusyChange={setUploading}
+                    invalid={!field.state.meta.isValid}
+                  />
+                  <FieldError errors={field.state.meta.errors} />
+                </Field>
+              )}
+            </form.Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <form.Subscribe selector={s => s.isSubmitting}>
+        {submitting =>
+          current === 'PUBLISHED' ? (
+            <FormActions
+              submitting={submitting}
+              canSubmit={dirty && !uploading}
+              cancelHref={editing ? `${LIST}/${editing.id}` : LIST}
+              submitLabel="저장"
+              onSubmitClick={() => submitAs('PUBLISHED')}
+              extra={
+                <>
+                  <PreviewDialog menu="bulletin" values={values} disabled={uploading} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={submitting || uploading}
+                    onClick={() => setConfirmUnpublish(true)}
+                  >
+                    임시저장으로 돌리기
+                  </Button>
+                </>
+              }
+            />
+          ) : (
+            <FormActions
+              submitting={submitting}
+              canSubmit={!uploading}
+              cancelHref={editing ? `${LIST}/${editing.id}` : LIST}
+              submitLabel="공개"
+              onSubmitClick={() => submitAs('PUBLISHED')}
+              extra={
+                <>
+                  <PreviewDialog menu="bulletin" values={values} disabled={uploading} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={submitting || uploading}
+                    onClick={() => submitAs('DRAFT')}
+                  >
+                    임시저장
+                  </Button>
+                </>
+              }
+            />
+          )
+        }
+      </form.Subscribe>
+
+      {current === 'PUBLISHED' && (
+        <ConfirmAction
+          kind="unpublish"
+          open={confirmUnpublish}
+          onOpenChange={setConfirmUnpublish}
+          // 확인 창이 결과를 토스트로 알린다 — 폼의 제출(토스트)을 거치지 않고 바로 저장한다(서버가 다시 검사한다)
+          onConfirm={() => save(form.state.values, 'DRAFT')}
+        />
+      )}
+    </form>
+  );
+};

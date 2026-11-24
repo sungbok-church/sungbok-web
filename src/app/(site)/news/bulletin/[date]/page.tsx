@@ -2,13 +2,15 @@ import { issueLabel } from '@/domains/news/api/bulletinList';
 import { newsRepository } from '@/domains/news/api/newsRepository';
 import { BulletinPage } from '@/domains/news/components/widgets/BulletinPage';
 import type { Metadata } from 'next';
+import { oneBuildParam } from '@/shared/lib/buildParams';
 import { notFound } from 'next/navigation';
 
 type Props = { params: Promise<{ date: string }> };
 
-// 공개된 호마다 한 장 — 주보 화면에서 다른 호를 고르면 주소가 여기로 맞춰진다(공유·새로고침용)
-export const generateStaticParams = async () =>
-  (await newsRepository.issues()).map(i => ({ date: i.id }));
+// 주보 화면에서 다른 호를 고르면 주소가 여기로 맞춰진다(공유·새로고침용). 빌드 때는 최신 호 한 장만 만들고
+// 나머지는 처음 열릴 때 만든다(ADR 0024 — Cache Components 는 빈 목록이 안 된다, oneBuildParam)
+export const generateStaticParams = () =>
+  oneBuildParam('date', async () => (await newsRepository.issues())[0]?.id);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { date } = await params;

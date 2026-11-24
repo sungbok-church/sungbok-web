@@ -65,6 +65,11 @@ describe('loadHistory', () => {
     expect(m.permission).toHaveBeenCalledWith('users', 'HISTORY');
   });
 
+  it('주보 한 호의 이력은 «주보» 메뉴의 이력조회 권한', async () => {
+    await loadHistory({ table: 'bulletins', rowId: ID });
+    expect(m.permission).toHaveBeenCalledWith('bulletin', 'HISTORY');
+  });
+
   it('권한이 없으면 거절, 정해 둔 표가 아니거나 id 모양이 틀리면 DB 를 부르지 않는다', async () => {
     m.permission.mockResolvedValueOnce(null);
     expect(await loadHistory({ table: 'groups', rowId: ID })).toEqual({

@@ -41,6 +41,27 @@ describe('formatChanges', () => {
     ).toEqual([{ field: '담당 부서', before: '', after: '모든 부서' }]);
   });
 
+  it('콘텐츠 상태는 한글로, 등록 때 늘 빈 휴지통 칸은 보이지 않는다', () => {
+    expect(
+      formatChanges({
+        table_name: 'bulletins',
+        action: 'INSERT',
+        changes: { status: 'PUBLISHED', deleted_at: null, deleted_by: null },
+      })
+    ).toEqual([{ field: '상태', before: '', after: '공개' }]);
+    expect(
+      formatChanges({
+        table_name: 'bulletins',
+        action: 'UPDATE',
+        changes: { status: ['PUBLISHED', 'DRAFT'], deleted_at: [null, '2026-11-24T00:00:00Z'] },
+      })
+    ).toEqual([
+      { field: '상태', before: '공개', after: '임시저장' },
+      // 시각 칸은 서울 시각으로
+      { field: '휴지통', before: '(없음)', after: '2026-11-24 09:00' },
+    ]);
+  });
+
   it('id 칸은 이름표가 있으면 이름으로, 기능 · 부서는 한글로', () => {
     const names = { 'menu-1': '주보', 'group-1': '콘텐츠 담당' };
     expect(

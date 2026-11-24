@@ -81,6 +81,14 @@ describe('proxy', () => {
     expect(extra?.['content-security-policy']).toBe(csp);
   });
 
+  it('콘텐츠 미리보기 틀만 이 사이트의 iframe 안에 들어갈 수 있다', async () => {
+    mockSession({ signedIn: true });
+    const preview = await proxy(new NextRequest('http://localhost/admin/preview/bulletin'));
+    expect(preview.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
+    const other = await proxy(new NextRequest('http://localhost/admin/bulletin'));
+    expect(other.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+  });
+
   it('로그인한 요청은 마지막 요청 시각을 남긴다(httpOnly)', async () => {
     mockSession({ signedIn: true });
     const res = await proxy(new NextRequest('http://localhost/admin'));
