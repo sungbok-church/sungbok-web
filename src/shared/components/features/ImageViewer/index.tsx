@@ -12,6 +12,7 @@ import {
   ZoomControls,
 } from '@/shared/components/features/ViewerControls';
 import { FOCUS, OUTLINE_BTN } from '@/shared/components/ui/controlStyles';
+import { storageDownloadUrl } from '@/shared/lib/storageUrl';
 import { cn } from '@/shared/lib/utils';
 import { ZOOM_FIT } from '@/shared/lib/zoomSteps';
 import { Download, X } from 'lucide-react';
@@ -74,6 +75,8 @@ export const ImageViewer = ({
   // 범위를 벗어난 장 번호(다른 항목으로 바뀐 뒤 남은 번호)는 첫 장으로 본다 — 그림·표시·저장 이름이 같은 장을 가리키게
   const at = images[index] ? index : 0;
   const image = images[at];
+  const saveName =
+    image && downloadName ? `${downloadName(at)}.${/\.(\w+)$/.exec(image.src)?.[1] ?? 'webp'}` : '';
   const base = spread ? (spread.half ? BASE_WIDTH.half : BASE_WIDTH.spread) : BASE_WIDTH.single;
 
   // 열 때마다 «맞춤» 에서 시작한다 — 렌더 중에 맞춘다(열린 뒤 한 번 더 그리지 않게)
@@ -140,8 +143,8 @@ export const ImageViewer = ({
               {/* 휴대폰에서는 숨긴다 — 그림을 길게 눌러 저장하는 쪽이 익숙하고, 머리 줄이 좁다 */}
               {downloadName && (
                 <a
-                  href={image.src}
-                  download={`${downloadName(at)}.${/\.(\w+)$/.exec(image.src)?.[1] ?? 'webp'}`}
+                  href={storageDownloadUrl(image.src, saveName)}
+                  download={saveName}
                   className={cn(
                     OUTLINE_BTN,
                     FOCUS,

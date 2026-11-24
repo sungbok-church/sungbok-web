@@ -1007,6 +1007,19 @@ as $$
   end
 $$;
 
+-- 파일 행이 가리키는 곳이 그 묶음 메뉴의 Storage 경로인가(media 버킷 · `<묶음 메뉴 key>/…`) — 다른 메뉴의 파일을
+-- 끌어다 붙이지 못하게. 화면(Server Action)도 같은 것을 보지만, 로그인 세션으로 직접 불러도 막히게 여기서 한 번 더.
+create function private.file_path_in_list_menu(p_list_id uuid, p_bucket text, p_path text) returns boolean
+language sql stable security definer
+set search_path = ''
+as $$
+  select p_bucket = 'media'
+     and exists (
+       select 1 from public.file_lists l join public.menus m on m.id = l.menu_id
+        where l.id = p_list_id and m.key = split_part(p_path, '/', 1)
+     )
+$$;
+
 -- 변경 이력 한 줄을 볼 수 있는가 — «변경 이력» 메뉴 조회, 또는 그 글 메뉴의 «이력조회».
 create function private.can_read_history(p_table text, p_row_id uuid, p_parent_table text, p_parent_id uuid)
 returns boolean
@@ -1807,9 +1820,11 @@ create policy file_lists_delete on public.file_lists for delete to authenticated
 
 create policy files_select_anon on public.files for select to anon using (private.can_read_list(list_id));
 create policy files_select on public.files for select to authenticated using (private.can_read_list(list_id));
-create policy files_insert on public.files for insert to authenticated with check (private.can_write_list(list_id));
+create policy files_insert on public.files for insert to authenticated
+  with check (private.can_write_list(list_id) and private.file_path_in_list_menu(list_id, bucket, path));
 create policy files_update on public.files for update to authenticated
-  using (private.can_write_list(list_id)) with check (private.can_write_list(list_id));
+  using (private.can_write_list(list_id))
+  with check (private.can_write_list(list_id) and private.file_path_in_list_menu(list_id, bucket, path));
 create policy files_delete on public.files for delete to authenticated using (private.can_write_list(list_id));
 
 -- 콘텐츠 — 방문자는 «공개 + 삭제 안 됨», 로그인한 사람은 메뉴 권한대로.
@@ -1970,17 +1985,13 @@ create policy audit_log_insert on public.audit_log for insert to authenticated
   );
 
 -- Storage — 공개 읽기 버킷 하나(media, reference.sql 이 만든다). 방문자 읽기는 공개 주소라 규칙이 필요 없다.
--- 올리기 · 바꾸기 · 지우기는 경로의 묶음에 쓰기 권한이 있을 때만. 덮어쓰기(upsert) · 지우기는 대상 행을 먼저
--- 읽어야 하므로 같은 조건의 읽기 규칙을 둔다(없으면 오류 없이 0줄로 «성공» 한다).
+-- 로그인한 사람은 올리기만 한다 — 경로의 묶음에 쓰기 권한이 있을 때만. 덮어쓰기 · 지우기 규칙은 두지 않는다:
+-- 올리기 묶음은 글에 붙지 않아(저장은 새 묶음에 같은 경로를 적는다) «등록» 권한으로 열리므로, 열어 두면 «등록»
+-- 권한만으로 공개된 글의 그림을 바꾸거나 지울 수 있다. 화면은 덮어쓰지 않고(x-upsert false) 정리는 서버 전용 키가 한다.
 create policy media_select on storage.objects for select to authenticated
   using (bucket_id = 'media' and private.can_write_storage_path(name));
 create policy media_insert on storage.objects for insert to authenticated
   with check (bucket_id = 'media' and private.can_write_storage_path(name));
-create policy media_update on storage.objects for update to authenticated
-  using (bucket_id = 'media' and private.can_write_storage_path(name))
-  with check (bucket_id = 'media' and private.can_write_storage_path(name));
-create policy media_delete on storage.objects for delete to authenticated
-  using (bucket_id = 'media' and private.can_write_storage_path(name));
 
 -- ----------------------------------------------------------------------------
 -- 권한(GRANT) — 이 절은 파일 맨 끝에 둔다. Supabase 는 public 의 새 표 · 함수에 anon · authenticated 의
@@ -2007,6 +2018,7 @@ grant execute on function private.can_edit_department_id(uuid) to authenticated;
 grant execute on function private.can_write_list(uuid) to authenticated;
 grant execute on function private.can_read_list(uuid) to anon, authenticated;
 grant execute on function private.can_write_storage_path(text) to authenticated;
+grant execute on function private.file_path_in_list_menu(uuid, text, text) to authenticated;
 grant execute on function private.can_read_history(text, uuid, text, uuid) to authenticated;
 -- 예약 작업은 서버 전용 키만
 grant execute on function public.my_permissions() to authenticated;

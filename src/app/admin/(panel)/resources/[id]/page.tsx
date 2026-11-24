@@ -98,7 +98,7 @@ export default async function AdminResourceDetailPage({
             items={[
               { label: '분류', value: SECTION_CONFIG[r.section].label },
               { label: '묶음', value: `${r.seriesLabel}${r.episode ? ` ${r.episode}회` : ''}` },
-              { label: '날짜', value: r.date || (r.year ? `${r.year}년` : '—') },
+              { label: '날짜', value: r.date || (r.year ? `${r.year}년` : '없음') },
               ...(r.passage ? [{ label: '본문', value: r.passage }] : []),
               {
                 label: '원본',

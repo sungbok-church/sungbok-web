@@ -44,8 +44,17 @@ export const browserDeps: Deps = {
     canvas.height = height;
     canvas.getContext('2d')?.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
+    // 끝나면 캔버스 메모리를 바로 돌려준다 — 휴대폰 Safari 는 한도가 작아 여러 장을 한 번에 줄이면 toBlob 이 null 을 준다
     return new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('encode'))), type, quality)
+      canvas.toBlob(
+        b => {
+          canvas.width = canvas.height = 0;
+          if (b) resolve(b);
+          else reject(new Error('encode'));
+        },
+        type,
+        quality
+      )
     );
   },
 };

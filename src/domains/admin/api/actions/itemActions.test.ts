@@ -15,9 +15,10 @@ const m = vi.hoisted(() => ({
   inserted: vi.fn(),
   versioned: vi.fn(),
   reorder: vi.fn(async () => ({ ok: true, message: '순서를 바꿨습니다.' })),
+  updateTag: vi.fn(),
 }));
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: m.updateTag }));
 vi.mock('../server/adminContext.server', () => ({
   actionPermission: m.permission,
   NO_PERMISSION: { ok: false, error: { code: 'NO_PERMISSION', message: '권한이 없습니다.' } },
@@ -150,6 +151,12 @@ describe('reorderCategories', () => {
     });
     expect(m.permission).toHaveBeenCalledWith('categories', 'UPDATE');
     expect(m.reorder).toHaveBeenCalledWith(expect.anything(), 'categories', [other, ID]);
+  });
+
+  it('분류 이름 · 순서는 공개 화면(앨범 · 시트지 · 영상)에도 보이므로 그 캐시를 지운다', async () => {
+    await reorderCategories({ ids: ['0190a0b0-0000-7000-8000-000000000002', ID] });
+    for (const tag of ['albums', 'resources', 'video-page-announcements', 'video-page-garden'])
+      expect(m.updateTag).toHaveBeenCalledWith(tag);
   });
 
   it('목록이 맞지 않으면 저장하지 않는다', async () => {

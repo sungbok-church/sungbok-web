@@ -15,7 +15,8 @@ export const bulletinCreateSchema = z.object({
   pages: z
     .array(fileItemSchema('bulletin'))
     .min(1, '쪽을 한 장 이상 올려 주세요.')
-    .max(MAX_BULLETIN_PAGES, `쪽은 ${MAX_BULLETIN_PAGES}장까지입니다.`),
+    .max(MAX_BULLETIN_PAGES, `쪽은 ${MAX_BULLETIN_PAGES}장까지입니다.`)
+    .refine(fs => fs.every(f => f.kind === 'IMAGE'), '쪽은 그림 파일입니다.'),
   status: z.enum(['DRAFT', 'PUBLISHED']),
 });
 

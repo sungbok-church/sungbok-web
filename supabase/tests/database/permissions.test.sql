@@ -87,6 +87,9 @@ insert into public.files (list_id, sort, bucket, path, kind, width, height, byte
   ('00000000-0000-7000-8000-00000000f001', 0, 'media', 'album/a/1.webp', 'IMAGE', 700, 998, 1000, '공개.webp'),
   ('00000000-0000-7000-8000-00000000f002', 0, 'media', 'album/b/1.webp', 'IMAGE', 700, 998, 1000, '임시.webp');
 
+-- Storage 에 이미 올라간 파일 한 개(작성 중 묶음 f006) — 덮어쓰기 · 지우기 검사용
+insert into storage.objects (bucket_id, name) values ('media', 'album/00000000-0000-7000-8000-00000000f006/1.webp');
+
 insert into public.albums (id, slug, title, category_id, images_list_id, status) values
   ('00000000-0000-7000-8000-0000000a1b01', '2', '공개 앨범', '00000000-0000-7000-8000-0000000c0de1',
    '00000000-0000-7000-8000-00000000f001', 'PUBLISHED'),
@@ -242,6 +245,29 @@ select ok(
   'Storage: 경로의 메뉴가 묶음의 메뉴와 다르면 거절'
 );
 select ok(not private.can_write_storage_path('album/../x.webp'), 'Storage: 모양이 틀린 경로는 거절');
+select lives_ok(
+  $$insert into public.files (list_id, sort, bucket, path, kind, width, height, bytes, original_name)
+    values ('00000000-0000-7000-8000-00000000f005', 1, 'media',
+            'album/00000000-0000-7000-8000-00000000f005/2.webp', 'IMAGE', 1, 1, 1, '2.webp')$$,
+  '파일: 묶음의 메뉴 경로는 적는다'
+);
+select throws_ok(
+  $$insert into public.files (list_id, sort, bucket, path, kind, width, height, bytes, original_name)
+    values ('00000000-0000-7000-8000-00000000f005', 2, 'media',
+            'bulletin/00000000-0000-7000-8000-00000000f005/3.webp', 'IMAGE', 1, 1, 1, '3.webp')$$,
+  '42501', null, '파일: 묶음의 메뉴와 다른 메뉴의 경로는 적지 못한다'
+);
+select throws_ok(
+  $$insert into public.files (list_id, sort, bucket, path, kind, width, height, bytes, original_name)
+    values ('00000000-0000-7000-8000-00000000f005', 2, 'other',
+            'album/00000000-0000-7000-8000-00000000f005/3.webp', 'IMAGE', 1, 1, 1, '3.webp')$$,
+  '42501', null, '파일: media 버킷만'
+);
+select throws_ok(
+  $$update public.files set path = 'bulletin/00000000-0000-7000-8000-00000000f005/2.webp'
+     where list_id = '00000000-0000-7000-8000-00000000f005' and sort = 1$$,
+  '42501', null, '파일: 고칠 때도 다른 메뉴의 경로로 바꾸지 못한다'
+);
 select ok(
   not private.can_write_storage_path('departments/00000000-0000-7000-8000-00000000f003/1.webp'),
   'Storage: 권한 없는 메뉴의 묶음은 거절'
@@ -301,6 +327,19 @@ select ok(
   not private.can_write_list('00000000-0000-7000-8000-00000000f002'),
   '등록 권한: 이미 글에 붙은 묶음의 파일은 못 바꾼다'
 );
+-- Storage 는 올리기만 — 덮어쓰기 · 지우기는 아무도 못 한다(올리기 묶음은 글에 붙지 않아 «등록» 권한으로
+-- 열리므로, 열어 두면 공개된 글의 그림을 바꾸거나 지울 수 있다). 정리는 서버 전용 키가 한다.
+select is_empty(
+  $$update storage.objects set metadata = '{"x": 1}'::jsonb
+     where name = 'album/00000000-0000-7000-8000-00000000f006/1.webp' returning 1$$,
+  'Storage: 올라간 파일은 덮어쓰지 못한다'
+);
+select set_config('storage.allow_delete_query', 'true', true);
+select is_empty(
+  $$delete from storage.objects where name = 'album/00000000-0000-7000-8000-00000000f006/1.webp' returning 1$$,
+  'Storage: 올라간 파일은 지우지 못한다'
+);
+select set_config('storage.allow_delete_query', 'false', true);
 delete from public.files where list_id = '00000000-0000-7000-8000-00000000f002';
 reset role;
 -- 자기가 등록한 임시저장 글의 묶음은 «등록» 권한으로도 고친다

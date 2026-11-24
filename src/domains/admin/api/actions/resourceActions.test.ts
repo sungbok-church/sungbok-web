@@ -158,6 +158,15 @@ describe('createResource', () => {
       message: '저장했습니다. 설교 영상 연결은 수정 권한이 있어야 합니다.',
     });
   });
+
+  it('영상 잇기가 권한이 아닌 까닭으로 실패하면 권한 탓으로 알리지 않는다', async () => {
+    m.videoInsert.mockResolvedValue({ error: { code: '23503', message: 'fk' } });
+    const res = await createResource(input);
+    expect(res).toMatchObject({
+      ok: true,
+      message: expect.stringContaining('저장하지 못했습니다'),
+    });
+  });
 });
 
 describe('등록 권한만 있을 때', () => {

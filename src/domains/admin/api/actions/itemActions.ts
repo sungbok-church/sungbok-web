@@ -2,9 +2,12 @@
 
 import { fail } from '@/shared/api/result';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
-import { revalidatePath } from 'next/cache';
+import { ALBUMS_TAG } from '@/domains/news/api/newsTags';
+import { RESOURCES_TAG } from '@/domains/resources/api/resourceTags';
+import { revalidatePath, updateTag } from 'next/cache';
 
 import { type ActionResult, parseInput } from '../../lib/actionResult';
+import { NEWS_FEEDS } from '../../lib/newsFeed';
 import { actionPermission, NO_PERMISSION } from '../server/adminContext.server';
 import {
   categoryCreateSchema,
@@ -16,12 +19,23 @@ import { addRowLast, saveRow, saveRowOrder } from '../server/rowActions.server';
 // 분류 관리 · 코드(공통코드) 관리의 Server Action — 두 화면은 «묶음 안의 이름 목록» 으로 같다.
 // 더하기만 조금 다르다: 분류는 영문 이름(slug), 코드는 코드 값(code)을 넣고, 코드는 잠긴 묶음에 더하지 않는다.
 // 묶음(category_groups · code_groups)은 변경 파일로만 생긴다. 줄은 지우지 않고 끈다(글 · 프로그램이 가리킨다).
-// 고친 뒤에는 그 화면만 다시 그린다. 드롭다운 · 조건은 그릴 때마다 DB 를 읽으므로 지울 캐시가 없다(ADR 0023).
+// 고친 뒤에는 그 화면을 다시 그린다. 관리자 드롭다운 · 조건은 그릴 때마다 DB 를 읽으므로 지울 캐시가 없다(ADR 0023).
+// 분류 이름은 공개 화면(앨범 분류 · 시트지 묶음 · 영상 분류)의 서버 캐시에도 들어가므로 그 태그도 지운다 — 드물게 고치니 한꺼번에.
+
+const PUBLIC_TAGS = [
+  ALBUMS_TAG,
+  RESOURCES_TAG,
+  NEWS_FEEDS.announcements.cacheTag,
+  NEWS_FEEDS.garden.cacheTag,
+];
 
 const categories = {
   table: 'categories',
   menuKey: 'categories',
-  revalidate: () => revalidatePath('/admin/categories'),
+  revalidate: () => {
+    revalidatePath('/admin/categories');
+    for (const tag of PUBLIC_TAGS) updateTag(tag);
+  },
 } as const;
 
 const codes = {

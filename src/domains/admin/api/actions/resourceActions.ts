@@ -25,6 +25,7 @@ type Client = SupabaseClient<Database>;
 const PATH = '/admin/resources';
 const idSchema = z.object({ id: z.uuid() });
 const VIDEO_DENIED = '저장했습니다. 설교 영상 연결은 수정 권한이 있어야 합니다.';
+const VIDEO_FAILED = '저장했습니다. 설교 영상 연결은 저장하지 못했습니다 — 다시 고쳐 주세요.';
 
 const changed = () => {
   revalidatePath(PATH, 'layout');
@@ -124,7 +125,7 @@ export const createResource = async (raw: unknown): Promise<ActionResult<{ id: s
   if (!videos.ok) {
     // 시트지는 이미 저장됐다 — 실패로 돌려주면 다시 누를 때 같은 시트지가 또 생긴다
     if (!videos.denied) console.error('[resource videos]', videos.error);
-    return { ok: true, data: { id }, message: VIDEO_DENIED };
+    return { ok: true, data: { id }, message: videos.denied ? VIDEO_DENIED : VIDEO_FAILED };
   }
   return {
     ok: true,
@@ -163,10 +164,7 @@ export const updateResource = async (
   if (!videos.ok) {
     // 시트지는 이미 저장됐다 — 실패로 돌려주면 폼이 옛 수정 시각으로 남아 다시 누를 때 충돌이 난다
     if (!videos.denied) console.error('[resource videos]', videos.error);
-    return {
-      ...res,
-      message: '저장했습니다. 설교 영상 연결은 저장하지 못했습니다 — 다시 고쳐 주세요.',
-    };
+    return { ...res, message: VIDEO_FAILED };
   }
   return status === 'DRAFT' ? { ...res, message: '임시저장했습니다.' } : res;
 };

@@ -9,6 +9,7 @@ import {
   readPreviewMessage,
 } from '@/domains/admin/lib/preview';
 import { Button } from '@/shared/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/shared/components/ui/toggle-group';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog';
 import { EyeIcon } from 'lucide-react';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
@@ -68,20 +69,23 @@ export const PreviewDialog = ({
       <DialogContent className="flex h-dvh w-screen max-w-none flex-col gap-0 rounded-none p-0 sm:max-w-none">
         <div className="flex items-center gap-2 border-b py-2 pr-12 pl-4">
           <DialogTitle>미리보기</DialogTitle>
-          <div className="mx-auto flex gap-1" role="group" aria-label="화면 폭">
+          <ToggleGroup
+            className="mx-auto"
+            size="sm"
+            aria-label="화면 폭"
+            value={[width]}
+            // 누른 것을 다시 누르면 빈 값이 온다 — 하나는 늘 골라져 있게 그대로 둔다
+            onValueChange={next => {
+              const key = PREVIEW_WIDTHS.find(w => w.key === next[0])?.key;
+              if (key) setWidth(key);
+            }}
+          >
             {PREVIEW_WIDTHS.map(w => (
-              <Button
-                key={w.key}
-                type="button"
-                size="sm"
-                variant={w.key === width ? 'secondary' : 'ghost'}
-                aria-pressed={w.key === width}
-                onClick={() => setWidth(w.key)}
-              >
+              <ToggleGroupItem key={w.key} value={w.key}>
                 {w.label}
-              </Button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
         {/* 가운데 두기는 mx-auto — justify-center 면 틀이 칸보다 넓을 때(휴대폰에서 PC 폭) 왼쪽이 스크롤 밖으로 잘린다 */}
         <div className="bg-muted flex min-h-0 flex-1 overflow-auto">

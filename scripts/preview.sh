@@ -41,4 +41,6 @@ echo "   로컬:    http://localhost:$port"
 echo "   프리뷰:  http://localhost:$port/<name>-preview?v=<id>"
 echo
 
+# 설교 시트지의 PDF 쪽 그림 만들기가 쓰는 파일(public/pdfjs) — pnpm dev 와 같게
+node scripts/pdfjs-assets.mjs
 exec pnpm exec next dev -H 0.0.0.0 --turbopack -p "$port"

@@ -129,6 +129,20 @@ describe('useFileUploads', () => {
     expect(result.current.pending).toEqual([]);
   });
 
+  it('올리는 자리(묶음) 만들기가 던져도(네트워크) 다음 시도에 다시 만든다', async () => {
+    const createUploadList = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue({ ok: true, data: { listId: LIST } });
+    const deps = makeDeps({ createUploadList });
+    const { result } = setup(deps);
+    act(() => result.current.add([img('1.jpg')]));
+    await waitFor(() => expect(result.current.pending[0]?.retryable).toBe(true));
+    act(() => result.current.retry(result.current.pending[0].key));
+    await waitFor(() => expect(result.current.value).toHaveLength(1));
+    expect(createUploadList).toHaveBeenCalledTimes(2);
+  });
+
   it('서버가 거절하면 그 문장을 줄에 남긴다', async () => {
     const deps = makeDeps({
       signUpload: vi.fn(async () => ({

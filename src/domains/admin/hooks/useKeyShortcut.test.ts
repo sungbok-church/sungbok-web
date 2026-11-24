@@ -35,6 +35,16 @@ describe('isTypingTarget — 글을 쓰는 칸인가', () => {
 describe('useKeyShortcut', () => {
   const slash = (e: KeyboardEvent) => e.key === '/';
 
+  it('누르고 있어 반복되는 키는 부르지 않는다(기본 동작은 막는다 — 길게 눌러 두 번 저장되지 않게)', () => {
+    const run = vi.fn();
+    renderHook(() => useKeyShortcut(slash, run));
+    const first = fireEvent.keyDown(window, { key: '/' });
+    const repeated = fireEvent.keyDown(window, { key: '/', repeat: true });
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(first).toBe(false);
+    expect(repeated).toBe(false);
+  });
+
   it('맞는 키면 부르고 브라우저 기본 동작을 막는다', () => {
     const run = vi.fn();
     renderHook(() => useKeyShortcut(slash, run));

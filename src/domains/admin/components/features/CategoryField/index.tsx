@@ -117,37 +117,44 @@ export const CategoryField = ({
               <DialogHeader>
                 <DialogTitle>새 {fieldLabel}</DialogTitle>
               </DialogHeader>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor={`${id}-new-label`}>이름</FieldLabel>
-                  <Input
-                    id={`${id}-new-label`}
-                    value={label}
-                    maxLength={50}
-                    onChange={e => setLabel(e.target.value)}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor={`${id}-new-slug`}>영문 이름</FieldLabel>
-                  <Input
-                    id={`${id}-new-slug`}
-                    value={slug}
-                    maxLength={50}
-                    placeholder="church-news"
-                    onChange={e => setSlug(e.target.value)}
-                  />
-                </Field>
-              </FieldGroup>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  disabled={pending || !label.trim() || !slug.trim()}
-                  onClick={add}
-                >
-                  {pending && <Spinner data-icon="inline-start" />}
-                  더하기
-                </Button>
-              </DialogFooter>
+              {/* 칸에서 Enter 로 더한다. 창은 바깥 글 폼의 React 트리 안이라 제출이 그 폼(저장)까지 올라가지 않게 막는다 */}
+              <form
+                noValidate
+                className="contents"
+                onSubmit={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!pending && label.trim() && slug.trim()) void add();
+                }}
+              >
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor={`${id}-new-label`}>이름</FieldLabel>
+                    <Input
+                      id={`${id}-new-label`}
+                      value={label}
+                      maxLength={50}
+                      onChange={e => setLabel(e.target.value)}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`${id}-new-slug`}>영문 이름</FieldLabel>
+                    <Input
+                      id={`${id}-new-slug`}
+                      value={slug}
+                      maxLength={50}
+                      placeholder="church-news"
+                      onChange={e => setSlug(e.target.value)}
+                    />
+                  </Field>
+                </FieldGroup>
+                <DialogFooter>
+                  <Button type="submit" disabled={pending || !label.trim() || !slug.trim()}>
+                    {pending && <Spinner data-icon="inline-start" />}
+                    더하기
+                  </Button>
+                </DialogFooter>
+              </form>
             </DialogContent>
           </Dialog>
         )}

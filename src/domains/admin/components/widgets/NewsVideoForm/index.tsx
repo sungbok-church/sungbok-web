@@ -25,6 +25,7 @@ import { parseYoutubeVideoId } from '@/domains/resources/api/resourceInput';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { FieldGroup } from '@/shared/components/ui/field';
 import { useForm, useStore } from '@tanstack/react-form';
+import { useRef } from 'react';
 
 type Status = 'DRAFT' | 'PUBLISHED';
 type Values = {
@@ -72,6 +73,8 @@ export const NewsVideoForm = ({
     onSubmit: async ({ value, meta }) => notifyResult(await save(value, meta.status)),
   });
 
+  // 저장해 다른 화면으로 가는 중 — 화면이 바뀌기 전에 다시 눌러 같은 글이 또 생기지 않게(isSubmitting 은 그 전에 풀린다)
+  const done = useRef(false);
   const save = async (value: Values, status: Status): Promise<ActionResult<unknown>> => {
     const result = editing
       ? await updateNewsVideo({
@@ -88,12 +91,16 @@ export const NewsVideoForm = ({
     }
     draft.clear();
     form.reset(value);
+    done.current = true;
     const id = editing?.id ?? (result.data as { id: string } | undefined)?.id;
     navigate(id ? `${list}/${id}` : list);
     return result;
   };
 
-  const submitAs = (status: Status) => void form.handleSubmit({ status });
+  // 저장 중이면 다시 보내지 않는다(⌘S · Enter 를 빠르게 두 번 — 같은 글이 두 건 생기거나 충돌이 난다). 상태는 즉시 읽는다
+  const submitAs = (status: Status) => {
+    if (!form.state.isSubmitting && !done.current) void form.handleSubmit({ status });
+  };
 
   const values = useStore(form.store, s => s.values);
   const dirty = useStore(form.store, s => s.isDirty);
@@ -108,7 +115,7 @@ export const NewsVideoForm = ({
   // 단추 밖의 저장(Enter · Ctrl/⌘+S)도 단추와 같은 조건 — 공개된 글은 바뀐 것이 있을 때만
   const canSave = current !== 'PUBLISHED' || dirty;
   const saveAsIs = () => {
-    if (canSave) void form.handleSubmit();
+    if (canSave && !form.state.isSubmitting && !done.current) void form.handleSubmit();
   };
   useSaveShortcut(saveAsIs);
 
@@ -185,7 +192,7 @@ export const NewsVideoForm = ({
               // eslint-disable-next-line @next/next/no-img-element -- 유튜브가 주는 썸네일 그대로(next/image 변환기를 쓰지 않는다, ADR 0013)
               <img
                 src={youtubeImages(videoId, false).thumbnail}
-                alt="영상 썸네일"
+                alt=""
                 width={480}
                 height={360}
                 className="bg-muted aspect-video w-full max-w-xs rounded-md border object-cover"
@@ -204,7 +211,7 @@ export const NewsVideoForm = ({
         {submitting => (
           <ContentFormActions
             current={current}
-            submitting={submitting}
+            submitting={submitting || done.current}
             canSave={canSave}
             busy={false}
             cancelHref={editing ? `${list}/${editing.id}` : list}

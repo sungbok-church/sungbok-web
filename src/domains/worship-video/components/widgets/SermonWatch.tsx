@@ -29,7 +29,10 @@ export default async function SermonWatch({ page, videoId }: { page: VideoPage; 
     ),
     // 이 영상에 연결된 공개 자료(설교 시트지) — 자료실과 같은 자료를 유튜브 영상 id 로 찾는다.
     // 연결된 것이 없으면 빈 배열이라 카드가 나오지 않는다. 임시저장 자료는 저장소가 거른다.
-    resourceRepository.forVideo(videoId).then(toSheetLinks),
+    // 부가 정보라 못 읽어도 페이지는 그린다(카드만 빠진다) — 위와 같은 까닭으로 던지지 않는다.
+    loadForPage(() => resourceRepository.forVideo(videoId), { keepPrevious: false }).then(r =>
+      toSheetLinks(r ?? [])
+    ),
   ]);
   if (data && !data.found) notFound();
   return (

@@ -1,6 +1,7 @@
 // 자료 목록 계산(순수) — 검색·분류 칩·정렬과 화면 문구, 내려받기 대상. 서버가 한 번 실어 보낸 그 분류의 자료 배열을
 // 화면에서 그대로 다룬다(조건을 바꿀 때마다 서버를 부르지 않는다).
 // A안 규칙: 화면 어디에도 확장자(PDF·HWP)와 파일 용량을 적지 않는다 — 여기서 만드는 문구에도 넣지 않는다.
+import { storageDownloadUrl } from '@/shared/lib/storageUrl';
 import { includesAtBoundary, verseForm } from '@/shared/lib/verseSearch';
 
 import { RESOURCE_SECTIONS } from '../config/resourceSections';
@@ -135,12 +136,14 @@ export type DownloadTarget = {
  * 보고 있는 쪽의 그림(«이미지 저장»). 둘 다 없으면 undefined — 없는 파일의 버튼을 만들지 않는다.
  */
 export const downloadTarget = (r: Resource, pageIndex = 0): DownloadTarget | undefined => {
-  if (r.file) return { kind: 'file', href: r.file.url, name: r.file.name };
+  if (r.file)
+    return { kind: 'file', href: storageDownloadUrl(r.file.url, r.file.name), name: r.file.name };
   const index = r.pages[pageIndex] ? pageIndex : 0;
   const page = r.pages[index];
   if (!page) return undefined;
   const ext = /\.(\w+)$/.exec(page.src)?.[1] ?? 'webp';
-  return { kind: 'image', href: page.src, name: `${pageImageName(r, index)}.${ext}` };
+  const name = `${pageImageName(r, index)}.${ext}`;
+  return { kind: 'image', href: storageDownloadUrl(page.src, name), name };
 };
 
 /**

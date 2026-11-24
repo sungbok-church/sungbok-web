@@ -12,7 +12,8 @@ export const albumFormSchema = z.object({
   images: z
     .array(fileItemSchema('album'))
     .min(1, '그림을 한 장 이상 올려 주세요.')
-    .max(MAX_ALBUM_IMAGES, `그림은 ${MAX_ALBUM_IMAGES}장까지입니다.`),
+    .max(MAX_ALBUM_IMAGES, `그림은 ${MAX_ALBUM_IMAGES}장까지입니다.`)
+    .refine(fs => fs.every(f => f.kind === 'IMAGE'), '그림 파일만 올릴 수 있습니다.'),
 });
 
 export const albumCreateSchema = albumFormSchema.extend({

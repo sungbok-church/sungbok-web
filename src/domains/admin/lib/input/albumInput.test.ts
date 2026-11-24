@@ -20,6 +20,16 @@ const valid = {
 };
 
 describe('albumCreateSchema', () => {
+  it('그림 파일만 — PDF · 한글 파일은 안 된다(공개 화면이 그림으로 보인다)', () => {
+    const pdf = {
+      ...image(2),
+      path: `album/${LIST}/0190a0b0-0000-7000-8000-000000000002.pdf`,
+      kind: 'PDF',
+      width: null,
+      height: null,
+    };
+    expect(albumCreateSchema.safeParse({ ...valid, images: [pdf] }).success).toBe(false);
+  });
   it('제목(다듬음) · 분류 · 그림 1장 이상', () => {
     expect(albumCreateSchema.parse(valid)).toMatchObject({ title: '2026 가을특별부흥집회' });
   });

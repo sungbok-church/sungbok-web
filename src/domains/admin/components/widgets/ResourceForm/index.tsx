@@ -109,6 +109,8 @@ export const ResourceForm = ({
     onSubmit: async ({ value, meta }) => notifyResult(await save(value, meta.status)),
   });
 
+  // 저장해 다른 화면으로 가는 중 — 화면이 바뀌기 전에 다시 눌러 같은 글이 또 생기지 않게(isSubmitting 은 그 전에 풀린다)
+  const done = useRef(false);
   const save = async (value: Values, status: Status): Promise<ActionResult<unknown>> => {
     const result = editing
       ? await updateResource({ ...value, status, id: editing.id, updatedAt: editing.updatedAt })
@@ -119,18 +121,30 @@ export const ResourceForm = ({
     }
     draft.clear();
     form.reset(value);
+    done.current = true;
     const id = editing?.id ?? (result.data as { id: string } | undefined)?.id;
     navigate(id ? `${LIST}/${id}` : LIST);
     return result;
   };
 
-  const submitAs = (status: Status) => void form.handleSubmit({ status });
+  // 저장 중이면 다시 보내지 않는다(⌘S · Enter 를 빠르게 두 번 — 같은 글이 두 건 생기거나 충돌이 난다). 상태는 즉시 읽는다
+  const submitAs = (status: Status) => {
+    if (!form.state.isSubmitting && !done.current) void form.handleSubmit({ status });
+  };
+
+  /** 만들던 쪽 그림을 버린다 — 원본을 빼거나 다른 파일로 바꾸면 옛 PDF 의 쪽 그림이 나중에 끼어들지 않게 */
+  const stopPages = () => {
+    ++renderGen.current;
+    setRendering(null);
+    setRenderError(null);
+  };
 
   /** 원본에 PDF 를 고르면 쪽 그림을 만들어 쪽 그림 칸에 바꿔 올린다(원본이 바뀌었으니 있던 쪽 그림은 비운다) */
   const makePages = async (picked: File[]) => {
+    stopPages();
     const pdf = picked.find(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
     if (!pdf) return;
-    const g = ++renderGen.current;
+    const g = renderGen.current;
     setRenderError(null);
     setRendering({ done: 0, total: 0 });
     try {
@@ -151,6 +165,7 @@ export const ResourceForm = ({
 
   const values = useStore(form.store, s => s.values);
   const dirty = useStore(form.store, s => s.isDirty);
+  const submitting = useStore(form.store, s => s.isSubmitting);
   const draft = useFormDraft<Values>({
     userId,
     formKey: `resources:${editing?.id ?? 'new'}`,
@@ -161,7 +176,7 @@ export const ResourceForm = ({
   useUnsavedGuard(dirty || busy);
   const canSave = !busy && (current !== 'PUBLISHED' || dirty);
   const saveAsIs = () => {
-    if (canSave) void form.handleSubmit();
+    if (canSave && !form.state.isSubmitting && !done.current) void form.handleSubmit();
   };
   useSaveShortcut(saveAsIs);
 
@@ -300,8 +315,12 @@ export const ResourceForm = ({
                     unit="개"
                     itemLabel="번째 원본"
                     value={field.state.value}
-                    onChange={next => field.handleChange(next)}
+                    onChange={next => {
+                      if (next.length === 0) stopPages();
+                      field.handleChange(next);
+                    }}
                     onBusyChange={setUploadingFile}
+                    disabled={submitting}
                     onPicked={files => void makePages(files)}
                     invalid={!field.state.meta.isValid}
                   />
@@ -315,23 +334,20 @@ export const ResourceForm = ({
                   <FieldLabel id="resource-pages-label" htmlFor="resource-pages">
                     쪽 그림
                   </FieldLabel>
-                  {/* 알림 자리는 늘 그려 두고 내용만 바꾼다(자리가 내용과 함께 생기면 낭독기가 읽지 않는다) */}
-                  <p
-                    aria-live="polite"
-                    className="text-muted-foreground m-0 flex items-center gap-2 text-sm empty:hidden"
-                  >
-                    {rendering && (
-                      <>
-                        <Spinner aria-hidden />쪽 그림 만드는 중
-                        {rendering.total > 0 && ` ${rendering.done} / ${rendering.total}`}
-                      </>
-                    )}
+                  {/* 낭독기 알림 자리는 늘 그려 두고(숨김 · 빈 채로라도) 시작만 알린다 — 쪽마다 바뀌는 수는 읽지 않는다 */}
+                  <p aria-live="polite" className="sr-only">
+                    {rendering ? '쪽 그림 만드는 중' : ''}
                   </p>
-                  {renderError && (
-                    <p role="alert" className="text-destructive m-0 text-sm">
-                      {renderError}
+                  {rendering && (
+                    <p
+                      aria-hidden
+                      className="text-muted-foreground m-0 flex items-center gap-2 text-sm"
+                    >
+                      <Spinner />쪽 그림 만드는 중
+                      {rendering.total > 0 && ` ${rendering.done} / ${rendering.total}`}
                     </p>
                   )}
+                  {renderError && <FieldError>{renderError}</FieldError>}
                   <FileListField
                     id="resource-pages"
                     labelId="resource-pages-label"
@@ -341,6 +357,7 @@ export const ResourceForm = ({
                     value={field.state.value}
                     onChange={next => field.handleChange(next)}
                     onBusyChange={setUploadingPages}
+                    disabled={submitting}
                     uploaderRef={pagesUploader}
                     invalid={!field.state.meta.isValid}
                   />
@@ -367,7 +384,7 @@ export const ResourceForm = ({
         {submitting => (
           <ContentFormActions
             current={current}
-            submitting={submitting}
+            submitting={submitting || done.current}
             canSave={canSave}
             busy={busy}
             cancelHref={editing ? `${LIST}/${editing.id}` : LIST}

@@ -5,6 +5,7 @@ import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
 import { useContentSearch } from '@/domains/admin/hooks/useContentSearch';
 import { useCommandShortcut } from '@/domains/admin/hooks/useKeyShortcut';
 import { Button } from '@/shared/components/ui/button';
+import { Spinner } from '@/shared/components/ui/spinner';
 import {
   Command,
   CommandDialog,
@@ -64,8 +65,10 @@ export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
         <Command>
           <CommandInput placeholder="메뉴 · 글 제목" value={query} onValueChange={setQuery} />
           <CommandList>
-            {/* 글 답을 기다리는 동안은 «없습니다» 를 띄우지 않는다 */}
-            {!pending && <CommandEmpty>찾는 것이 없습니다.</CommandEmpty>}
+            {/* 걸리는 것이 없을 때 — 글 답을 기다리는 동안은 «없습니다» 대신 기다림 표시 */}
+            <CommandEmpty>
+              {pending ? <Spinner className="mx-auto" /> : '찾는 것이 없습니다.'}
+            </CommandEmpty>
             {nav.map(group => (
               <CommandGroup key={group.key} heading={group.label || '바로 가기'}>
                 {group.items.map(item => (

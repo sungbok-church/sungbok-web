@@ -83,7 +83,9 @@ const readResources = async (): Promise<Resource[]> => {
       'slug, section, title, episode, date, year, passage, categories(label), file:file_lists!resources_file_list_id_fkey(files(bucket, path, kind, original_name, sort)), pages:file_lists!resources_pages_list_id_fkey(files(bucket, path, kind, width, height, sort)), resource_videos(video_id)'
     )
     .eq('status', 'PUBLISHED')
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    // 화면이 날짜로 다시 정렬한다 — 같은 날짜(연도만 있는 것 등)끼리의 순서가 고칠 때마다 바뀌지 않게 정해 둔다
+    .order('id', { ascending: false });
   if (error) throw new Error(`설교 시트지를 읽지 못했습니다: ${error.message}`);
   return toResources((data ?? []) as unknown as Row[], env.url);
 };

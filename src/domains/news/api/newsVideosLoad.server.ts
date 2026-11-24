@@ -57,7 +57,9 @@ export const loadNewsVideos = async (): Promise<NewsVideo[]> => {
     .eq('status', 'PUBLISHED')
     .is('deleted_at', null)
     .not('video_id', 'is', null)
-    .order('date', { ascending: false });
+    .order('date', { ascending: false })
+    // 같은 날짜끼리는 나중에 등록한 것이 위 — 고칠 때마다 순서(이전 · 다음 편)가 바뀌지 않게
+    .order('id', { ascending: false });
   if (error) throw new Error(`교회소식 영상을 읽지 못했습니다: ${error.message}`);
   return toNewsVideos((data ?? []) as Row[]);
 };

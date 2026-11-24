@@ -272,6 +272,20 @@ describe('downloadTarget — 내려받을 것', () => {
     expect(downloadTarget(r)?.name).toBe('성찬 은혜 응답 1.webp');
   });
 
+  it('Storage 주소면 ?download=<이름> 을 붙인다(출처가 달라 download 속성이 무시된다)', () => {
+    const S = 'https://x.supabase.co/storage/v1/object/public/media/resources';
+    const r = doc({
+      id: 'x',
+      title: '시트지',
+      file: { url: `${S}/a/b.pdf`, name: '원본.pdf', kind: 'pdf' },
+      pages: [{ src: `${S}/a/c.webp`, width: 1, height: 1 }],
+    });
+    expect(downloadTarget(r)?.href).toBe(`${S}/a/b.pdf?download=${encodeURIComponent('원본.pdf')}`);
+    expect(downloadTarget({ ...r, file: undefined })?.href).toBe(
+      `${S}/a/c.webp?download=${encodeURIComponent('시트지 1.webp')}`
+    );
+  });
+
   it('파일도 그림도 없으면 undefined', () => {
     expect(downloadTarget(doc({ id: 'none', file: undefined, pages: [] }))).toBeUndefined();
   });

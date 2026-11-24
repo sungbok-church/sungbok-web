@@ -14,6 +14,16 @@ const page = (n: number) => ({
 const valid = { date: '2026-11-29', pages: [page(2), page(3)], status: 'DRAFT' };
 
 describe('bulletinCreateSchema', () => {
+  it('그림 파일만 — PDF · 한글 파일은 안 된다(공개 화면이 그림으로 보인다)', () => {
+    const pdf = {
+      ...page(2),
+      path: `bulletin/${LIST}/0190a0b0-0000-7000-8000-000000000002.pdf`,
+      kind: 'PDF',
+      width: null,
+      height: null,
+    };
+    expect(bulletinCreateSchema.safeParse({ ...valid, pages: [pdf] }).success).toBe(false);
+  });
   it('날짜 · 쪽(1장 이상) · 상태', () => {
     expect(bulletinCreateSchema.safeParse(valid).success).toBe(true);
   });

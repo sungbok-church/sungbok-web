@@ -19,13 +19,13 @@ import {
   useUnsavedGuard,
 } from '@/domains/admin/hooks/useFormGuards';
 import type { ActionResult } from '@/domains/admin/lib/actionResult';
-import { bulletinCreateSchema } from '@/domains/admin/lib/input/bulletinInput';
+import { bulletinCreateSchema, MAX_BULLETIN_PAGES } from '@/domains/admin/lib/input/bulletinInput';
 import type { FileItem } from '@/domains/admin/lib/input/fileInput';
 import { notifyResult } from '@/domains/admin/lib/notify';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/shared/components/ui/field';
 import { useForm, useStore } from '@tanstack/react-form';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type Status = 'DRAFT' | 'PUBLISHED';
 type Values = { date: string; pages: FileItem[] };
@@ -61,6 +61,8 @@ export const BulletinForm = ({ userId, initial, editing }: Props) => {
     onSubmit: async ({ value, meta }) => notifyResult(await save(value, meta.status)),
   });
 
+  // 저장해 다른 화면으로 가는 중 — 화면이 바뀌기 전에 다시 눌러 같은 글이 또 생기지 않게(isSubmitting 은 그 전에 풀린다)
+  const done = useRef(false);
   const save = async (value: Values, status: Status): Promise<ActionResult<unknown>> => {
     const result = editing
       ? await updateBulletin({ ...value, status, id: editing.id, updatedAt: editing.updatedAt })
@@ -71,15 +73,20 @@ export const BulletinForm = ({ userId, initial, editing }: Props) => {
     }
     draft.clear();
     form.reset(value);
+    done.current = true;
     const id = editing?.id ?? (result.data as { id: string } | undefined)?.id;
     navigate(id ? `${LIST}/${id}` : LIST);
     return result;
   };
 
-  const submitAs = (status: Status) => void form.handleSubmit({ status });
+  // 저장 중이면 다시 보내지 않는다(⌘S · Enter 를 빠르게 두 번 — 같은 글이 두 건 생기거나 충돌이 난다). 상태는 즉시 읽는다
+  const submitAs = (status: Status) => {
+    if (!form.state.isSubmitting && !done.current) void form.handleSubmit({ status });
+  };
 
   const values = useStore(form.store, s => s.values);
   const dirty = useStore(form.store, s => s.isDirty);
+  const submitting = useStore(form.store, s => s.isSubmitting);
   const draft = useFormDraft<Values>({
     userId,
     formKey: `bulletin:${editing?.id ?? 'new'}`,
@@ -92,7 +99,7 @@ export const BulletinForm = ({ userId, initial, editing }: Props) => {
   // 폼에 제출 단추가 없어 날짜 칸의 Enter 는 브라우저가 바로 제출한다(막아 주던 꺼진 단추가 없다)
   const canSave = !uploading && (current !== 'PUBLISHED' || dirty);
   const saveAsIs = () => {
-    if (canSave) void form.handleSubmit();
+    if (canSave && !form.state.isSubmitting && !done.current) void form.handleSubmit();
   };
   useSaveShortcut(saveAsIs);
 
@@ -145,6 +152,8 @@ export const BulletinForm = ({ userId, initial, editing }: Props) => {
                     value={field.state.value}
                     onChange={next => field.handleChange(next)}
                     onBusyChange={setUploading}
+                    max={MAX_BULLETIN_PAGES}
+                    disabled={submitting}
                     invalid={!field.state.meta.isValid}
                   />
                   <FieldError errors={field.state.meta.errors} />
@@ -159,11 +168,16 @@ export const BulletinForm = ({ userId, initial, editing }: Props) => {
         {submitting => (
           <ContentFormActions
             current={current}
-            submitting={submitting}
+            submitting={submitting || done.current}
             canSave={canSave}
             busy={uploading}
             cancelHref={editing ? `${LIST}/${editing.id}` : LIST}
-            preview={<PreviewDialog payload={{ menu: 'bulletin', values }} disabled={uploading} />}
+            preview={
+              <PreviewDialog
+                payload={{ menu: 'bulletin', values }}
+                disabled={uploading || values.pages.length === 0}
+              />
+            }
             onSubmitAs={submitAs}
             // 확인 창이 결과를 토스트로 알린다 — 폼의 제출(토스트)을 거치지 않고 바로 저장한다(서버가 다시 검사한다)
             onUnpublish={() => save(form.state.values, 'DRAFT')}

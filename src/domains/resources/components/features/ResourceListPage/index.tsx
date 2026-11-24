@@ -19,6 +19,7 @@ import { FOCUS, HIT_36, OUTLINE_BTN } from '@/shared/components/ui/controlStyles
 import { ChipRow } from '@/shared/components/features/ChipRow';
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { isPlainClick } from '@/shared/lib/isPlainClick';
+import { storageDownloadUrl } from '@/shared/lib/storageUrl';
 import { cn } from '@/shared/lib/utils';
 import { Download, FileText, Image as ImageIcon, Search } from 'lucide-react';
 import { useLenis } from 'lenis/react';
@@ -80,7 +81,7 @@ const Row = ({ section, resource: r }: { section: ResourceSection; resource: Res
       </Link>
       {r.file && (
         <a
-          href={r.file.url}
+          href={storageDownloadUrl(r.file.url, r.file.name)}
           download={r.file.name}
           aria-label={`${r.title} 내려받기`}
           className={cn(

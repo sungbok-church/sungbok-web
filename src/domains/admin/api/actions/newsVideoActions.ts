@@ -92,6 +92,13 @@ export const updateNewsVideo = async (
   if (!input.ok) return input;
   const { id, updatedAt, title, categoryId, date, videoId, description, status } = input.data;
   const supabase = await createSupabaseServerClient();
+  // 날짜를 고쳤으면 사람이 정한 날짜다 — 옮겨 온 글의 «유튜브 업로드» 표시를 «행사 날짜» 로(공개 목록의 «업로드» 표시가 남지 않게)
+  const { data: before } = await supabase
+    .from('news_videos')
+    .select('date')
+    .eq('id', id)
+    .eq('feed', NEWS_FEEDS[key].feed)
+    .maybeSingle();
   const res = await updateVersioned(
     supabase,
     'news_videos',
@@ -101,6 +108,7 @@ export const updateNewsVideo = async (
       title,
       category_id: categoryId,
       date,
+      ...(before && before.date !== date ? { date_from: 'EVENT' as const } : {}),
       video_id: videoId,
       ...(await imagesFor(videoId)),
       description,

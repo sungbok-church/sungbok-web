@@ -153,6 +153,16 @@ describe('updateNewsVideo', () => {
     expect(res).toMatchObject({ ok: true });
     expect(m.updateTag).toHaveBeenCalledWith('video-page-garden');
   });
+
+  it('날짜를 바꾸면 날짜 출처를 «행사 날짜» 로 — 옮겨 온 «유튜브 업로드» 날짜를 사람이 고친 것', async () => {
+    m.source = { date: '2026-09-30' };
+    await updateNewsVideo({ ...input, id: ID, updatedAt: 't1', date: '2026-11-29' });
+    expect(m.versioned.mock.calls[0][4]).toMatchObject({ date_from: 'EVENT' });
+    m.versioned.mockClear();
+    m.source = { date: '2026-11-29' };
+    await updateNewsVideo({ ...input, id: ID, updatedAt: 't1', date: '2026-11-29' });
+    expect(m.versioned.mock.calls[0][4]).not.toHaveProperty('date_from');
+  });
 });
 
 describe('휴지통 · 복구 · 완전 삭제', () => {

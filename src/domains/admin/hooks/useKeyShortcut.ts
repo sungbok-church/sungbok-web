@@ -31,6 +31,7 @@ export const useKeyShortcut = (
       if (!latest.current.matches(e)) return;
       if (!whileTyping && isTypingTarget(e.target)) return;
       e.preventDefault();
+      if (e.repeat) return; // 누르고 있어 반복되는 키 — 한 번만
       latest.current.run();
     };
     window.addEventListener('keydown', onKey);

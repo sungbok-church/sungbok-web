@@ -101,11 +101,18 @@ export const useFileUploads = ({
   );
 
   const ensureList = useCallback(() => {
-    listId.current ??= deps.createUploadList(menuKey).then(res => {
-      if (res.ok && res.data) return res.data.listId;
-      listId.current = null; // 다음 시도에 다시 만든다
-      throw new UploadError(res.ok ? MESSAGES.failed : res.error.message);
-    });
+    // 실패하면(거절 · 던짐 모두) 비워서 다음 시도에 다시 만든다 — 실패한 약속이 남으면 다시 올리기가 영영 안 된다
+    listId.current ??= deps.createUploadList(menuKey).then(
+      res => {
+        if (res.ok && res.data) return res.data.listId;
+        listId.current = null;
+        throw new UploadError(res.ok ? MESSAGES.failed : res.error.message);
+      },
+      () => {
+        listId.current = null;
+        throw new UploadError(MESSAGES.failed);
+      }
+    );
     return listId.current;
   }, [deps, menuKey]);
 
