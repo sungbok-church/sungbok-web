@@ -2,6 +2,7 @@
 
 import { type AdminNavGroup } from '@/domains/admin/lib/adminNav';
 import { useAdminNavigate } from '@/domains/admin/hooks/useAdminNavigate';
+import { useContentSearch } from '@/domains/admin/hooks/useContentSearch';
 import { useCommandShortcut } from '@/domains/admin/hooks/useKeyShortcut';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -17,12 +18,17 @@ import { SearchIcon } from 'lucide-react';
 import { useState } from 'react';
 
 /**
- * 메뉴 찾기(⌘K · Ctrl+K) — 권한이 있는 메뉴 이름으로 바로 간다(설계 6.10). 글 찾기는 콘텐츠 화면이 생기면(패키지 B) 더한다.
+ * 찾기(⌘K · Ctrl+K) — 권한이 있는 메뉴 이름과 콘텐츠 글로 바로 간다(설계 6.10, 글은 패키지 B5).
+ * 메뉴는 화면에서 바로 거르고, 글은 2자 이상 치면 서버에 묻는다(그 사람이 조회 권한을 가진 메뉴의 글만 — useContentSearch).
  * 위쪽 막대의 «찾기» 버튼으로도 연다(단축키를 모르는 사람).
  */
 export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
   const navigate = useAdminNavigate();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const { items: hits, pending } = useContentSearch(open ? query : '');
+  const menuLabel = (key: string) =>
+    nav.flatMap(g => g.items).find(i => i.key === key)?.label ?? key;
   useCommandShortcut(() => setOpen(true));
 
   return (
@@ -34,13 +40,13 @@ export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
         onClick={() => setOpen(true)}
       >
         <SearchIcon data-icon="inline-start" />
-        메뉴 찾기
+        찾기
         <kbd className="ml-auto font-sans text-xs">⌘K</kbd>
       </Button>
       <Button
         variant="ghost"
         size="icon"
-        aria-label="메뉴 찾기"
+        aria-label="찾기"
         className="md:hidden"
         onClick={() => setOpen(true)}
       >
@@ -48,14 +54,18 @@ export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
       </Button>
       <CommandDialog
         open={open}
-        onOpenChange={setOpen}
-        title="메뉴 찾기"
-        description="메뉴 이름으로 찾아 바로 갑니다"
+        onOpenChange={next => {
+          setOpen(next);
+          if (!next) setQuery('');
+        }}
+        title="찾기"
+        description="메뉴 이름이나 글 제목으로 찾아 바로 갑니다"
       >
         <Command>
-          <CommandInput placeholder="메뉴 이름" />
+          <CommandInput placeholder="메뉴 · 글 제목" value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>찾는 메뉴가 없습니다.</CommandEmpty>
+            {/* 글 답을 기다리는 동안은 «없습니다» 를 띄우지 않는다 */}
+            {!pending && <CommandEmpty>찾는 것이 없습니다.</CommandEmpty>}
             {nav.map(group => (
               <CommandGroup key={group.key} heading={group.label || '바로 가기'}>
                 {group.items.map(item => (
@@ -72,6 +82,28 @@ export const CommandMenu = ({ nav }: { nav: AdminNavGroup[] }) => {
                 ))}
               </CommandGroup>
             ))}
+            {hits.length > 0 && (
+              <CommandGroup heading="글">
+                {hits.map(hit => (
+                  <CommandItem
+                    key={`${hit.menu}:${hit.id}`}
+                    // 서버가 이미 거른 글 — 화면의 거르기에서 빠지지 않게 검색어를 값에 넣는다
+                    value={`${query} ${hit.title} ${hit.menu} ${hit.id}`}
+                    onSelect={() => {
+                      setOpen(false);
+                      setQuery('');
+                      navigate(hit.href);
+                    }}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{hit.title}</span>
+                    <span className="text-muted-foreground shrink-0 text-xs">
+                      {menuLabel(hit.menu)}
+                      {hit.detail && ` · ${hit.detail}`}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </CommandDialog>

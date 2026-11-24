@@ -217,6 +217,11 @@
 - 미리보기: 공개 «문서 열람»(`ResourceViewPage`) — 영상 링크는 유튜브로(사이트 안 설교 페이지 찾기는 저장 뒤 공개 화면이 한다).
 - **기존 자료 옮기기(끝, 2026-11-24)**: 시드 57건(원본 56 · 쪽 그림 112장 · 영상 연결 37)을 일회용 스크립트(`scripts/import-resources.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮기고(방문자 권한으로 15 · 26 · 16건 · 영상 37 확인, 공개 페이지 모두 Storage) 시드 · `public/files/resources` · 합치기 코드 · 스크립트를 지웠다. 이로써 `public/files` 가 모두 없어졌다.
 
+### 찾기(⌘K) — 메뉴 · 글(B5)
+
+- [CommandMenu](../../src/domains/admin/components/features/CommandMenu/index.tsx): 메뉴 이름은 화면에서 바로 거르고, 2자 이상 치면 250ms 기다렸다가 서버에 글을 묻는다([useContentSearch](../../src/domains/admin/hooks/useContentSearch.ts) — 늦게 온 옛 답은 버린다). 고르면 그 글의 상세로.
+- [searchContent](../../src/domains/admin/api/actions/searchActions.ts): 그 사람이 조회 권한을 가진 콘텐츠 메뉴만, 휴지통 아닌 글(임시저장 포함)을 메뉴마다 최신 5개 — 주일광고 · 성복의 뜰 · 교회앨범은 제목, 설교 시트지는 제목 · 본문, 주보는 제목이 없어 날짜 모양(«2026-11-29» · «2026-11» · «2026»)일 때만. 검색어의 `%` · `_` 는 글자 그대로.
+
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
+설계 문서 9절의 순서대로 만든다: 패키지 B 는 끝(2026-11-25) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
