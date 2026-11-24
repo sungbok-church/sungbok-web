@@ -40,6 +40,7 @@ export const FileListField = ({
   onBusyChange,
   max,
   itemLabel = '쪽',
+  unit = '장',
   invalid,
 }: {
   /** 고르기 단추의 id — 칸 이름(FieldLabel htmlFor)이 이 단추를 가리킨다 */
@@ -54,6 +55,8 @@ export const FileListField = ({
   max?: number;
   /** 한 파일을 부르는 이름(«쪽» · «사진») — 단추의 접근성 이름에 쓴다 */
   itemLabel?: string;
+  /** 개수 단위(«장») — 한도 알림 · 다 찼을 때 한 줄에 쓴다 */
+  unit?: string;
   invalid?: boolean;
 }) => {
   const { pending, busy, add, retry, dismiss } = useFileUploads({
@@ -62,6 +65,7 @@ export const FileListField = ({
     value,
     onChange,
     max,
+    unit,
   });
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -175,6 +179,13 @@ export const FileListField = ({
         </ul>
       )}
 
+      {/* 다 차면 올리기 칸 대신 한도를 한 줄로 — 칸이 말없이 사라지지 않게 */}
+      {full && (
+        <p className="text-muted-foreground m-0 text-sm">
+          {max}
+          {unit}까지
+        </p>
+      )}
       {!full && (
         <div
           className={cn(

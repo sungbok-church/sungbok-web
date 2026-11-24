@@ -50,7 +50,7 @@ const MESSAGES = {
   unreadable: '그림을 읽지 못했습니다. 다른 파일로 올려 주세요.',
   failed: '올리지 못했습니다. 다시 올려 주세요.',
   resized: '큰 그림을 줄여서 올렸습니다.',
-  max: (n: number) => `${n}개까지 올릴 수 있습니다.`,
+  max: (n: number, unit: string) => `${n}${unit}까지 올릴 수 있습니다.`,
 };
 
 class UploadError extends Error {}
@@ -61,6 +61,7 @@ export const useFileUploads = ({
   value,
   onChange,
   max,
+  unit = '개',
   deps: givenDeps,
 }: {
   menuKey: ContentMenu;
@@ -70,6 +71,8 @@ export const useFileUploads = ({
   onChange: (next: FileItem[]) => void;
   /** 모두 몇 개까지 */
   max?: number;
+  /** 개수 단위(«장» · «개») — 한도 알림에 쓴다 */
+  unit?: string;
   deps?: UploadDeps;
 }) => {
   const [deps] = useState(() => givenDeps ?? realDeps());
@@ -189,7 +192,7 @@ export const useFileUploads = ({
           !type || !kinds.includes(type.kind)
             ? MESSAGES.unsupported
             : max !== undefined && items.current.length + active.current >= max
-              ? MESSAGES.max(max)
+              ? MESSAGES.max(max, unit)
               : null;
         rows.push({ key, name: file.name, progress: 0, error, retryable: !error });
         if (error) continue;
@@ -200,7 +203,7 @@ export const useFileUploads = ({
       setPending(list => [...list, ...rows]);
       enqueue(accepted);
     },
-    [enqueue, kinds, max]
+    [enqueue, kinds, max, unit]
   );
 
   const retry = useCallback(

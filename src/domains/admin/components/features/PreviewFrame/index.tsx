@@ -6,21 +6,27 @@ import {
   type PreviewMenu,
   type PreviewPayload,
   readPreviewMessage,
+  toPreviewAlbum,
   toPreviewIssue,
   toPreviewSermon,
 } from '@/domains/admin/lib/preview';
+import { AlbumPage } from '@/domains/news/components/widgets/AlbumPage';
 import { BulletinPage } from '@/domains/news/components/widgets/BulletinPage';
 import { SermonWatchPage } from '@/domains/worship-video/components/features/SermonWatchPage';
 import { readSupabaseEnv } from '@/shared/api/supabase/env';
 import { useEffect, useState } from 'react';
 
-/** 저장 전 값을 공개 화면 부품 그대로 — 주보는 주보 화면, 주일광고 · 성복의 뜰은 «영상 한 편» 화면 */
+/** 저장 전 값을 공개 화면 부품 그대로 — 주보는 주보 화면, 교회앨범은 앨범 화면, 주일광고 · 성복의 뜰은 «영상 한 편» 화면 */
 const Preview = ({ payload }: { payload: PreviewPayload }) => {
   if (payload.menu === 'bulletin') {
     const issue = toPreviewIssue(payload.values, readSupabaseEnv()?.url ?? '');
     return issue.pages.length > 0 ? (
       <BulletinPage issues={[issue]} basePath="/news/bulletin" />
     ) : null;
+  }
+  if (payload.menu === 'album') {
+    const album = toPreviewAlbum(payload.values, readSupabaseEnv()?.url ?? '');
+    return album.images.length > 0 ? <AlbumPage albums={[album]} basePath="/news/album" /> : null;
   }
   const sermon = toPreviewSermon(payload.values);
   return sermon ? (

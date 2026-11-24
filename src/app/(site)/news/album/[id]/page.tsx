@@ -1,13 +1,15 @@
 import { newsRepository } from '@/domains/news/api/newsRepository';
 import { AlbumPage } from '@/domains/news/components/widgets/AlbumPage';
 import type { Metadata } from 'next';
+import { oneBuildParam } from '@/shared/lib/buildParams';
 import { notFound } from 'next/navigation';
 
 type Props = { params: Promise<{ id: string }> };
 
-// 공개된 앨범마다 한 장 — 앨범 화면에서 항목을 고르면 주소가 여기로 맞춰진다(공유·새로고침용)
-export const generateStaticParams = async () =>
-  (await newsRepository.albums()).map(a => ({ id: a.id }));
+// 앨범 화면에서 항목을 고르면 주소가 여기로 맞춰진다(공유·새로고침용). 빌드 때는 최신 한 건만 만들고 나머지는
+// 처음 열릴 때 만든다(ADR 0024 — Cache Components 는 빈 목록이 안 된다, oneBuildParam)
+export const generateStaticParams = () =>
+  oneBuildParam('id', async () => (await newsRepository.albums())[0]?.id);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;

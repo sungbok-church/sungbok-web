@@ -2,3 +2,6 @@
 
 /** 주보 목록 · 한 호 */
 export const BULLETINS_TAG = 'bulletins';
+
+/** 교회앨범 목록 · 한 건 */
+export const ALBUMS_TAG = 'albums';

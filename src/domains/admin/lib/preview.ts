@@ -1,6 +1,6 @@
 // 콘텐츠 미리보기(설계 6.10 — 사용자 결정 2026-11-20) — 등록 · 수정 화면이 저장하지 않은 지금 값을 미리보기 틀(iframe)에 보낸다.
 // 서버에 아무것도 남기지 않는다. 틀은 같은 출처(관리자 주소 아래)이고, 같은 출처의 메시지만 받는다.
-import type { BulletinIssue } from '@/domains/news/api/news.types';
+import type { Album, BulletinIssue } from '@/domains/news/api/news.types';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import { storagePublicUrl } from '@/shared/lib/storageUrl';
 
@@ -34,14 +34,18 @@ export type NewsPreviewValues = {
   description: string;
 };
 
+/** 교회앨범 — 분류는 이름으로 */
+export type AlbumPreviewValues = { title: string; categoryLabel: string; images: FileItem[] };
+
 /** 메뉴마다 보내는 값 */
 export type PreviewPayload =
   | { menu: 'bulletin'; values: BulletinPreviewValues }
+  | { menu: 'album'; values: AlbumPreviewValues }
   | { menu: 'announcements' | 'garden'; values: NewsPreviewValues };
 
 export type PreviewMenu = PreviewPayload['menu'];
 
-const PREVIEW_MENUS: readonly string[] = ['bulletin', 'announcements', 'garden'];
+const PREVIEW_MENUS: readonly string[] = ['bulletin', 'announcements', 'garden', 'album'];
 
 export type PreviewMessage =
   { type: typeof PREVIEW_READY } | ({ type: typeof PREVIEW_VALUES } & PreviewPayload);
@@ -91,3 +95,18 @@ export const toPreviewSermon = (values: NewsPreviewValues): Sermon | null =>
         ...youtubeImages(values.videoId, false),
       }
     : null;
+
+/** 교회앨범 폼의 지금 값 → 공개 앨범 화면(AlbumPage)의 한 건 */
+export const toPreviewAlbum = (values: AlbumPreviewValues, baseUrl: string): Album => ({
+  id: 'preview',
+  status: 'published',
+  title: values.title,
+  category: values.categoryLabel,
+  images: values.images
+    .filter(p => p.kind === 'IMAGE' && p.width && p.height)
+    .map(p => ({
+      src: storagePublicUrl(baseUrl, MEDIA_BUCKET, p.path),
+      width: p.width as number,
+      height: p.height as number,
+    })),
+});

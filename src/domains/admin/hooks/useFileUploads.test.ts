@@ -141,3 +141,23 @@ describe('useFileUploads', () => {
     await waitFor(() => expect(result.current.pending[0]?.error).toBe('권한이 없습니다.'));
   });
 });
+
+describe('useFileUploads — 개수 단위', () => {
+  it('단위를 주면 그 단위로 알린다(«30장까지»)', async () => {
+    const deps = makeDeps();
+    const { result } = renderHook(() => {
+      const [value, setValue] = useState<FileItem[]>([]);
+      return useFileUploads({
+        menuKey: 'album',
+        kinds: ['IMAGE'],
+        value,
+        onChange: setValue,
+        deps,
+        max: 0,
+        unit: '장',
+      });
+    });
+    act(() => result.current.add([img('1.jpg')]));
+    await waitFor(() => expect(result.current.pending[0]?.error).toBe('0장까지 올릴 수 있습니다.'));
+  });
+});

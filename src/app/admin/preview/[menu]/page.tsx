@@ -16,6 +16,7 @@ const MENUS = {
   bulletin: { section: 'news', path: '/news/bulletin' },
   announcements: { section: 'news', path: '/news/announcements' },
   garden: { section: 'news', path: '/news/garden' },
+  album: { section: 'news', path: '/news/album' },
 } as const;
 
 export default async function AdminPreviewPage({ params }: { params: Promise<{ menu: string }> }) {

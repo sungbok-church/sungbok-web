@@ -5,6 +5,7 @@ import {
   PREVIEW_VALUES,
   PREVIEW_WIDTHS,
   readPreviewMessage,
+  toPreviewAlbum,
   toPreviewIssue,
   toPreviewSermon,
 } from './preview';
@@ -130,5 +131,51 @@ describe('toPreviewSermon', () => {
         description: '',
       })
     ).toBeNull();
+  });
+});
+
+describe('toPreviewAlbum', () => {
+  it('폼의 값 → 공개 앨범 화면의 한 건 — 그림만, Storage 주소로', () => {
+    expect(
+      toPreviewAlbum(
+        {
+          title: '여름성경학교',
+          categoryLabel: '다음세대',
+          images: [
+            {
+              path: 'album/l/1.webp',
+              kind: 'IMAGE',
+              width: 700,
+              height: 998,
+              bytes: 1,
+              originalName: '1.webp',
+              alt: null,
+            },
+          ],
+        },
+        'https://x.supabase.co'
+      )
+    ).toEqual({
+      id: 'preview',
+      status: 'published',
+      title: '여름성경학교',
+      category: '다음세대',
+      images: [
+        {
+          src: 'https://x.supabase.co/storage/v1/object/public/media/album/l/1.webp',
+          width: 700,
+          height: 998,
+        },
+      ],
+    });
+  });
+  it('앨범 메뉴의 값도 받는다', () => {
+    const values = { title: 't', categoryLabel: '', images: [] };
+    expect(
+      readPreviewMessage(
+        { origin: ORIGIN, data: { type: PREVIEW_VALUES, menu: 'album', values } },
+        ORIGIN
+      )
+    ).toEqual({ type: PREVIEW_VALUES, menu: 'album', values });
   });
 });

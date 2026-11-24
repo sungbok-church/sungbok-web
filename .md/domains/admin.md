@@ -4,9 +4,9 @@
 
 > 배경 결정: [ADR 0008](../decisions/0008-admin-backend-vercel-supabase.md)(Vercel + Supabase, 같은 앱 `/admin`) · [ADR 0012](../decisions/0012-date-temporal-and-admin-libraries.md)(날짜·라이브러리) · [ADR 0016](../decisions/0016-admin-ui-follows-shadcn.md)(shadcn 원본 + 색만 교체) · [ADR 0017](../decisions/0017-admin-reference-next-starter-and-tanstack-form.md)(참고 대상 · 폼은 TanStack Form · 화면 색은 의미 토큰만) · [ADR 0018](../decisions/0018-ui-primitives-base-ui.md)(UI 기반은 Base UI · shadcn 부품은 base-nova 원본)
 
-## 지금 있는 것 (패키지 1 준비 + 패키지 A 기반 + 패키지 B 주보 · 주일광고 · 성복의 뜰)
+## 지금 있는 것 (패키지 1 준비 + 패키지 A 기반 + 패키지 B 주보 · 주일광고 · 성복의 뜰 · 교회앨범)
 
-로그인 · 권한별 메뉴 · 시스템 화면 5개 · 주보 · 주일광고 · 성복의 뜰이 있다. 나머지 콘텐츠 · 사이트 화면 · 새가족 화면은 아직 없다(패키지 B · C — 메뉴는 DB 에 있지만 `ADMIN_SCREENS_READY` 에 없어 숨겨진다). 패키지 B 의 진행은 [계획](../specs/2026-11-24-admin-pb-content-plan.md).
+로그인 · 권한별 메뉴 · 시스템 화면 5개 · 주보 · 주일광고 · 성복의 뜰 · 교회앨범이 있다. 나머지 콘텐츠 · 사이트 화면 · 새가족 화면은 아직 없다(패키지 B · C — 메뉴는 DB 에 있지만 `ADMIN_SCREENS_READY` 에 없어 숨겨진다). 패키지 B 의 진행은 [계획](../specs/2026-11-24-admin-pb-content-plan.md).
 
 | 주소 | 내용 | 권한 |
 |---|---|---|
@@ -18,7 +18,8 @@
 | `/admin` | 첫 화면 — 숫자 카드 · 이번 주 할 일(주보 · 주일광고: 이번 주일 날짜 + 공개 · 임시저장 · 아직 없음 — 누르면 그 글, 없으면 날짜를 채운 등록 화면. 새가족은 화면이 생길 때) · 바로 가기 | 로그인 |
 | `/admin/bulletin` · `/new` · `/[id]` · `/[id]/edit` | 콘텐츠 › 주보 — 목록(연도 · 상태 · 삭제된 항목, 검색어 칸 없음) · 등록(한 장: 주일 날짜(이번 주일로 채움 — 아무 날짜나) + 쪽 그림 · [미리보기] · [임시저장] · [공개]) · 상세(쪽 그림 · 머리 [복제해서 새로 쓰기] · [사이트에서 보기] · [수정] · «더 보기»: 휴지통 · 복구 · 완전 삭제 · 이력) · 수정(공개된 글은 [임시저장으로 돌리기] · [저장]) | `bulletin` |
 | `/admin/announcements` · `/admin/garden` (+ `/new` · `/[id]` · `/[id]/edit`) | 콘텐츠 › 주일광고 · 성복의 뜰 — 한 표(`news_videos`)를 `feed` 로 나눠 쓰고 화면 부품도 같이 쓴다([NewsVideoScreens](../../src/domains/admin/components/widgets/NewsVideoScreens/index.tsx)). 목록(제목 검색 · 분류 · 상태 · 연도 · 삭제된 항목) · 등록(제목 · 분류(+ 새 분류) · 날짜 · 유튜브 영상 — 붙여 넣으면 썸네일이 바로 보인다 · 설명) · 상세 · 수정 | `announcements` · `garden` |
-| `/admin/preview/[menu]` | 콘텐츠 미리보기 틀 — 등록 · 수정 화면의 [미리보기] 창이 iframe 으로 연다(`bulletin` · `announcements` · `garden`) | 그 메뉴 조회 |
+| `/admin/album` · `/new` · `/[id]` · `/[id]/edit` | 콘텐츠 › 교회앨범 — 목록(제목 검색 · 분류 · 상태 · 삭제된 항목, 최신 등록이 위) · 등록(제목 · 분류(+ 새 분류) · 그림 1~30장 — 주보와 같은 올리기 통로) · 상세(분류 · 주소 번호 · 그림) · 수정 | `album` |
+| `/admin/preview/[menu]` | 콘텐츠 미리보기 틀 — 등록 · 수정 화면의 [미리보기] 창이 iframe 으로 연다(`bulletin` · `announcements` · `garden` · `album`) | 그 메뉴 조회 |
 | `/admin/users` · `/new` · `/[id]` · `/[id]/edit` | 목록(줄 체크 켜기 · 끄기) · 계정 만들기(단계: 기본 정보 → 역할 → 확인, 임시 비밀번호 한 번 · 상세로 / 계속 등록) · 상세(«더 보기» 메뉴: 비밀번호 초기화 · 끄기/켜기 · 이력) · 수정(이름 · 그룹 · 담당 부서) | `users` |
 | `/admin/groups` · `/new` · `/[id]` · `/[id]/edit` | 목록 · 만들기(두 단계: 이름 · 설명 → 메뉴 권한 표) · 상세(구성원 · 권한 표 보기 · «더 보기» 메뉴: 끄기/켜기 · 이력) · 수정 — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장(끄고 켜기는 사용자처럼 상세에서만, 수정 화면에는 없다) | `groups` |
 | `/admin/menus` | 관리자 메뉴의 이름 · 사용 여부 · 순서(홈페이지 탭은 패키지 D) · 화면 전체의 변경 이력 | `menus` |
@@ -198,6 +199,13 @@
 - **미리보기**: 공개 «영상 한 편» 화면(`SermonWatchPage`)에 저장 전 값으로 만든 한 편을 넘긴다. 미리보기 틀만 CSP `frame-src` 에 유튜브를 연다. 관리자 `img-src` 에는 유튜브 썸네일(`i.ytimg.com`)을 더했다.
 - **기존 글 옮기기(끝, 2026-11-24)**: 시드 117편(주일광고 87 · 성복의 뜰 30)을 일회용 스크립트(`scripts/import-news-videos.mjs` — git 기록에 있다)로 운영 DB 에 옮기고(방문자 권한으로 87 · 30편 확인) 시드 · 합치기 코드 · 스크립트를 지웠다. 등록 · 수정 화면 아래 막대는 콘텐츠 공용 [ContentFormActions](../../src/domains/admin/components/features/ContentFormActions/index.tsx).
 
+### 교회앨범(B3)
+
+- 칸: 제목 · 분류 · 그림(1~30장, 순서). 날짜 칸이 없다 — 목록 · 공개 화면은 등록 순서의 반대(최신이 위). 공개 주소는 번호(`slug`) — 옮긴 앨범은 기존 번호(1 · 2 · 4 · 5), 새 앨범은 DB 시퀀스(1000 부터).
+- 액션 · 저장 규칙은 주보와 같다(그림은 저장할 때마다 새 묶음, 복제는 같은 Storage 파일을 가리키는 새 묶음).
+- **공개 화면**: [albumLoad.server](../../src/domains/news/api/albumLoad.server.ts) — 주보와 같은 서버 캐시(태그 `albums`, stale 300 · revalidate 60), 저장하면 `updateTag`. 옮기기 전까지는 시드와 합친다(옮긴 앨범 — 번호 1000 미만 — 이 DB 에 있으면 DB 만).
+- **기존 앨범 옮기기**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-albums.mjs [--local] [--apply]` — 시드 4건 + `public/files/album` 을 DB · Storage 로, 오래된 것부터(공개 순서가 그대로). 같은 번호(휴지통 포함)는 건너뛴다. 운영은 승인 뒤.
+
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(교회앨범 → 설교 시트지 → ⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
+설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(설교 시트지 → ⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
