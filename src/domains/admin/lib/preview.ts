@@ -1,12 +1,14 @@
 // 콘텐츠 미리보기(설계 6.10 — 사용자 결정 2026-11-20) — 등록 · 수정 화면이 저장하지 않은 지금 값을 미리보기 틀(iframe)에 보낸다.
 // 서버에 아무것도 남기지 않는다. 틀은 같은 출처(관리자 주소 아래)이고, 같은 출처의 메시지만 받는다.
 import type { Album, BulletinIssue } from '@/domains/news/api/news.types';
+import type { Resource } from '@/domains/resources/api/resource.types';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import { storagePublicUrl } from '@/shared/lib/storageUrl';
 
 import { MEDIA_BUCKET } from './fileUpload';
 import type { FileItem } from './input/fileInput';
 import { youtubeImages } from './newsFeed';
+import { type ResourceSectionKey, SECTION_CONFIG } from './resourceSection';
 
 /** 미리보기 틀의 주소(뒤에 메뉴 key) — 이 주소만 관리자 화면이 iframe 으로 연다(CSP frame-ancestors 'self') */
 export const ADMIN_PREVIEW_PATH = '/admin/preview/';
@@ -37,15 +39,36 @@ export type NewsPreviewValues = {
 /** 교회앨범 — 분류는 이름으로 */
 export type AlbumPreviewValues = { title: string; categoryLabel: string; images: FileItem[] };
 
+/** 설교 시트지 — 묶음은 이름으로, 회차 · 날짜 · 연도는 폼의 글자 그대로 */
+export type ResourcePreviewValues = {
+  section: ResourceSectionKey;
+  seriesLabel: string;
+  episode: string;
+  title: string;
+  date: string;
+  year: string;
+  passage: string;
+  file: FileItem[];
+  pages: FileItem[];
+  videoIds: string[];
+};
+
 /** 메뉴마다 보내는 값 */
 export type PreviewPayload =
+  | { menu: 'resources'; values: ResourcePreviewValues }
   | { menu: 'bulletin'; values: BulletinPreviewValues }
   | { menu: 'album'; values: AlbumPreviewValues }
   | { menu: 'announcements' | 'garden'; values: NewsPreviewValues };
 
 export type PreviewMenu = PreviewPayload['menu'];
 
-const PREVIEW_MENUS: readonly string[] = ['bulletin', 'announcements', 'garden', 'album'];
+const PREVIEW_MENUS: readonly string[] = [
+  'bulletin',
+  'announcements',
+  'garden',
+  'album',
+  'resources',
+];
 
 export type PreviewMessage =
   { type: typeof PREVIEW_READY } | ({ type: typeof PREVIEW_VALUES } & PreviewPayload);
@@ -110,3 +133,39 @@ export const toPreviewAlbum = (values: AlbumPreviewValues, baseUrl: string): Alb
       height: p.height as number,
     })),
 });
+
+/** 설교 시트지 폼의 지금 값 → 공개 «문서 열람»(ResourceViewPage)의 한 건과 영상 링크(미리보기는 유튜브로) */
+export const toPreviewResource = (values: ResourcePreviewValues, baseUrl: string) => {
+  const url = (path: string) => storagePublicUrl(baseUrl, MEDIA_BUCKET, path);
+  const original = values.file[0];
+  const episode = Number(values.episode);
+  const resource: Resource = {
+    id: 'preview',
+    status: 'published',
+    section: SECTION_CONFIG[values.section].publicSection,
+    group: values.seriesLabel,
+    ...(Number.isInteger(episode) && episode > 0 ? { episode } : {}),
+    title: values.title,
+    ...(values.date ? { date: values.date } : values.year ? { year: values.year } : {}),
+    ...(values.passage ? { passage: values.passage } : {}),
+    ...(original && original.kind !== 'IMAGE'
+      ? {
+          file: {
+            url: url(original.path),
+            name: original.originalName,
+            kind: original.kind === 'PDF' ? ('pdf' as const) : ('hwp' as const),
+          },
+        }
+      : {}),
+    pages: values.pages
+      .filter(p => p.kind === 'IMAGE' && p.width && p.height)
+      .map(p => ({ src: url(p.path), width: p.width as number, height: p.height as number })),
+    videoIds: values.videoIds,
+  };
+  const videoLinks = values.videoIds.map(videoId => ({
+    videoId,
+    href: `https://www.youtube.com/watch?v=${videoId}`,
+    external: true,
+  }));
+  return { resource, videoLinks };
+};

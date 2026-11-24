@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
   globalIgnores(['**/_variants/**']),
   // DB 에서 자동 생성한 타입(pnpm db:types) — 손으로 고치지 않는 파일이라 린트·포맷 대상이 아니다.
   globalIgnores(['src/shared/api/supabase/database.types.ts']),
+  // PDF.js 자료 사본(scripts/pdfjs-assets.mjs 가 node_modules 에서 복사 — 우리 코드가 아니다)
+  globalIgnores(['public/pdfjs/**']),
   // 날짜(ADR 0012): Temporal 은 Node 26 엔 있지만 Safari 정식판·iOS 엔 아직 없다 — 화면 코드에서 쓰면 아이폰에서만 깨진다.
   // 서버 전용 파일·Route Handler·관리자 영역만 예외로 연다(아래 블록).
   // 주의: 아래 예외 블록이 두 규칙을 통째로 끈다 — 이 두 규칙에는 Temporal 항목만 둔다(다른 금지는 다른 규칙·블록으로).

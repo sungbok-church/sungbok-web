@@ -182,7 +182,11 @@ export const TextField = ({
         labelNode
       )}
       {multiline ? (
-        <Textarea {...control} onChange={e => field.handleChange(e.target.value)} />
+        <Textarea
+          {...control}
+          placeholder={inputProps.placeholder}
+          onChange={e => field.handleChange(e.target.value)}
+        />
       ) : (
         <Input {...inputProps} {...control} onChange={e => field.handleChange(e.target.value)} />
       )}

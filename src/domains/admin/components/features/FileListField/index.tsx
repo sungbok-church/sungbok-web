@@ -17,7 +17,12 @@ import {
   RotateCwIcon,
   XIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
+export type FileUploader = {
+  add: (files: File[]) => File[];
+  replace: (files: File[]) => File[];
+};
 
 const ACCEPT: Record<FileKind, string> = {
   IMAGE: 'image/webp,image/jpeg,image/png',
@@ -41,6 +46,8 @@ export const FileListField = ({
   max,
   itemLabel = '쪽',
   unit = '장',
+  onPicked,
+  uploaderRef,
   invalid,
 }: {
   /** 고르기 단추의 id — 칸 이름(FieldLabel htmlFor)이 이 단추를 가리킨다 */
@@ -57,9 +64,13 @@ export const FileListField = ({
   itemLabel?: string;
   /** 개수 단위(«장») — 한도 알림 · 다 찼을 때 한 줄에 쓴다 */
   unit?: string;
+  /** 사람이 고른 파일 중 받아들인 것(종류 · 개수로 거르지 않은 것) — 원본 PDF 에서 쪽 그림을 만드는 화면이 듣는다 */
+  onPicked?: (files: File[]) => void;
+  /** 바깥에서 파일을 넣는 손잡이 — add(끝에 붙이기) · replace(있던 것을 비우고 바꿔 올리기) */
+  uploaderRef?: Ref<FileUploader>;
   invalid?: boolean;
 }) => {
-  const { pending, busy, add, retry, dismiss } = useFileUploads({
+  const { pending, busy, add, replace, retry, dismiss } = useFileUploads({
     menuKey,
     kinds,
     value,
@@ -70,6 +81,12 @@ export const FileListField = ({
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const baseUrl = readSupabaseEnv()?.url ?? '';
+  useImperativeHandle(uploaderRef, () => ({ add, replace }), [add, replace]);
+  const pick = (files: File[]) => {
+    if (files.length === 0) return;
+    const accepted = add(files);
+    if (accepted.length > 0) onPicked?.(accepted);
+  };
   const full = max !== undefined && value.length >= max;
   // 실패한 파일을 낭독기에도 알린다 — 알림 자리는 늘 그려 두고 내용만 채운다(자리가 내용과 함께 생기면 읽지 않는다)
   const failures = pending.filter(p => p.error).map(p => `${p.name}: ${p.error}`);
@@ -204,7 +221,7 @@ export const FileListField = ({
           onDrop={e => {
             e.preventDefault();
             setDragging(false);
-            add(Array.from(e.dataTransfer.files));
+            pick(Array.from(e.dataTransfer.files));
           }}
         >
           <Button
@@ -228,7 +245,7 @@ export const FileListField = ({
             className="sr-only"
             tabIndex={-1}
             onChange={e => {
-              add(Array.from(e.target.files ?? []));
+              pick(Array.from(e.target.files ?? []));
               e.target.value = '';
             }}
           />

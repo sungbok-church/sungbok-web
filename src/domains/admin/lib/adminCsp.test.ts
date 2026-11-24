@@ -44,6 +44,10 @@ describe('buildAdminCsp', () => {
     );
   });
 
+  it('worker 는 이 사이트 파일만(PDF 쪽 그림 만들기)', () => {
+    expect(directive('worker-src')).toBe("worker-src 'self' blob:");
+  });
+
   it('다른 사이트가 틀 안에 넣지 못하고, 폼은 이 사이트로만 보낸다', () => {
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("form-action 'self'");

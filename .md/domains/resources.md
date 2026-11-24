@@ -38,14 +38,14 @@
 
 ```
 data/resourcesSeed.ts ──▶ api/resourceRepository ──┬─▶ widgets/ResourceLibrary  → features/ResourceListPage
-   (지금: 시드)            list · get · forVideo     ├─▶ widgets/ResourceDocument → features/ResourceViewPage
+   (DB — 관리자)          list · get · forVideo     ├─▶ widgets/ResourceDocument → features/ResourceViewPage
    (나중: DB)              임시저장은 여기서 거른다   └─▶ worship-video 의 SermonWatch → 「설교 시트지」 카드(api/sheetLinks)
 ```
 
 | 파일 | 맡은 일 |
 |---|---|
 | `api/resource.types.ts` | 자료의 모양(`Resource`) — 분류·묶음·회차·날짜·파일·미리보기 쪽·`videoIds`·상태 |
-| `api/resourceRepository.ts` | 공개 자료 읽기. **화면은 이 저장소로만 읽는다**(시드 직접 import 금지). 전부 async — DB 로 바뀌어도 부르는 쪽은 그대로 |
+| `api/resourceRepository.ts` | 공개 자료 읽기. **화면은 이 저장소로만 읽는다**(시드 직접 import 금지). `load` 는 DB([resourcesLoad.server](../../src/domains/resources/api/resourcesLoad.server.ts) — 서버 캐시 · 태그 `resources`, 2026-11-24. 운영 옮기기 전까지는 시드와 합친다 — [admin.md](admin.md) «설교 시트지») |
 | `api/resourceList.ts` | 검색·칩·정렬·표시 문구·내려받기 대상(순수) |
 | `api/resourceListState.ts` | 목록의 조건과 돌아올 자리를 화면 밖에 둔다 |
 | `api/resourceViewer.ts` | 열람기의 설명 줄·미리보기 없는 자료의 안내(순수) |
@@ -61,7 +61,7 @@ data/resourcesSeed.ts ──▶ api/resourceRepository ──┬─▶ widgets/R
 
 ## 관리자 등록과 예배 시트지 연결
 
-**지금 있는 것**: 자료 모양, 공개 읽기 저장소, 등록 값 검증, 두 화면의 연결. **아직 없는 것**: 관리자 로그인·등록 화면·DB·파일 업로드([ADR 0008](../decisions/0008-admin-backend-vercel-supabase.md)의 `/admin` + Supabase — 계정·프로젝트가 아직 없다).
+**지금 있는 것(2026-11-24)**: 관리자 «설교 시트지» 등록 화면 · DB · 파일 올리기(PDF 를 고르면 쪽 그림을 브라우저가 만든다) · 공개 읽기 저장소가 DB 를 읽는다 — [admin.md](admin.md) «설교 시트지». 아래 «등록 흐름» 은 처음 계획이고, 영상 고르기 목록은 넣지 않았다(유튜브 주소 붙여 넣기).
 
 등록 흐름(관리자가 생기면):
 

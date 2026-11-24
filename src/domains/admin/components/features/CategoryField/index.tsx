@@ -41,6 +41,7 @@ export const CategoryField = ({
   onChange,
   canAdd,
   errors,
+  fieldLabel = '분류',
 }: {
   id: string;
   groupKey: string;
@@ -49,6 +50,8 @@ export const CategoryField = ({
   onChange: (value: string) => void;
   canAdd: boolean;
   errors?: ComponentProps<typeof FieldError>['errors'];
+  /** 칸 이름(«분류» · 설교 시트지는 «묶음») */
+  fieldLabel?: string;
 }) => {
   const invalid = (errors?.length ?? 0) > 0 || undefined;
   const router = useRouter();
@@ -84,7 +87,7 @@ export const CategoryField = ({
   return (
     <Field data-invalid={invalid}>
       <FieldLabel htmlFor={id}>
-        분류 <RequiredMark />
+        {fieldLabel} <RequiredMark />
       </FieldLabel>
       <div className="flex gap-2">
         <Select
@@ -93,7 +96,7 @@ export const CategoryField = ({
           onValueChange={next => onChange(String(next ?? ''))}
         >
           <SelectTrigger id={id} aria-invalid={invalid} className="w-full sm:w-56">
-            <SelectValue placeholder="분류" />
+            <SelectValue placeholder={fieldLabel} />
           </SelectTrigger>
           <SelectContent alignItemWithTrigger={false} align="start">
             <SelectGroup>
@@ -108,11 +111,11 @@ export const CategoryField = ({
         {canAdd && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger render={<Button type="button" variant="outline" />}>
-              <PlusIcon data-icon="inline-start" />새 분류
+              <PlusIcon data-icon="inline-start" />새 {fieldLabel}
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>새 분류</DialogTitle>
+                <DialogTitle>새 {fieldLabel}</DialogTitle>
               </DialogHeader>
               <FieldGroup>
                 <Field>

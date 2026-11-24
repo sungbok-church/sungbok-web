@@ -8,8 +8,10 @@ import {
   readPreviewMessage,
   toPreviewAlbum,
   toPreviewIssue,
+  toPreviewResource,
   toPreviewSermon,
 } from '@/domains/admin/lib/preview';
+import { ResourceViewPage } from '@/domains/resources/components/features/ResourceViewPage';
 import { AlbumPage } from '@/domains/news/components/widgets/AlbumPage';
 import { BulletinPage } from '@/domains/news/components/widgets/BulletinPage';
 import { SermonWatchPage } from '@/domains/worship-video/components/features/SermonWatchPage';
@@ -23,6 +25,13 @@ const Preview = ({ payload }: { payload: PreviewPayload }) => {
     return issue.pages.length > 0 ? (
       <BulletinPage issues={[issue]} basePath="/news/bulletin" />
     ) : null;
+  }
+  if (payload.menu === 'resources') {
+    const { resource, videoLinks } = toPreviewResource(
+      payload.values,
+      readSupabaseEnv()?.url ?? ''
+    );
+    return <ResourceViewPage resource={resource} videoLinks={videoLinks} />;
   }
   if (payload.menu === 'album') {
     const album = toPreviewAlbum(payload.values, readSupabaseEnv()?.url ?? '');

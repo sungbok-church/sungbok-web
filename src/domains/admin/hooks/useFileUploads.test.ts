@@ -161,3 +161,40 @@ describe('useFileUploads — 개수 단위', () => {
     await waitFor(() => expect(result.current.pending[0]?.error).toBe('0장까지 올릴 수 있습니다.'));
   });
 });
+
+describe('useFileUploads — 받아들인 파일 · 바꿔 올리기', () => {
+  it('add 는 받아들인 파일만 돌려준다(종류 · 개수로 거른 것은 뺀다)', () => {
+    const deps = makeDeps();
+    const { result } = setup(deps, [], { max: 1 });
+    let accepted: File[] = [];
+    act(() => {
+      accepted = result.current.add([
+        img('1.jpg'),
+        new File(['x'], 'a.gif', { type: 'image/gif' }),
+        img('2.jpg'),
+      ]);
+    });
+    expect(accepted.map(f => f.name)).toEqual(['1.jpg']);
+  });
+
+  it('replace 는 있던 목록을 그 자리에서 비우고 새 파일로 — 지우기 전의 개수로 한도를 세지 않는다', async () => {
+    const deps = makeDeps();
+    const existing = ['a', 'b'].map(n => ({
+      path: `bulletin/l/${n}.jpg`,
+      kind: 'IMAGE' as const,
+      width: 1,
+      height: 1,
+      bytes: 1,
+      originalName: `${n}.jpg`,
+      alt: null,
+    }));
+    const { result } = setup(deps, existing, { max: 2 });
+    act(() => {
+      result.current.replace([img('1.jpg'), img('2.jpg')]);
+    });
+    await waitFor(() =>
+      expect(result.current.value.map(f => f.originalName)).toEqual(['1.jpg', '2.jpg'])
+    );
+    expect(result.current.pending).toEqual([]);
+  });
+});

@@ -56,3 +56,6 @@ next-env.d.ts
 # design:audit 캡처
 /.design-audit/
 /.design-audit-before/
+
+# PDF.js 자료(CMap · 글꼴 · wasm) — scripts/pdfjs-assets.mjs 가 node_modules 에서 복사한다
+/public/pdfjs/

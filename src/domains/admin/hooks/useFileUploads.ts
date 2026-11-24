@@ -87,6 +87,8 @@ export const useFileUploads = ({
   const chain = useRef<Promise<void>>(Promise.resolve());
   const listId = useRef<Promise<string> | null>(null);
   const seq = useRef(0);
+  // 바꿔 올리기(replace)마다 늘린다 — 그 전에 차례를 기다리던 · 올리던 파일의 결과는 버린다
+  const gen = useRef(0);
 
   const patch = useCallback(
     (key: string, next: Partial<PendingUpload> | null) =>
@@ -109,7 +111,7 @@ export const useFileUploads = ({
 
   /** 파일 한 개 — 줄였으면 true */
   const uploadOne = useCallback(
-    async (key: string, file: File): Promise<boolean> => {
+    async (key: string, file: File, g: number): Promise<boolean> => {
       const type = uploadTypeOf(file.type, file.name);
       if (!type) throw new UploadError(MESSAGES.unsupported);
       let blob: Blob = file;
@@ -137,6 +139,7 @@ export const useFileUploads = ({
         { url: target.signedUrl, body: blob, contentType: target.contentType, apiKey: deps.apiKey },
         progress => patch(key, { progress })
       );
+      if (g !== gen.current) return false; // 그사이 바꿔 올렸다 — 이 파일은 붙이지 않는다
       items.current = [
         ...items.current,
         {
@@ -158,31 +161,37 @@ export const useFileUploads = ({
   const enqueue = useCallback(
     (keys: string[]) => {
       if (keys.length === 0) return;
+      const g = gen.current;
       chain.current = chain.current.then(async () => {
         let resized = false;
         for (const key of keys) {
+          if (g !== gen.current) break;
           const file = files.current.get(key);
           if (!file) continue;
           try {
-            resized = (await uploadOne(key, file)) || resized;
+            resized = (await uploadOne(key, file, g)) || resized;
+            if (g !== gen.current) break;
             files.current.delete(key);
             active.current -= 1;
             patch(key, null);
           } catch (e) {
+            if (g !== gen.current) break;
             active.current -= 1;
             patch(key, { error: e instanceof UploadError ? e.message : MESSAGES.failed });
           }
         }
-        if (resized) deps.notice(MESSAGES.resized);
+        if (resized && g === gen.current) deps.notice(MESSAGES.resized);
       });
     },
     [deps, patch, uploadOne]
   );
 
+  /** 고른 파일을 차례 뒤에 붙인다 — 받아들인 파일(종류 · 개수로 거르지 않은 것)을 돌려준다 */
   const add = useCallback(
-    (picked: File[]) => {
+    (picked: File[]): File[] => {
       const rows: PendingUpload[] = [];
       const accepted: string[] = [];
+      const acceptedFiles: File[] = [];
       for (const file of picked) {
         seq.current += 1;
         const key = `u${seq.current}`;
@@ -199,11 +208,30 @@ export const useFileUploads = ({
         files.current.set(key, file);
         active.current += 1;
         accepted.push(key);
+        acceptedFiles.push(file);
       }
       setPending(list => [...list, ...rows]);
       enqueue(accepted);
+      return acceptedFiles;
     },
     [enqueue, kinds, max, unit]
+  );
+
+  /**
+   * 있던 목록 · 기다리던 파일을 그 자리에서 비우고 새 파일로 올린다(원본 PDF 를 바꿔 쪽 그림을 다시 만들 때).
+   * 목록을 바깥에서 비우면 다음 그리기까지 한도를 지우기 전 개수로 세므로 여기서 함께 비운다.
+   */
+  const replace = useCallback(
+    (picked: File[]): File[] => {
+      gen.current += 1;
+      files.current.clear();
+      active.current = 0;
+      items.current = [];
+      setPending([]);
+      onChange([]);
+      return add(picked);
+    },
+    [add, onChange]
   );
 
   const retry = useCallback(
@@ -224,5 +252,5 @@ export const useFileUploads = ({
     [patch]
   );
 
-  return { pending, busy: pending.some(p => !p.error), add, retry, dismiss };
+  return { pending, busy: pending.some(p => !p.error), add, replace, retry, dismiss };
 };

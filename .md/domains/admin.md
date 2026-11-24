@@ -4,9 +4,9 @@
 
 > 배경 결정: [ADR 0008](../decisions/0008-admin-backend-vercel-supabase.md)(Vercel + Supabase, 같은 앱 `/admin`) · [ADR 0012](../decisions/0012-date-temporal-and-admin-libraries.md)(날짜·라이브러리) · [ADR 0016](../decisions/0016-admin-ui-follows-shadcn.md)(shadcn 원본 + 색만 교체) · [ADR 0017](../decisions/0017-admin-reference-next-starter-and-tanstack-form.md)(참고 대상 · 폼은 TanStack Form · 화면 색은 의미 토큰만) · [ADR 0018](../decisions/0018-ui-primitives-base-ui.md)(UI 기반은 Base UI · shadcn 부품은 base-nova 원본)
 
-## 지금 있는 것 (패키지 1 준비 + 패키지 A 기반 + 패키지 B 주보 · 주일광고 · 성복의 뜰 · 교회앨범)
+## 지금 있는 것 (패키지 1 준비 + 패키지 A 기반 + 패키지 B 콘텐츠 5종)
 
-로그인 · 권한별 메뉴 · 시스템 화면 5개 · 주보 · 주일광고 · 성복의 뜰 · 교회앨범이 있다. 나머지 콘텐츠 · 사이트 화면 · 새가족 화면은 아직 없다(패키지 B · C — 메뉴는 DB 에 있지만 `ADMIN_SCREENS_READY` 에 없어 숨겨진다). 패키지 B 의 진행은 [계획](../specs/2026-11-24-admin-pb-content-plan.md).
+로그인 · 권한별 메뉴 · 시스템 화면 5개 · 콘텐츠 5종(주보 · 주일광고 · 성복의 뜰 · 교회앨범 · 설교 시트지)이 있다. 나머지 콘텐츠 · 사이트 화면 · 새가족 화면은 아직 없다(패키지 B · C — 메뉴는 DB 에 있지만 `ADMIN_SCREENS_READY` 에 없어 숨겨진다). 패키지 B 의 진행은 [계획](../specs/2026-11-24-admin-pb-content-plan.md).
 
 | 주소 | 내용 | 권한 |
 |---|---|---|
@@ -19,7 +19,8 @@
 | `/admin/bulletin` · `/new` · `/[id]` · `/[id]/edit` | 콘텐츠 › 주보 — 목록(연도 · 상태 · 삭제된 항목, 검색어 칸 없음) · 등록(한 장: 주일 날짜(이번 주일로 채움 — 아무 날짜나) + 쪽 그림 · [미리보기] · [임시저장] · [공개]) · 상세(쪽 그림 · 머리 [복제해서 새로 쓰기] · [사이트에서 보기] · [수정] · «더 보기»: 휴지통 · 복구 · 완전 삭제 · 이력) · 수정(공개된 글은 [임시저장으로 돌리기] · [저장]) | `bulletin` |
 | `/admin/announcements` · `/admin/garden` (+ `/new` · `/[id]` · `/[id]/edit`) | 콘텐츠 › 주일광고 · 성복의 뜰 — 한 표(`news_videos`)를 `feed` 로 나눠 쓰고 화면 부품도 같이 쓴다([NewsVideoScreens](../../src/domains/admin/components/widgets/NewsVideoScreens/index.tsx)). 목록(제목 검색 · 분류 · 상태 · 연도 · 삭제된 항목) · 등록(제목 · 분류(+ 새 분류) · 날짜 · 유튜브 영상 — 붙여 넣으면 썸네일이 바로 보인다 · 설명) · 상세 · 수정 | `announcements` · `garden` |
 | `/admin/album` · `/new` · `/[id]` · `/[id]/edit` | 콘텐츠 › 교회앨범 — 목록(제목 검색 · 분류 · 상태 · 삭제된 항목, 최신 등록이 위) · 등록(제목 · 분류(+ 새 분류) · 그림 1~30장 — 주보와 같은 올리기 통로) · 상세(분류 · 주소 번호 · 그림) · 수정 | `album` |
-| `/admin/preview/[menu]` | 콘텐츠 미리보기 틀 — 등록 · 수정 화면의 [미리보기] 창이 iframe 으로 연다(`bulletin` · `announcements` · `garden` · `album`) | 그 메뉴 조회 |
+| `/admin/resources` · `/new` · `/[id]` · `/[id]/edit` | 콘텐츠 › 설교 시트지 — 목록(제목 · 본문 검색 · 분류 · 상태 · 삭제된 항목, 최신 날짜부터) · 등록(분류 · 묶음(+ 새 묶음) · 회차 · 제목 · 날짜(모르면 연도) · 본문 · 원본(PDF · 한글 파일) · 쪽 그림 · 설교 영상) · 상세 · 수정 | `resources` |
+| `/admin/preview/[menu]` | 콘텐츠 미리보기 틀 — 등록 · 수정 화면의 [미리보기] 창이 iframe 으로 연다(`bulletin` · `announcements` · `garden` · `album` · `resources`) | 그 메뉴 조회 |
 | `/admin/users` · `/new` · `/[id]` · `/[id]/edit` | 목록(줄 체크 켜기 · 끄기) · 계정 만들기(단계: 기본 정보 → 역할 → 확인, 임시 비밀번호 한 번 · 상세로 / 계속 등록) · 상세(«더 보기» 메뉴: 비밀번호 초기화 · 끄기/켜기 · 이력) · 수정(이름 · 그룹 · 담당 부서) | `users` |
 | `/admin/groups` · `/new` · `/[id]` · `/[id]/edit` | 목록 · 만들기(두 단계: 이름 · 설명 → 메뉴 권한 표) · 상세(구성원 · 권한 표 보기 · «더 보기» 메뉴: 끄기/켜기 · 이력) · 수정 — 기본 정보와 «메뉴 × 기능» 권한을 한 번에 저장(끄고 켜기는 사용자처럼 상세에서만, 수정 화면에는 없다) | `groups` |
 | `/admin/menus` | 관리자 메뉴의 이름 · 사용 여부 · 순서(홈페이지 탭은 패키지 D) · 화면 전체의 변경 이력 | `menus` |
@@ -206,6 +207,16 @@
 - **공개 화면**: [albumLoad.server](../../src/domains/news/api/albumLoad.server.ts) — 주보와 같은 서버 캐시(태그 `albums`, stale 300 · revalidate 60), 저장하면 `updateTag`.
 - **기존 앨범 옮기기(끝, 2026-11-24)**: 시드 4건 + `public/files/album` 을 일회용 스크립트(`scripts/import-albums.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮기고(공개 그림 4장 모두 Storage, 옛 주소 1 · 2 · 4 · 5 열림 확인) 시드 · 그림 · 합치기 코드 · 스크립트를 지웠다. 이로써 교회소식 시드(`src/domains/news/data`)가 모두 없어졌다.
 
+### 설교 시트지(B4)
+
+- 표 `resources`(분류 `section` = 주일 강해 · 시리즈 · 가정/명절/절기 — [resourceSection](../../src/domains/admin/lib/resourceSection.ts), 묶음 = 그 분류의 분류 묶음) + `resource_videos`(설교 영상 id, 다대다). 원본(`file_list_id`, PDF · 한글 파일 하나, 없을 수 있다)과 쪽 그림(`pages_list_id`, 늘 — 비어도)을 각각 저장할 때마다 새 묶음에 적는다. 두 묶음을 가리켜 DB 조회는 연결 이름으로 나눈다(`file:file_lists!resources_file_list_id_fkey` · `pages:…pages_list_id_fkey`).
+- **PDF 를 원본에 고르면 브라우저가 쪽마다 그림을 만들어 쪽 그림 칸에 올린다**([renderPdfPages](../../src/domains/admin/components/features/PdfPages/renderPdfPages.ts) — PDF.js `pdfjs-dist`, 긴 변 1700px WebP(못 만들면 JPEG), 60쪽까지, 있던 쪽 그림은 바꾼다). 라이브러리는 PDF 를 고를 때만 받는다. **한글 PDF 는 CMap · 기본 글꼴이 없으면 글자가 빠진다**(2026-11-24 확인) — [pdfjs-assets](../../scripts/pdfjs-assets.mjs) 가 `dev` · `build` 전에 `node_modules/pdfjs-dist` 의 `cmaps` · `standard_fonts` · `wasm` 을 `public/pdfjs/<버전>/` 으로 복사하고(git 에 넣지 않는다) 같은 출처에서 받는다. 관리자 CSP 에 `worker-src 'self' blob:`(PDF.js worker).
+- 회차 · 날짜 · 연도는 폼에서 글자로 받아 숫자 · null 로(날짜가 있으면 연도는 비운다). 설교 영상은 유튜브 주소나 id 를 줄 · 칸으로 나눠(겹치면 하나). 공개하려면 원본이나 쪽 그림이 하나 이상. 영상 연결은 바뀐 것만 빼고 넣는다(이력이 «넣음 · 뺌» 만). «등록» 권한만 있으면 자기 임시저장 글에만 영상을 이을 수 있어(DB) — 공개로 등록할 때 막히면 시트지는 저장하고 그 뜻을 알린다.
+- 복제: 분류 · 묶음 · 제목 · 본문을 복사하고 회차는 다음 회 — 날짜 · 파일 · 영상은 비운 임시저장.
+- **공개 화면**: [resourcesLoad.server](../../src/domains/resources/api/resourcesLoad.server.ts) — 서버 캐시(태그 `resources`, stale 300 · revalidate 60), 저장하면 `updateTag`. 자료실 목록 · 문서 · 예배 영상의 «설교 시트지» 카드가 같이 쓴다. 옮기기 전까지는 시드와 합친다(옮긴 자료 — 번호 «0404-40» 모양 — 가 DB 에 있으면 DB 만).
+- 미리보기: 공개 «문서 열람»(`ResourceViewPage`) — 영상 링크는 유튜브로(사이트 안 설교 페이지 찾기는 저장 뒤 공개 화면이 한다).
+- **기존 자료 옮기기**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-resources.mjs [--local] [--apply]` — 시드 57건(원본 56 · 쪽 그림 112장 · 영상 연결 37) + `public/files/resources` 를 DB · Storage 로. 같은 번호(휴지통 포함)는 건너뛴다. 운영은 승인 뒤.
+
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(설교 시트지 → ⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
+설계 문서 9절의 순서대로 만든다: 콘텐츠 나머지(⌘K 글 검색) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.

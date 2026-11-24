@@ -13,6 +13,12 @@ import {
   trashAlbum,
 } from '@/domains/admin/api/actions/albumActions';
 import {
+  duplicateResource,
+  purgeResource,
+  restoreResource,
+  trashResource,
+} from '@/domains/admin/api/actions/resourceActions';
+import {
   duplicateNewsVideo,
   purgeNewsVideo,
   restoreNewsVideo,
@@ -72,6 +78,14 @@ const KINDS = {
     trash: trashAlbum,
     restore: restoreAlbum,
     purge: purgeAlbum,
+  },
+  resources: {
+    table: 'resources' as const,
+    list: '/admin/resources',
+    duplicate: duplicateResource,
+    trash: trashResource,
+    restore: restoreResource,
+    purge: purgeResource,
   },
   announcements: newsKind('announcements'),
   garden: newsKind('garden'),

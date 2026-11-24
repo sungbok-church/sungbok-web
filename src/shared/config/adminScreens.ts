@@ -8,6 +8,7 @@ export const ADMIN_SCREENS_READY: ReadonlySet<string> = new Set([
   'announcements',
   'garden',
   'album',
+  'resources',
   'users',
   'groups',
   'menus',

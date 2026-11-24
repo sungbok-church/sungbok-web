@@ -1,8 +1,8 @@
 // 공개 자료 읽기 — 자료실 화면과 예배 영상의 «설교 시트지» 가 이 한곳으로 읽는다(같은 자료를 두 번 등록하지 않는다).
-// 지금은 시드(data/resourcesSeed)를 읽는다. 관리자·DB 가 생기면 load 만 DB 조회로 바꾼다 — 부르는 쪽은 그대로다
-// (그래서 지금도 async). 임시저장은 여기서 걸러 어느 공개 화면에도 나가지 않는다.
-import { RESOURCES_SEED } from '../data/resourcesSeed';
+// DB 에서 읽는다(resourcesLoad.server — 관리자 «설교 시트지», 옮기기 전까지는 시드와 합친다). 서버에서만 부른다.
+// 임시저장은 여기서도 걸러 어느 공개 화면에도 나가지 않는다.
 import type { Resource, ResourceSection } from './resource.types';
+import { loadResources } from './resourcesLoad.server';
 import { dateKey } from './resourceList';
 
 const newestFirst = (list: readonly Resource[]) =>
@@ -23,4 +23,4 @@ export const createResourceRepository = (load: () => Promise<readonly Resource[]
   };
 };
 
-export const resourceRepository = createResourceRepository(async () => RESOURCES_SEED);
+export const resourceRepository = createResourceRepository(loadResources);

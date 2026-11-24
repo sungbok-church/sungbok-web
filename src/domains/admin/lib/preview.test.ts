@@ -7,6 +7,7 @@ import {
   readPreviewMessage,
   toPreviewAlbum,
   toPreviewIssue,
+  toPreviewResource,
   toPreviewSermon,
 } from './preview';
 
@@ -177,5 +178,84 @@ describe('toPreviewAlbum', () => {
         ORIGIN
       )
     ).toEqual({ type: PREVIEW_VALUES, menu: 'album', values });
+  });
+});
+
+describe('toPreviewResource', () => {
+  const f = (path: string, kind: 'PDF' | 'IMAGE') => ({
+    path,
+    kind,
+    width: kind === 'IMAGE' ? 1200 : null,
+    height: kind === 'IMAGE' ? 1698 : null,
+    bytes: 1,
+    originalName: kind === 'PDF' ? '시트지.pdf' : '1.webp',
+    alt: null,
+  });
+  it('폼의 값 → 공개 «문서 열람» 의 한 건 — 원본 · 쪽 그림 · 영상 링크(유튜브)', () => {
+    const { resource, videoLinks } = toPreviewResource(
+      {
+        section: 'SUNDAY',
+        seriesLabel: '사도행전 강해',
+        episode: '66',
+        title: '도장 깨기',
+        date: '2026-10-25',
+        year: '',
+        passage: '사도행전 13:4-7',
+        file: [f('resources/l/a.pdf', 'PDF')],
+        pages: [f('resources/l/1.webp', 'IMAGE')],
+        videoIds: ['YYW0D6JNrGQ'],
+      },
+      'https://x.supabase.co'
+    );
+    expect(resource).toEqual({
+      id: 'preview',
+      status: 'published',
+      section: 'sunday',
+      group: '사도행전 강해',
+      episode: 66,
+      title: '도장 깨기',
+      date: '2026-10-25',
+      passage: '사도행전 13:4-7',
+      file: {
+        url: 'https://x.supabase.co/storage/v1/object/public/media/resources/l/a.pdf',
+        name: '시트지.pdf',
+        kind: 'pdf',
+      },
+      pages: [
+        {
+          src: 'https://x.supabase.co/storage/v1/object/public/media/resources/l/1.webp',
+          width: 1200,
+          height: 1698,
+        },
+      ],
+      videoIds: ['YYW0D6JNrGQ'],
+    });
+    expect(videoLinks).toEqual([
+      {
+        videoId: 'YYW0D6JNrGQ',
+        href: 'https://www.youtube.com/watch?v=YYW0D6JNrGQ',
+        external: true,
+      },
+    ]);
+  });
+  it('날짜가 없으면 연도, 원본이 없으면 file 없음', () => {
+    const { resource } = toPreviewResource(
+      {
+        section: 'SEASONAL',
+        seriesLabel: '명절',
+        episode: '',
+        title: 't',
+        date: '',
+        year: '2025',
+        passage: '',
+        file: [],
+        pages: [],
+        videoIds: [],
+      },
+      ''
+    );
+    expect(resource).toMatchObject({ section: 'seasonal', year: '2025' });
+    expect(resource).not.toHaveProperty('file');
+    expect(resource).not.toHaveProperty('date');
   });
 });

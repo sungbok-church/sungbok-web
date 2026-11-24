@@ -26,6 +26,8 @@ export const buildAdminCsp = ({
     `connect-src 'self'${supabase}`,
     // 유튜브 플레이어 틀 — 콘텐츠 미리보기 틀(공개 «영상 한 편» 화면을 그린다)에서만
     `frame-src 'self'${framable ? ' https://www.youtube-nocookie.com https://www.youtube.com' : ''}`,
+    // PDF.js 의 worker(설교 시트지 등록 — PDF 쪽 그림 만들기). 같은 출처 파일
+    `worker-src 'self' blob:`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

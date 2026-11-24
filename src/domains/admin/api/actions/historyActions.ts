@@ -19,6 +19,7 @@ const ROW_HISTORY: Record<string, readonly string[]> = {
   groups: ['groups'],
   bulletins: ['bulletin'],
   albums: ['album'],
+  resources: ['resources'],
   // 한 표를 두 메뉴가 나눠 쓴다 — 어느 한쪽의 «이력조회» 로 열고, 그 글의 메뉴인지는 DB(can_read_history — feed 로)가 거른다
   news_videos: ['announcements', 'garden'],
 };
@@ -30,7 +31,7 @@ const TABLE_HISTORY: Record<string, readonly string[]> = {
 
 const inputSchema = z.union([
   z.object({
-    table: z.enum(['profiles', 'groups', 'bulletins', 'news_videos', 'albums']),
+    table: z.enum(['profiles', 'groups', 'bulletins', 'news_videos', 'albums', 'resources']),
     rowId: z.uuid(),
   }),
   z.object({ table: z.enum(['menus', 'categories', 'codes']), rowId: z.undefined().optional() }),
