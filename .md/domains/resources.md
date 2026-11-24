@@ -37,7 +37,7 @@
 ## 구조
 
 ```
-data/resourcesSeed.ts ──▶ api/resourceRepository ──┬─▶ widgets/ResourceLibrary  → features/ResourceListPage
+DB(resourcesLoad.server) ──▶ api/resourceRepository ──┬─▶ widgets/ResourceLibrary  → features/ResourceListPage
    (DB — 관리자)          list · get · forVideo     ├─▶ widgets/ResourceDocument → features/ResourceViewPage
    (나중: DB)              임시저장은 여기서 거른다   └─▶ worship-video 의 SermonWatch → 「설교 시트지」 카드(api/sheetLinks)
 ```
@@ -45,7 +45,7 @@ data/resourcesSeed.ts ──▶ api/resourceRepository ──┬─▶ widgets/R
 | 파일 | 맡은 일 |
 |---|---|
 | `api/resource.types.ts` | 자료의 모양(`Resource`) — 분류·묶음·회차·날짜·파일·미리보기 쪽·`videoIds`·상태 |
-| `api/resourceRepository.ts` | 공개 자료 읽기. **화면은 이 저장소로만 읽는다**(시드 직접 import 금지). `load` 는 DB([resourcesLoad.server](../../src/domains/resources/api/resourcesLoad.server.ts) — 서버 캐시 · 태그 `resources`, 2026-11-24. 운영 옮기기 전까지는 시드와 합친다 — [admin.md](admin.md) «설교 시트지») |
+| `api/resourceRepository.ts` | 공개 자료 읽기. **화면은 이 저장소로만 읽는다**(시드 직접 import 금지). `load` 는 DB([resourcesLoad.server](../../src/domains/resources/api/resourcesLoad.server.ts) — 서버 캐시 · 태그 `resources`, 2026-11-24 — 기존 57건도 옮겼다, [admin.md](admin.md) «설교 시트지») |
 | `api/resourceList.ts` | 검색·칩·정렬·표시 문구·내려받기 대상(순수) |
 | `api/resourceListState.ts` | 목록의 조건과 돌아올 자리를 화면 밖에 둔다 |
 | `api/resourceViewer.ts` | 열람기의 설명 줄·미리보기 없는 자료의 안내(순수) |
@@ -57,7 +57,7 @@ data/resourcesSeed.ts ──▶ api/resourceRepository ──┬─▶ widgets/R
 
 **열람기는 주보·교회앨범과 조작이 같다**(2026-11-18): 페이지 안에서는 창 폭에 맞춘 크기로만 보여 주고, 확대(100~300%)는 «크게 보기» 에서 한다. 종이를 눌러도 열린다. 뷰어에서 넘긴 쪽은 닫은 뒤에도 그대로다. 뷰어의 «이미지 저장» 은 원본 파일이 없는 자료에만 둔다(머리의 버튼과 같은 규칙 — 원본이 있으면 저장은 «내려받기» 하나). 전에는 페이지 안의 창에서 확대까지 했다.
 
-파일은 `public/files/resources/<id>.pdf|hwp`, 미리보기 쪽은 `public/files/resources/pages/<id>-<n>.webp`.
+파일은 Storage(`media/resources/<묶음 id>/<파일 id>.<pdf|hwp|webp>`) — 원본과 미리보기 쪽은 각각 묶음이 따로다(2026-11-24 옮김. 예전 `public/files/resources` 는 지웠다).
 
 ## 관리자 등록과 예배 시트지 연결
 

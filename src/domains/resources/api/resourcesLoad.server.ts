@@ -10,7 +10,6 @@ import { createSupabaseReadClient } from '@/shared/api/supabase/readClient.serve
 import { storagePublicUrl } from '@/shared/lib/storageUrl';
 import { cacheLife, cacheTag } from 'next/cache';
 
-import { RESOURCES_SEED } from '../data/resourcesSeed';
 import type { Resource } from './resource.types';
 import { RESOURCES_TAG } from './resourceTags';
 
@@ -73,18 +72,6 @@ export const toResources = (rows: readonly Row[], baseUrl: string): Resource[] =
     };
   });
 
-/** 옮긴 자료의 번호 — 기존 사이트의 «게시판-글번호»(0404-40). 새 자료는 숫자만 */
-const isMigrated = (r: Resource) => /^[0-9]{4}-[0-9]+$/.test(r.id);
-
-/**
- * 옮기기가 끝나기 전까지 — 옮긴 자료가 DB 에 하나라도 있으면 DB 만, 없으면 DB 의 새 자료에 시드를 더한다.
- * 운영 옮기기를 확인한 뒤 시드와 함께 없앤다(패키지 B 계획 B4).
- */
-export const mergeResourcesWithSeed = (
-  db: readonly Resource[],
-  seed: readonly Resource[]
-): Resource[] => (db.some(isMigrated) ? [...db] : [...db, ...seed]);
-
 const readResources = async (): Promise<Resource[]> => {
   const env = readSupabaseEnv();
   const client = env ? createSupabaseReadClient() : null;
@@ -110,9 +97,6 @@ const cachedResources = async () => {
   return settled;
 };
 
-/** 공개 설교 시트지 전부(순서는 저장소가 분류마다 정한다) */
+/** 공개 설교 시트지 전부(순서는 저장소가 분류마다 정한다). DB 를 못 읽으면 운영에서는 직전 페이지를 유지하고, 빌드 · 개발에서는 빈 목록 */
 export const loadResources = async (): Promise<Resource[]> =>
-  mergeResourcesWithSeed(
-    (await loadForPage(async () => unwrap(await cachedResources()))) ?? [],
-    RESOURCES_SEED
-  );
+  (await loadForPage(async () => unwrap(await cachedResources()))) ?? [];

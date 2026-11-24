@@ -1,5 +1,5 @@
 // 공개 자료 읽기 — 자료실 화면과 예배 영상의 «설교 시트지» 가 이 한곳으로 읽는다(같은 자료를 두 번 등록하지 않는다).
-// DB 에서 읽는다(resourcesLoad.server — 관리자 «설교 시트지», 옮기기 전까지는 시드와 합친다). 서버에서만 부른다.
+// DB 에서 읽는다(resourcesLoad.server — 관리자 «설교 시트지», 기존 57건도 옮겼다). 서버에서만 부른다.
 // 임시저장은 여기서도 걸러 어느 공개 화면에도 나가지 않는다.
 import type { Resource, ResourceSection } from './resource.types';
 import { loadResources } from './resourcesLoad.server';

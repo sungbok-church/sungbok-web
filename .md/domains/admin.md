@@ -213,9 +213,9 @@
 - **PDF 를 원본에 고르면 브라우저가 쪽마다 그림을 만들어 쪽 그림 칸에 올린다**([renderPdfPages](../../src/domains/admin/components/features/PdfPages/renderPdfPages.ts) — PDF.js `pdfjs-dist`, 긴 변 1700px WebP(못 만들면 JPEG), 60쪽까지, 있던 쪽 그림은 바꾼다). 라이브러리는 PDF 를 고를 때만 받는다. **한글 PDF 는 CMap · 기본 글꼴이 없으면 글자가 빠진다**(2026-11-24 확인) — [pdfjs-assets](../../scripts/pdfjs-assets.mjs) 가 `dev` · `build` 전에 `node_modules/pdfjs-dist` 의 `cmaps` · `standard_fonts` · `wasm` 을 `public/pdfjs/<버전>/` 으로 복사하고(git 에 넣지 않는다) 같은 출처에서 받는다. 관리자 CSP 에 `worker-src 'self' blob:`(PDF.js worker).
 - 회차 · 날짜 · 연도는 폼에서 글자로 받아 숫자 · null 로(날짜가 있으면 연도는 비운다). 설교 영상은 유튜브 주소나 id 를 줄 · 칸으로 나눠(겹치면 하나). 공개하려면 원본이나 쪽 그림이 하나 이상. 영상 연결은 바뀐 것만 빼고 넣는다(이력이 «넣음 · 뺌» 만). «등록» 권한만 있으면 자기 임시저장 글에만 영상을 이을 수 있어(DB) — 공개로 등록할 때 막히면 시트지는 저장하고 그 뜻을 알린다.
 - 복제: 분류 · 묶음 · 제목 · 본문을 복사하고 회차는 다음 회 — 날짜 · 파일 · 영상은 비운 임시저장.
-- **공개 화면**: [resourcesLoad.server](../../src/domains/resources/api/resourcesLoad.server.ts) — 서버 캐시(태그 `resources`, stale 300 · revalidate 60), 저장하면 `updateTag`. 자료실 목록 · 문서 · 예배 영상의 «설교 시트지» 카드가 같이 쓴다. 옮기기 전까지는 시드와 합친다(옮긴 자료 — 번호 «0404-40» 모양 — 가 DB 에 있으면 DB 만).
+- **공개 화면**: [resourcesLoad.server](../../src/domains/resources/api/resourcesLoad.server.ts) — 서버 캐시(태그 `resources`, stale 300 · revalidate 60), 저장하면 `updateTag`. 자료실 목록 · 문서 · 예배 영상의 «설교 시트지» 카드가 같이 쓴다.
 - 미리보기: 공개 «문서 열람»(`ResourceViewPage`) — 영상 링크는 유튜브로(사이트 안 설교 페이지 찾기는 저장 뒤 공개 화면이 한다).
-- **기존 자료 옮기기**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-resources.mjs [--local] [--apply]` — 시드 57건(원본 56 · 쪽 그림 112장 · 영상 연결 37) + `public/files/resources` 를 DB · Storage 로. 같은 번호(휴지통 포함)는 건너뛴다. 운영은 승인 뒤.
+- **기존 자료 옮기기(끝, 2026-11-24)**: 시드 57건(원본 56 · 쪽 그림 112장 · 영상 연결 37)을 일회용 스크립트(`scripts/import-resources.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮기고(방문자 권한으로 15 · 26 · 16건 · 영상 37 확인, 공개 페이지 모두 Storage) 시드 · `public/files/resources` · 합치기 코드 · 스크립트를 지웠다. 이로써 `public/files` 가 모두 없어졌다.
 
 ## 아직 없는 것
 

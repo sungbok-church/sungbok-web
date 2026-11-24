@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Resource } from './resource.types';
-import { createResourceRepository, resourceRepository } from './resourceRepository';
+import { createResourceRepository } from './resourceRepository';
 
 const doc = (over: Partial<Resource>): Resource => ({
   id: 'a',
@@ -41,20 +41,5 @@ describe('resourceRepository', () => {
     expect(await repo.forVideo('')).toEqual([]);
   });
 
-  it('시드: 기존 게시물 57건(주일 15 · 시리즈 26 · 가정·명절·절기 16)', async () => {
-    const [sunday, series, seasonal] = await Promise.all([
-      resourceRepository.list('sunday'),
-      resourceRepository.list('series'),
-      resourceRepository.list('seasonal'),
-    ]);
-    expect([sunday.length, series.length, seasonal.length]).toEqual([15, 26, 16]);
-    const all = [...sunday, ...series, ...seasonal];
-    expect(new Set(all.map(r => r.id)).size).toBe(57);
-    // 원본 파일 56개(PDF 54 · 한글 2), 이미지로만 제공 1건
-    expect(all.filter(r => r.file?.kind === 'pdf').length).toBe(54);
-    expect(all.filter(r => r.file?.kind === 'hwp').length).toBe(2);
-    expect(all.filter(r => !r.file).map(r => r.pages.length)).toEqual([2]);
-    // 미리보기가 없는 자료는 원본 파일이 꼭 있다(열 수도 받을 수도 없는 자료가 없게)
-    expect(all.every(r => r.pages.length > 0 || r.file)).toBe(true);
-  });
+  // 기존 57건은 DB 로 옮겼다(2026-11-24) — 건수는 운영에서 확인했고, «원본이나 쪽 그림이 있어야 공개» 는 입력 스키마가 지킨다
 });

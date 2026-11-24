@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Resource } from './resource.types';
-import { mergeResourcesWithSeed, toResources } from './resourcesLoad.server';
+import { toResources } from './resourcesLoad.server';
 
 const BASE = 'https://x.supabase.co';
 const row = (over: object = {}) => ({
@@ -118,31 +117,5 @@ describe('toResources', () => {
       BASE
     );
     expect(h.file?.kind).toBe('hwp');
-  });
-});
-
-const res = (id: string, title: string): Resource => ({
-  id,
-  status: 'published',
-  section: 'sunday',
-  group: '',
-  title,
-  pages: [],
-  videoIds: [],
-});
-
-describe('mergeResourcesWithSeed — 옮기기 전까지', () => {
-  const seed = [res('0404-40', 'seed40'), res('0404-39', 'seed39')];
-  it('옮긴 자료(«0404-40» 모양 번호)가 DB 에 없으면 DB 의 새 자료 + 시드', () => {
-    expect(mergeResourcesWithSeed([res('1', 'db')], seed).map(r => r.title)).toEqual([
-      'db',
-      'seed40',
-      'seed39',
-    ]);
-  });
-  it('옮긴 자료가 하나라도 있으면 DB 만', () => {
-    expect(
-      mergeResourcesWithSeed([res('1', 'db'), res('0404-40', 'db40')], seed).map(r => r.title)
-    ).toEqual(['db', 'db40']);
   });
 });

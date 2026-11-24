@@ -7,7 +7,7 @@ export type ResourceSection = 'sunday' | 'series' | 'seasonal';
 
 /** 원본 파일(내려받기 대상). 화면에는 확장자·용량을 보이지 않는다(A안). */
 export type ResourceFile = {
-  /** 파일 주소 — 지금은 public/files, 관리자 연동 뒤에는 Storage 주소 */
+  /** 파일 주소(Storage) */
   url: string;
   /** 내려받을 때의 파일 이름(올린 원본 이름) */
   name: string;
