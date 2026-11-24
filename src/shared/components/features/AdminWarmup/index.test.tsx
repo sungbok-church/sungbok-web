@@ -1,7 +1,11 @@
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ADMIN_WARM_PATH, ADMIN_WARM_STORAGE_KEY } from '@/shared/lib/adminWarmup';
+import {
+  ADMIN_WARM_HEADER,
+  ADMIN_WARM_PATH,
+  ADMIN_WARM_STORAGE_KEY,
+} from '@/shared/lib/adminWarmup';
 
 import { AdminWarmup } from './index';
 
@@ -26,13 +30,16 @@ describe('AdminWarmup', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('쿠키가 있으면 로그인 화면을 쿠키 없이 한 번 부른다 — 8시간 시각을 늘리지 않게', () => {
+  it('쿠키가 있으면 관리자 첫 화면을 한 번 그려 둔다 — 깨우기 표시를 달아(8시간 시각을 늘리지 않게), 넘겨 보내기는 따라가지 않는다', () => {
     setCookie('sb-abcd-auth-token=base64-x; path=/');
     render(<AdminWarmup />);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(ADMIN_WARM_PATH, {
       cache: 'no-store',
-      credentials: 'omit',
+      credentials: 'same-origin',
+      redirect: 'manual',
+      keepalive: true,
+      headers: { [ADMIN_WARM_HEADER]: '1' },
     });
     // 부른 시각을 적어 둔다 — 다시 열어도(새로 고침 · 다른 페이지) 3분 안에는 부르지 않는다
     expect(Number(window.localStorage.getItem(ADMIN_WARM_STORAGE_KEY))).toBeGreaterThan(0);

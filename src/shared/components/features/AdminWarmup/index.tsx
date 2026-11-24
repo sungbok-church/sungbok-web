@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  ADMIN_WARM_HEADER,
   ADMIN_WARM_PATH,
   ADMIN_WARM_STORAGE_KEY,
   hasAdminSessionCookie,
@@ -30,10 +31,18 @@ export const AdminWarmup = () => {
     } catch {
       // 위와 같다
     }
-    // 쿠키를 싣지 않는다 — 이유는 lib/adminWarmup 머리 주석
-    // 깨우기만 하면 되니 받은 화면은 읽지 않고 버린다
-    fetch(ADMIN_WARM_PATH, { cache: 'no-store', credentials: 'omit' })
-      .then(res => res.body?.cancel())
+    // 깨우기 표시를 달고, 넘겨 보내기는 따라가지 않는다 — 이유는 lib/adminWarmup 머리 주석.
+    // keepalive: 응답에 실려 오는 새 로그인 토큰(쉬던 사이 만료돼 proxy 가 갱신한 것)을 페이지를 떠나도 받게 —
+    // 놓치면 옛 토큰을 다시 쓰다가 Supabase 가 재사용으로 보고 세션을 끊는다. 받은 화면은 끝까지 받아(첫 화면의 숫자까지
+    // 그리게) 버린다.
+    fetch(ADMIN_WARM_PATH, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      redirect: 'manual',
+      keepalive: true,
+      headers: { [ADMIN_WARM_HEADER]: '1' },
+    })
+      .then(res => res.arrayBuffer())
       .catch(() => {});
   }, []);
   return null;

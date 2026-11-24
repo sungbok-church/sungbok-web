@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { IDLE_COOKIE, IDLE_LIMIT_MS } from './domains/admin/lib/idleSession';
+import { ADMIN_WARM_HEADER } from './shared/lib/adminWarmup';
 import { config, proxy } from './proxy';
 
 vi.mock('@/shared/api/supabase/proxySession.server', () => ({ updateSession: vi.fn() }));
@@ -93,6 +94,45 @@ describe('proxy', () => {
     mockSession({ signedIn: true });
     const res = await proxy(new NextRequest('http://localhost/admin'));
     expect(res.cookies.get(IDLE_COOKIE)?.maxAge).toBe(400 * 24 * 60 * 60);
+  });
+
+  it('서버 미리 깨우기(공개 페이지가 부른 것)는 마지막 요청 시각을 남기지도 바꾸지도 않는다 — 공개 페이지만 열어도 8시간 규칙이 늘어나면 안 된다', async () => {
+    const passthrough = NextResponse.next();
+    mockSession({ signedIn: true, response: passthrough });
+    const res = await proxy(
+      new NextRequest('http://localhost/admin', {
+        headers: { [ADMIN_WARM_HEADER]: '1', cookie: `${IDLE_COOKIE}=${Date.now() - 1000}` },
+      })
+    );
+    expect(res).toBe(passthrough);
+    expect(res.cookies.get(IDLE_COOKIE)).toBeUndefined();
+  });
+
+  it('미리 깨우기라도 8시간 넘게 쉰 세션은 끊는다', async () => {
+    mockSession({ signedIn: true });
+    const res = await proxy(
+      new NextRequest('http://localhost/admin', {
+        headers: {
+          [ADMIN_WARM_HEADER]: '1',
+          cookie: `${IDLE_COOKIE}=${Date.now() - IDLE_LIMIT_MS - 1000}`,
+        },
+      })
+    );
+    expect(res.headers.get('location')).toBe('http://localhost/admin/login?reason=idle');
+    const { signOut } = await vi.mocked(updateSession).mock.results[0].value;
+    expect(signOut).toHaveBeenCalled();
+    expect(res.cookies.get('sb-x-auth-token')?.value).toBe('');
+    expect(res.cookies.get(IDLE_COOKIE)?.value).toBe('');
+  });
+
+  it('미리 깨우기는 로그인 판정이 실패해도(Supabase 가 잠깐 답하지 않는 등) 마지막 요청 시각을 지우지 않는다 — 지우면 8시간이 새로 시작된다', async () => {
+    mockSession({ signedIn: false });
+    const res = await proxy(
+      new NextRequest('http://localhost/admin', {
+        headers: { [ADMIN_WARM_HEADER]: '1', cookie: `${IDLE_COOKIE}=${Date.now() - 1000}` },
+      })
+    );
+    expect(res.cookies.get(IDLE_COOKIE)).toBeUndefined();
   });
 
   it('8시간 넘게 쉬었으면 세션을 끊고 로그인 화면으로(안내 표시)', async () => {
