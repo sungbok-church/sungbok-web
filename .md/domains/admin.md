@@ -194,9 +194,9 @@
 - 액션은 입력의 메뉴(feed)로 그 메뉴의 권한을 보고, 그 feed 의 글에만 쓴다(다른 메뉴의 글 id 를 보내면 0줄 — `updateVersioned` · `setTrashed` · `purgeRow` 의 범위 조건). 휴지통 · 복구 · 완전 삭제는 콘텐츠 공용 [contentState.server](../../src/domains/admin/api/server/contentState.server.ts).
 - 복제: 제목 · 분류 · 설명을 복사한 임시저장(영상은 비움), 날짜는 주일광고 다음 주일 · 성복의 뜰 오늘.
 - 이력: 두 메뉴 중 한쪽의 «이력조회» 로 열고 그 글의 메뉴인지는 DB(`can_read_history`)가 거른다. 분류 · 메뉴 · 날짜 출처는 이름으로 보인다.
-- **공개 화면**: 예배 영상 화면의 서버 캐시(태그 `video-page-announcements` · `video-page-garden`, 10분 확인) 안에서 [newsVideosLoad.server](../../src/domains/news/api/newsVideosLoad.server.ts) 가 DB 를 읽는다. 저장하면 그 태그를 `updateTag`. 옮기기 전까지는 메뉴마다 시드와 합친다(그 메뉴의 DB 글이 시드 기간에 하나라도 있으면 DB 만).
+- **공개 화면**: 예배 영상 화면의 서버 캐시(태그 `video-page-announcements` · `video-page-garden`, 10분 확인) 안에서 [newsVideosLoad.server](../../src/domains/news/api/newsVideosLoad.server.ts) 가 DB 를 읽는다. 저장하면 그 태그를 `updateTag`.
 - **미리보기**: 공개 «영상 한 편» 화면(`SermonWatchPage`)에 저장 전 값으로 만든 한 편을 넘긴다. 미리보기 틀만 CSP `frame-src` 에 유튜브를 연다. 관리자 `img-src` 에는 유튜브 썸네일(`i.ytimg.com`)을 더했다.
-- **기존 글 옮기기**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-news-videos.mjs [--local] [--apply]` — 시드 117편(주일광고 87 · 성복의 뜰 30)을 한 번에. 같은 기존 글번호(`legacy_id`)는 건너뛴다. 운영은 승인 뒤. 등록 · 수정 화면 아래 막대는 콘텐츠 공용 [ContentFormActions](../../src/domains/admin/components/features/ContentFormActions/index.tsx).
+- **기존 글 옮기기(끝, 2026-11-24)**: 시드 117편(주일광고 87 · 성복의 뜰 30)을 일회용 스크립트(`scripts/import-news-videos.mjs` — git 기록에 있다)로 운영 DB 에 옮기고(방문자 권한으로 87 · 30편 확인) 시드 · 합치기 코드 · 스크립트를 지웠다. 등록 · 수정 화면 아래 막대는 콘텐츠 공용 [ContentFormActions](../../src/domains/admin/components/features/ContentFormActions/index.tsx).
 
 ## 아직 없는 것
 

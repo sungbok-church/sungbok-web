@@ -67,10 +67,8 @@ describe('newsRepository', () => {
     expect((await repo.albums()).map(a => a.id)).toEqual(['1']);
   });
 
-  // 주보는 DB 로 옮겼다(2026-11-24 — 날짜마다 하나는 DB 의 유일 인덱스가 지킨다)
-  it('시드: 주일광고 87편 · 성복의 뜰 30편 · 앨범 4건', async () => {
-    expect((await newsRepository.videos('announcements')).length).toBe(87);
-    expect((await newsRepository.videos('garden')).length).toBe(30);
+  // 주보 · 주일광고 · 성복의 뜰은 DB 로 옮겼다(2026-11-24)
+  it('시드: 앨범 4건', async () => {
     expect((await newsRepository.albums()).length).toBe(4);
   });
 });

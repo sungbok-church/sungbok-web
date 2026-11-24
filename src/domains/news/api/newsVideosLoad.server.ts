@@ -6,8 +6,7 @@ import 'server-only'; // 화면(클라이언트) 코드가 가져다 쓰면 빌�
 import { readSupabaseEnv } from '@/shared/api/supabase/env';
 import { createSupabaseReadClient } from '@/shared/api/supabase/readClient.server';
 
-import { NEWS_VIDEOS_SEED } from '../data/newsVideosSeed';
-import type { NewsVideo, NewsVideoFeed } from './news.types';
+import type { NewsVideo } from './news.types';
 
 type Row = {
   id: string;
@@ -46,54 +45,19 @@ export const toNewsVideos = (rows: readonly Row[]): NewsVideo[] =>
       : []
   );
 
-/**
- * 옮기기가 끝나기 전까지 — 메뉴마다, 그 메뉴를 옮겼으면(migrated — 기존 글번호가 있는 글이 DB 에 있다) DB 만,
- * 아니면 DB 글에 시드를 더한다(같은 영상은 DB 것). 날짜로 판단하지 않는다 — 옮기기 전에 시드 기간 날짜로 새 글을 올려도
- * 시드가 사라지지 않게. 운영 옮기기를 확인한 뒤 시드와 함께 없앤다(패키지 B 계획 B2-5).
- */
-export const mergeVideosWithSeed = (
-  db: readonly NewsVideo[],
-  seed: readonly NewsVideo[],
-  migrated: ReadonlySet<NewsVideoFeed>
-): NewsVideo[] => {
-  const feeds: NewsVideoFeed[] = ['announcements', 'garden'];
-  return feeds.flatMap(feed => {
-    const mine = db.filter(v => v.feed === feed);
-    if (migrated.has(feed)) return mine;
-    const ids = new Set(mine.map(v => v.videoId));
-    return [...mine, ...seed.filter(v => v.feed === feed && !ids.has(v.videoId))].sort((a, b) =>
-      b.date.localeCompare(a.date)
-    );
-  });
-};
-
-const readNewsVideos = async (): Promise<{
-  videos: NewsVideo[];
-  migrated: Set<NewsVideoFeed>;
-}> => {
+/** 공개 주일광고 · 성복의 뜰 — DB 의 «공개 + 휴지통 아님 + 영상 있음», 최신 날짜부터 */
+export const loadNewsVideos = async (): Promise<NewsVideo[]> => {
   const client = readSupabaseEnv() ? createSupabaseReadClient() : null;
-  if (!client) return { videos: [], migrated: new Set() };
+  if (!client) return [];
   const { data, error } = await client
     .from('news_videos')
     .select(
-      'id, feed, title, date, date_from, video_id, thumbnail, poster, description, legacy_id, categories(label)'
+      'id, feed, title, date, date_from, video_id, thumbnail, poster, description, categories(label)'
     )
     .eq('status', 'PUBLISHED')
     .is('deleted_at', null)
     .not('video_id', 'is', null)
     .order('date', { ascending: false });
   if (error) throw new Error(`교회소식 영상을 읽지 못했습니다: ${error.message}`);
-  const rows = (data ?? []) as (Row & { legacy_id: string | null })[];
-  const migrated = new Set(
-    rows
-      .filter(r => r.legacy_id)
-      .map(r => (r.feed === 'ANNOUNCEMENTS' ? 'announcements' : 'garden') as NewsVideoFeed)
-  );
-  return { videos: toNewsVideos(rows), migrated };
-};
-
-/** 공개 주일광고 · 성복의 뜰 — DB(옮기기 전까지는 시드와 합친다) */
-export const loadNewsVideos = async (): Promise<NewsVideo[]> => {
-  const { videos, migrated } = await readNewsVideos();
-  return mergeVideosWithSeed(videos, NEWS_VIDEOS_SEED, migrated);
+  return toNewsVideos((data ?? []) as Row[]);
 };

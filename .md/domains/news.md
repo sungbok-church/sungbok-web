@@ -47,11 +47,11 @@
 | `api/news.types.ts` | `NewsVideo` · `BulletinIssue` · `Album` |
 | `api/newsRepository.ts` | 공개 자료 읽기(영상·주보·앨범). 임시저장과 보여 줄 것이 없는 글은 여기서 거른다. **화면은 이 저장소로만 읽는다**(서버에서만 — 주보 읽기가 server-only) |
 | `api/bulletinLoad.server.ts` | 주보를 DB 에서 읽는다(공개 키 · 서버 캐시 · 태그 `bulletins`) — [admin.md](admin.md) «주보» |
-| `api/newsVideosLoad.server.ts` | 주일광고 · 성복의 뜰을 DB 에서 읽는다(예배 영상 화면의 서버 캐시 안에서). 옮기기 전까지는 시드와 합친다 — [admin.md](admin.md) «주일광고 · 성복의 뜰» |
+| `api/newsVideosLoad.server.ts` | 주일광고 · 성복의 뜰을 DB 에서 읽는다(예배 영상 화면의 서버 캐시 안에서) — [admin.md](admin.md) «주일광고 · 성복의 뜰» |
 | `api/bulletinList.ts` | 연도·월 묶기, 표시 문구, «최신» 판정(순수) |
 | `api/albumList.ts` | 분류·검색·표시 문구(순수) |
 | `api/syncAddress.ts` | 페이지 이동 없이 주소 맞추기(`syncAddress`)와 주소에서 고른 항목 읽기(`idFromPath`) |
-| `data/*Seed.ts` | 기존 사이트 게시판을 전부 옮긴 시드(2026-11-16): 주일광고 87편 · 성복의 뜰 30편 · 앨범 4건. 주보 90호는 DB 로 옮겨 시드를 지웠다(2026-11-24) |
+| `data/*Seed.ts` | 기존 사이트 게시판을 옮긴 시드(2026-11-16): 앨범 4건. 주보 90호 · 주일광고 87편 · 성복의 뜰 30편은 DB 로 옮겨 시드를 지웠다(2026-11-24) |
 | `components/widgets/BulletinPage` · `AlbumPage` | 주보·앨범 화면 |
 | 공용 `shared/components/features/ImageViewer`(`index.tsx` · `SpreadImage.tsx`) | 뷰어, 양면 그림 — 자료실도 쓰게 되어 news 에서 공용으로 옮겼다. 장 넘김·확대·선택 버튼은 공용 `shared/components/features/ViewerControls` |
 
@@ -59,7 +59,7 @@
 
 ## 관리자 연동
 
-자료실과 같은 방식이다([resources.md](resources.md) «관리자 등록과 예배 시트지 연결») — 관리자·DB 가 생기면 `newsRepository` 의 `load` 만 바꾼다. **주보는 바꿨다**(2026-11-24 — 관리자에서 올리면 바로 보인다, 기존 90호도 DB 로 옮겼다). 주일광고 · 성복의 뜰도 바꿨다(운영의 기존 117편은 옮기기 승인 전까지 시드와 합쳐 보인다). 앨범은 아직 시드. 주일광고·성복의 뜰은 제목·분류·날짜와 **유튜브 영상 id** 를 등록하고, 주보는 주일 날짜와 그림(4장), 앨범은 제목·분류·그림을 올린다.
+자료실과 같은 방식이다([resources.md](resources.md) «관리자 등록과 예배 시트지 연결») — 관리자·DB 가 생기면 `newsRepository` 의 `load` 만 바꾼다. **주보는 바꿨다**(2026-11-24 — 관리자에서 올리면 바로 보인다, 기존 90호도 DB 로 옮겼다). 주일광고 · 성복의 뜰도 바꿨다(기존 117편도 DB 로 옮겼다). 앨범은 아직 시드. 주일광고·성복의 뜰은 제목·분류·날짜와 **유튜브 영상 id** 를 등록하고, 주보는 주일 날짜와 그림(4장), 앨범은 제목·분류·그림을 올린다.
 
 ## 미결·다음
 
