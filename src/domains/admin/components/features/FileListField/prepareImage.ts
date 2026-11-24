@@ -5,6 +5,7 @@ import {
   IMAGE_QUALITY,
   keepAsIs,
   MAX_IMAGE_EDGE,
+  variantSizes,
 } from '@/domains/admin/lib/fileUpload';
 
 export type PreparedImage = {
@@ -73,4 +74,39 @@ export const prepareImage = async (
   if (webp.type === 'image/webp') return { blob: webp, type: 'image/webp', width, height, resized };
   const jpeg = await deps.encode(file, width, height, 'image/jpeg', IMAGE_QUALITY);
   return { blob: jpeg, type: 'image/jpeg', width, height, resized };
+};
+
+export type ImageVariant = {
+  width: number;
+  height: number;
+  /** 실제로 만든 형식 — 줄인 그림과 같게 만들되, 브라우저가 못 만들면(Safari 의 WebP) JPEG */
+  type: PreparedImage['type'];
+  blob: Blob;
+};
+
+/**
+ * 폭별 파일 — 줄인 그림(base)보다 좁은 폭마다 원본에서 다시 그린다(홈 히어로 · 부서 사진).
+ * 하나씩 차례로 만든다(휴대폰 Safari 의 캔버스 메모리 한도).
+ */
+export const makeVariants = async (
+  file: File,
+  base: { width: number; height: number; type: PreparedImage['type'] },
+  deps: Deps = browserDeps
+): Promise<ImageVariant[]> => {
+  const out: ImageVariant[] = [];
+  for (const { width, height } of variantSizes(base.width, base.height)) {
+    // 지원하지 않는 형식을 달라고 하면 브라우저는 PNG 를 준다 — 그러면 JPEG 로
+    const blob = await deps.encode(file, width, height, base.type, IMAGE_QUALITY);
+    out.push(
+      blob.type === base.type
+        ? { width, height, type: base.type, blob }
+        : {
+            width,
+            height,
+            type: 'image/jpeg',
+            blob: await deps.encode(file, width, height, 'image/jpeg', IMAGE_QUALITY),
+          }
+    );
+  }
+  return out;
 };

@@ -134,34 +134,45 @@ export default function Intro({ dept, door, children }: IntroProps) {
         <span>{dept.ages}</span>
       </p>
       <p className="en-intro text-b1-text">{dept.intro}</p>
-      <ul className="en-staff border-b1-border">
-        {dept.staff.map(s => (
-          <li key={s.name} className="en-staff-row">
-            <span className="en-staff-photo bg-b1-placeholder">
-              <SizedPhoto
-                src={s.photo}
-                alt={`${s.name} ${s.role}`}
-                fill
-                sizes="56px"
-                className="object-cover"
-              />
-            </span>
-            <span className="en-staff-text">
-              <span className="en-staff-name text-b1-text">
-                {s.name}
-                <span className="en-staff-role text-b1-accent">{s.role}</span>
+      {/* 담당자가 없으면 그 구역을 그리지 않는다(설계 6.13) */}
+      {dept.staff.length > 0 && (
+        <ul className="en-staff border-b1-border">
+          {dept.staff.map((s, i) => (
+            <li key={`${i}-${s.name}`} className="en-staff-row">
+              <span className="en-staff-photo bg-b1-placeholder text-b1-sub grid place-items-center">
+                {s.photo ? (
+                  <SizedPhoto
+                    src={s.photo}
+                    alt={`${s.name} ${s.role}`}
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
+                ) : (
+                  // 사진이 없으면 이름 첫 글자 — 이름은 바로 옆에 있으니 읽지 않는다
+                  <span aria-hidden className="text-title font-semibold">
+                    {s.name.slice(0, 1)}
+                  </span>
+                )}
               </span>
-              {s.greeting ? (
-                <span className="en-staff-greeting text-b1-sub">{s.greeting}</span>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <div className="en-extra border-b1-border">
-        <p className="text-b1-text">{dept.extra}</p>
-        <p className="en-extra-note text-b1-sub">부서에서 취합한 뒤 이 자리에 적습니다.</p>
-      </div>
+              <span className="en-staff-text">
+                <span className="en-staff-name text-b1-text">
+                  {s.name}
+                  <span className="en-staff-role text-b1-accent">{s.role}</span>
+                </span>
+                {s.greeting ? (
+                  <span className="en-staff-greeting text-b1-sub">{s.greeting}</span>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {dept.extra && (
+        <div className="en-extra border-b1-border">
+          <p className="text-b1-text">{dept.extra}</p>
+        </div>
+      )}
     </div>
   );
 
@@ -224,7 +235,6 @@ export default function Intro({ dept, door, children }: IntroProps) {
         .en-staff-role { margin-left: 8px; font-size: 14px; font-weight: 500; }
         .en-staff-greeting { font-size: 15px; line-height: 1.65; }
         .en-extra { margin-top: 24px; padding-top: 20px; border-top: 1px solid; font-size: 15px; line-height: 1.65; }
-        .en-extra-note { margin-top: 4px; font-size: 14px; }
 
         .en-sheet { position: relative; width: calc(100vw - var(--sbw, 0px)); margin-left: calc(50% - (50vw - var(--sbw, 0px) / 2)); }
 

@@ -483,6 +483,9 @@ isOneToOne: false
 "reorder_rows":
 { Args: { "p_ids": (string)[],"p_table": string }; Returns: undefined
                            },
+"save_department":
+{ Args: { "p_ages": string,"p_extra": string,"p_intro": string,"p_photos_list_id": string,"p_slug": Database["public"]['Enums']["department_slug"],"p_staff": Json,"p_tagline": string,"p_updated_at": string }; Returns: string
+                           },
 "save_group":
 { Args: { "p_description": string,"p_id": string,"p_is_active": boolean,"p_name": string,"p_permissions": (string)[],"p_seen_permissions": (string)[],"p_updated_at": string }; Returns: string
                            },

@@ -11,6 +11,8 @@ import {
   toPreviewResource,
   toPreviewSermon,
 } from '@/domains/admin/lib/preview';
+import { toDepartmentPage } from '@/domains/next-generation/api/departmentPage';
+import { DepartmentPage } from '@/domains/next-generation/components/widgets/DepartmentPage';
 import { ResourceViewPage } from '@/domains/resources/components/features/ResourceViewPage';
 import { AlbumPage } from '@/domains/news/components/widgets/AlbumPage';
 import { BulletinPage } from '@/domains/news/components/widgets/BulletinPage';
@@ -20,6 +22,15 @@ import { useEffect, useState } from 'react';
 
 /** 저장 전 값을 공개 화면 부품 그대로 — 주보는 주보 화면, 교회앨범은 앨범 화면, 주일광고 · 성복의 뜰은 «영상 한 편» 화면 */
 const Preview = ({ payload }: { payload: PreviewPayload }) => {
+  if (payload.menu === 'departments') {
+    const v = payload.values;
+    const page = toDepartmentPage(v.slug, readSupabaseEnv()?.url ?? '', {
+      ...v,
+      extra: v.extra.trim() || null,
+      staff: v.staff.map(s => ({ ...s, greeting: s.greeting.trim() || null })),
+    });
+    return page.photos.length > 0 ? <DepartmentPage {...page} /> : null;
+  }
   if (payload.menu === 'bulletin') {
     const issue = toPreviewIssue(payload.values, readSupabaseEnv()?.url ?? '');
     return issue.pages.length > 0 ? (

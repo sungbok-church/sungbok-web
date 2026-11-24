@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   fitLongEdge,
+  variantSizes,
   isAllowedPath,
   keepAsIs,
   storagePath,
@@ -77,5 +78,23 @@ describe('keepAsIs', () => {
   it('PNG 이거나 크면 줄여서 다시 만든다', () => {
     expect(keepAsIs('image/png', 100, 100, 2000)).toBe(false);
     expect(keepAsIs('image/jpeg', 4032, 3024, 2000)).toBe(false);
+  });
+});
+
+describe('variantSizes — 폭별 파일의 크기(부서 · 히어로 사진)', () => {
+  it('원본보다 좁은 폭만, 비율대로(높이 반올림)', () => {
+    expect(variantSizes(2000, 1333)).toEqual([
+      { width: 640, height: 427 },
+      { width: 960, height: 640 },
+      { width: 1280, height: 853 },
+      { width: 1920, height: 1280 },
+    ]);
+    expect(variantSizes(1000, 1500)).toEqual([
+      { width: 640, height: 960 },
+      { width: 960, height: 1440 },
+    ]);
+  });
+  it('원본이 640 이하면 만들지 않는다', () => {
+    expect(variantSizes(640, 480)).toEqual([]);
   });
 });

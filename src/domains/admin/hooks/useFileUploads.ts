@@ -1,7 +1,10 @@
 'use client';
 
 import { createUploadList, signUpload } from '@/domains/admin/api/actions/uploadActions';
-import { prepareImage } from '@/domains/admin/components/features/FileListField/prepareImage';
+import {
+  makeVariants,
+  prepareImage,
+} from '@/domains/admin/components/features/FileListField/prepareImage';
 import { putFile } from '@/domains/admin/components/features/FileListField/putFile';
 import { type FileKind, uploadTypeOf } from '@/domains/admin/lib/fileUpload';
 import type { ContentMenu, FileItem } from '@/domains/admin/lib/input/fileInput';
@@ -17,6 +20,7 @@ export type UploadDeps = {
   createUploadList: typeof createUploadList;
   signUpload: typeof signUpload;
   prepareImage: typeof prepareImage;
+  makeVariants: typeof makeVariants;
   putFile: (
     req: Parameters<typeof putFile>[0],
     onProgress: (fraction: number) => void
@@ -29,6 +33,7 @@ const realDeps = (): UploadDeps => ({
   createUploadList,
   signUpload,
   prepareImage,
+  makeVariants,
   putFile: (req, onProgress) => putFile(req, onProgress),
   notice: title => toast.add({ type: 'info', title }),
   apiKey: readSupabaseEnv()?.publishableKey ?? '',
@@ -62,6 +67,7 @@ export const useFileUploads = ({
   onChange,
   max,
   unit = '개',
+  variants = false,
   deps: givenDeps,
 }: {
   menuKey: ContentMenu;
@@ -73,6 +79,8 @@ export const useFileUploads = ({
   max?: number;
   /** 개수 단위(«장» · «개») — 한도 알림에 쓴다 */
   unit?: string;
+  /** 그림마다 폭별 파일도 만들어 올린다(홈 히어로 · 부서 사진, 설계 6.8) */
+  variants?: boolean;
   deps?: UploadDeps;
 }) => {
   const [deps] = useState(() => givenDeps ?? realDeps());
@@ -132,20 +140,48 @@ export const useFileUploads = ({
         ({ blob, type: mime, resized } = prepared);
         size = { width: prepared.width, height: prepared.height };
       }
-      const signed = await deps.signUpload({
-        menuKey,
-        listId: await ensureList(),
-        type: mime,
-        name: file.name,
-        bytes: blob.size,
-      });
-      if (!signed.ok) throw new UploadError(signed.error.message);
-      const target = signed.data;
-      if (!target) throw new UploadError(MESSAGES.failed);
-      await deps.putFile(
-        { url: target.signedUrl, body: blob, contentType: target.contentType, apiKey: deps.apiKey },
-        progress => patch(key, { progress })
+      /** 한 덩어리를 한 번 쓰는 주소로 보낸다 */
+      const send = async (body: Blob, type: string, onProgress: (fraction: number) => void) => {
+        const signed = await deps.signUpload({
+          menuKey,
+          listId: await ensureList(),
+          type,
+          name: file.name,
+          bytes: body.size,
+        });
+        if (!signed.ok) throw new UploadError(signed.error.message);
+        if (!signed.data) throw new UploadError(MESSAGES.failed);
+        const target = signed.data;
+        await deps.putFile(
+          { url: target.signedUrl, body, contentType: target.contentType, apiKey: deps.apiKey },
+          onProgress
+        );
+        return target;
+      };
+      // 폭별 파일이 있으면 진행 막대의 앞 절반이 원본, 뒤 절반이 폭별 파일
+      const withVariants = variants && type.kind === 'IMAGE' && size.width && size.height;
+      const target = await send(blob, mime, p =>
+        patch(key, { progress: withVariants ? p / 2 : p })
       );
+      let ladder: [number, string][] | undefined;
+      if (withVariants) {
+        const made = await deps
+          .makeVariants(file, {
+            width: size.width as number,
+            height: size.height as number,
+            type: mime as 'image/webp' | 'image/jpeg',
+          })
+          .catch(() => {
+            throw new UploadError(MESSAGES.unreadable);
+          });
+        ladder = [];
+        for (const [i, v] of made.entries()) {
+          if (g !== gen.current) return false;
+          const sent = await send(v.blob, v.type, () => {});
+          ladder.push([v.width, sent.path]);
+          patch(key, { progress: 0.5 + ((i + 1) / made.length) * 0.5 });
+        }
+      }
       if (g !== gen.current) return false; // 그사이 바꿔 올렸다 — 이 파일은 붙이지 않는다
       items.current = [
         ...items.current,
@@ -156,12 +192,13 @@ export const useFileUploads = ({
           bytes: blob.size,
           originalName: file.name,
           alt: null,
+          ...(ladder ? { variants: ladder } : {}),
         },
       ];
       onChange(items.current);
       return resized;
     },
-    [deps, ensureList, menuKey, onChange, patch]
+    [deps, ensureList, menuKey, onChange, patch, variants]
   );
 
   /** 정한 파일들을 차례 뒤에 잇는다 — 다 끝나면 줄인 것이 있었는지 한 번 알린다 */

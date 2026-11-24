@@ -77,7 +77,9 @@ afterEach(() => vi.clearAllMocks());
 describe('createAlbum', () => {
   it('그림을 새 묶음에 적고 그 묶음을 가리키는 앨범을 넣는다(주소 번호는 DB 가) — 공개 태그 갱신', async () => {
     const res = await createAlbum(input);
-    expect(m.write).toHaveBeenCalledWith(expect.anything(), 'album', [{ ...image, alt: null }]);
+    expect(m.write).toHaveBeenCalledWith(expect.anything(), 'album', [
+      { ...image, alt: null, variants: null },
+    ]);
     const row = m.insert.mock.calls[0][0];
     expect(row).toEqual({
       id: expect.any(String),

@@ -3,6 +3,7 @@
 import { fail } from '@/shared/api/result';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 import { ALBUMS_TAG } from '@/domains/news/api/newsTags';
+import { DEPARTMENTS_TAG } from '@/domains/next-generation/api/departmentTags';
 import { RESOURCES_TAG } from '@/domains/resources/api/resourceTags';
 import { revalidatePath, updateTag } from 'next/cache';
 
@@ -41,7 +42,11 @@ const categories = {
 const codes = {
   table: 'codes',
   menuKey: 'codes',
-  revalidate: () => revalidatePath('/admin/codes'),
+  // 담당자 직분(STAFF_ROLE) 이름이 공개 부서 페이지에 보인다
+  revalidate: () => {
+    revalidatePath('/admin/codes');
+    updateTag(DEPARTMENTS_TAG);
+  },
 } as const;
 
 /** 분류 더하기 — 묶음의 맨 뒤 순서로. */

@@ -222,6 +222,19 @@
 - [CommandMenu](../../src/domains/admin/components/features/CommandMenu/index.tsx): 메뉴 이름은 화면에서 바로 거르고, 2자 이상 치면 250ms 기다렸다가 서버에 글을 묻는다([useContentSearch](../../src/domains/admin/hooks/useContentSearch.ts) — 늦게 온 옛 답은 버린다). 고르면 그 글의 상세로.
 - [searchContent](../../src/domains/admin/api/actions/searchActions.ts): 그 사람이 조회 권한을 가진 콘텐츠 메뉴만, 휴지통 아닌 글(임시저장 포함)을 메뉴마다 최신 5개 — 주일광고 · 성복의 뜰 · 교회앨범은 제목, 설교 시트지는 제목 · 본문, 주보는 제목이 없어 날짜 모양(«2026-11-29» · «2026-11» · «2026»)일 때만. 검색어의 `%` · `_` 는 글자 그대로.
 
+## 사이트 화면(패키지 C)
+
+### 다음세대 부서(C1)
+
+- **글이 아니라 설정**이다 — 휴지통 · 복제 · 공개/임시저장이 없고 저장하면 바로 공개된다. `/admin/departments`(8곳 표 — 담당 부서가 정해진 사람은 그 부서로 바로, 조회만 있으면 공개 페이지를 연다) · `/admin/departments/<slug>`(상세 없이 바로 고치기: 소개 · 담당자 · 사진 세 구역, [DepartmentForm](../../src/domains/admin/components/widgets/DepartmentForm/index.tsx)). 아래 막대는 [취소] · [미리보기] · [저장].
+- **한 번에 저장**: 사진 · 담당자 사진은 저장마다 새 묶음(`writeFileList`), 부서 칸 · 담당자(넣기 · 고치기 · 빼기 · 순서)는 DB 함수 `save_department` 하나로 — 하나라도 막히면 전부 되돌리고, 화면을 연 뒤 바뀌었으면 «충돌». 로그인한 사람의 권한으로 돌아 담당 부서 밖은 RLS 가 막는다(액션도 `my_department_limit` 로 먼저 본다).
+- 담당자: 이름 · 직분(공통코드 `STAFF_ROLE`) · 인사말 · 사진(한 장, 없어도 된다 — 공개 화면은 이름 첫 글자), 10명까지, 0명이면 공개 화면에 그 구역이 없다. 사진: 1~30장, 첫 장이 도입부, 사진마다 대체 텍스트(`FileListField withAlt` — 비우면 «<부서> 사진 N»).
+- **폭별 파일**(설계 6.8 — 부서 · 히어로 사진만, `FileListField variants`): 줄인 그림(2000px)보다 좁은 640 · 960 · 1280 · 1920px WebP 를 같은 묶음 폴더에 더 올리고 파일 줄의 `variants`([[가로, 경로], …])에 적는다. 공개 사진 부품([Photo](../../src/shared/components/features/Photo/index.tsx))이 올린 사진(`UploadedPhoto` — src · width · height · variants)도 받아 `pickVariant` 로 고른다.
+- 배열 칸 오류: `zodFormValidator(schema, { nested: ['staff'] })` 가 «staff[0].name» 칸에 단다.
+- **공개 화면**: [departmentsLoad.server](../../src/domains/next-generation/api/departmentsLoad.server.ts) — 8곳을 한 번에 서버 캐시(태그 `departments`, stale 300 · revalidate 60), 저장하면 `updateTag`. 이름 · 예배 요일/시간/장소는 코드([departmentInfo](../../src/domains/next-generation/config/departmentInfo.ts)). «맨 아래 한 줄» 이 비면 그리지 않는다. **옮기기 전까지 DB 에 없는 부서는 코드의 값**(`data/departments`)으로 그린다 — 옮긴 뒤 지운다.
+- 미리보기: 공개 부서 페이지(`DepartmentPage`) — 틀 주소에 `?slug=` 를 붙여 섹션 메뉴의 자리를 맞춘다. 변경 이력은 부서 행 + 담당자 줄(부서에 묶임).
+- **옮기기**: [import-departments](../../scripts/import-departments.mjs)(일회용) — 지금 코드의 값(소개 · 담당자 9명 · 사진 부서마다 12장)을, 여러 부서가 같이 쓰는 사진은 한 번만 올려(23장 + 폭별 파일) 부서마다 파일 줄을 둔다. «맨 아래 한 줄» 자리표시는 비운다. 여러 번 돌려도 DB 에 있는 부서는 건드리지 않는다.
+
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 패키지 B 는 끝(2026-11-25) → 다음세대 부서 · 홈 히어로 · 새가족(C) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
+설계 문서 9절의 순서대로 만든다: 패키지 B 는 끝(2026-11-25) → C(다음세대 부서 → 새가족 → 홈 히어로 — 사용자 결정 2026-11-25, [계획](../specs/2026-11-25-admin-pc-site-plan.md)) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.

@@ -36,13 +36,34 @@ export const fileItemSchema = (menuKey: ContentMenu) =>
         .max(300, '대체 텍스트는 300자까지입니다.')
         .nullish()
         .transform(v => v || null),
+      /** 폭별 파일 [[가로 px, 경로], …](홈 히어로 · 부서 사진, 설계 6.8) — 없으면 null */
+      variants: z
+        .array(z.tuple([z.number().int().positive(), z.string()]))
+        .max(8)
+        .nullish()
+        .transform(v => (v && v.length > 0 ? v : null)),
     })
     .refine(f => isAllowedPath(f.path, menuKey, f.kind), { message: '올릴 수 없는 파일입니다.' })
+    // 폭별 파일은 원본과 같은 묶음에 올린 그림만(다른 글 · 메뉴의 파일을 끌어다 쓰지 않게)
+    .refine(
+      f =>
+        !f.variants ||
+        (f.kind === 'IMAGE' &&
+          f.variants.every(
+            ([, p]) =>
+              isAllowedPath(p, menuKey, 'IMAGE') &&
+              p.slice(0, p.lastIndexOf('/')) === f.path.slice(0, f.path.lastIndexOf('/'))
+          )),
+      { message: '올릴 수 없는 파일입니다.' }
+    )
     .refine(f => (f.width === null) === (f.height === null) && (f.kind !== 'IMAGE' || f.width), {
       message: '그림의 크기를 읽지 못했습니다. 다시 올려 주세요.',
     });
 
-export type FileItem = z.output<ReturnType<typeof fileItemSchema>>;
+/** 폭별 파일은 부서 · 히어로 사진만 갖는다 — 나머지 화면은 칸을 두지 않아도 된다 */
+export type FileItem = Omit<z.output<ReturnType<typeof fileItemSchema>>, 'variants'> & {
+  variants?: [number, string][] | null;
+};
 
 /** 한 파일을 올릴 한 번 쓰는 주소를 달라는 요청 */
 export const uploadRequestSchema = z.object({

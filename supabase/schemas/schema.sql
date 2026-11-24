@@ -820,6 +820,55 @@ begin
 end
 $$;
 
+-- 다음세대 부서 한 번에 저장(설계 6.13) — 부서 칸 · 사진 묶음 · 담당자(넣기 · 고치기 · 빼기 · 순서)를 한 트랜잭션으로.
+-- p_staff = [{id(새 사람은 null), name, role_id, greeting, photo_list_id}, …] — 이 순서가 화면의 순서다(sort 1, 2, …).
+-- 목록에 없는 담당자는 뺀다. 화면을 연 뒤 누가 저장했으면(updated_at 이 다르면) 아무것도 바꾸지 않고 null.
+-- 로그인한 사람의 권한으로 돈다(security invoker) — 담당 부서가 아니면 부서 행 고치기가 0줄이라 null(RLS · can_edit_department).
+-- 담당자를 고쳐도 부서 행의 수정 시각이 늘 바뀐다(이 함수로만 고친다) — 동시 수정은 부서 행 하나로 본다.
+create function public.save_department(
+  p_slug public.department_slug,
+  p_updated_at timestamptz,
+  p_ages text,
+  p_tagline text,
+  p_intro text,
+  p_extra text,
+  p_photos_list_id uuid,
+  p_staff jsonb
+) returns timestamptz
+language plpgsql
+set search_path = ''
+as $$
+declare
+  dept uuid;
+  saved timestamptz;
+begin
+  update public.departments
+     set ages = p_ages, tagline = p_tagline, intro = p_intro, extra = nullif(btrim(p_extra), ''),
+         photos_list_id = p_photos_list_id
+   where slug = p_slug and updated_at = p_updated_at
+  returning id, updated_at into dept, saved;
+  if saved is null then
+    return null;
+  end if;
+  delete from public.department_staff s
+   where s.department_id = dept
+     and s.id not in (
+       select (e ->> 'id')::uuid from jsonb_array_elements(coalesce(p_staff, '[]')) e where e ->> 'id' is not null
+     );
+  update public.department_staff s
+     set sort = x.ord, name = x.e ->> 'name', role_id = (x.e ->> 'role_id')::uuid,
+         greeting = nullif(btrim(x.e ->> 'greeting'), ''), photo_list_id = (x.e ->> 'photo_list_id')::uuid
+    from jsonb_array_elements(coalesce(p_staff, '[]')) with ordinality as x (e, ord)
+   where s.department_id = dept and s.id = (x.e ->> 'id')::uuid;
+  insert into public.department_staff (department_id, sort, name, role_id, greeting, photo_list_id)
+  select dept, x.ord, x.e ->> 'name', (x.e ->> 'role_id')::uuid, nullif(btrim(x.e ->> 'greeting'), ''),
+         (x.e ->> 'photo_list_id')::uuid
+    from jsonb_array_elements(coalesce(p_staff, '[]')) with ordinality as x (e, ord)
+   where x.e ->> 'id' is null;
+  return saved;
+end
+$$;
+
 -- 끌어서 옮긴 순서를 한 번에 저장(메뉴 관리 · 분류 관리 · 코드 관리). p_ids 는 한 무리(메뉴: 같은 영역 · 같은 상위 메뉴,
 -- 분류 · 코드: 같은 묶음)의 모든 줄을 새 순서대로 — 빠지거나 더 있거나 겹치거나 다른 무리가 섞이면 아무것도 바꾸지 않고 오류.
 -- 순서 값은 10, 20, 30 … 으로 다시 매기고 값이 바뀐 줄만 고친다(그대로인 줄은 수정 시각 · 변경 이력이 남지 않는다).
@@ -1597,6 +1646,11 @@ as $$
    where o.bucket_id = 'media'
      and o.created_at < now() - interval '24 hours'
      and not exists (select 1 from public.files f where f.bucket = o.bucket_id and f.path = o.name)
+     -- 폭별 파일(부서 · 히어로 사진 — files.variants 의 [[가로, 경로], …])도 그 줄이 가리키는 파일이다
+     and not exists (
+       select 1 from public.files f, jsonb_array_elements(f.variants) v
+        where f.bucket = o.bucket_id and f.variants is not null and v ->> 1 = o.name
+     )
    order by o.created_at
    limit p_limit
 $$;
@@ -2028,6 +2082,7 @@ grant execute on function public.actor_names(uuid[]) to authenticated;
 grant execute on function public.save_user(uuid, timestamptz, text, public.department_slug, boolean, uuid[], uuid[]) to authenticated;
 grant execute on function public.save_group(uuid, timestamptz, text, text, boolean, text[], text[]) to authenticated;
 grant execute on function public.create_group(text, text, text[]) to authenticated;
+grant execute on function public.save_department(public.department_slug, timestamptz, text, text, text, text, uuid, jsonb) to authenticated;
 grant execute on function public.reorder_rows(text, uuid[]) to authenticated;
 grant execute on function public.purge_expired() to service_role;
 grant execute on function public.orphan_storage_objects(integer) to service_role;

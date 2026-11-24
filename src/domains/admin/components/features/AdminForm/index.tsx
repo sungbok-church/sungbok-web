@@ -269,13 +269,18 @@ export const applyStepServerErrors = (
  * 틀린 칸마다 첫 문구를 그 칸의 오류로 붙인다.
  */
 export const zodFormValidator =
-  (schema: ZodType) =>
+  (schema: ZodType, { nested = [] }: { nested?: readonly string[] } = {}) =>
   ({ value }: { value: unknown }) => {
     const parsed = schema.safeParse(value);
     if (parsed.success) return undefined;
     const fields: Record<string, { message: string }> = {};
     for (const issue of parsed.error.issues) {
-      const name = String(issue.path[0] ?? '');
+      const [head, index, prop] = issue.path;
+      // 배열 칸(nested — 담당자 목록 등)은 항목의 칸(«staff[0].name»)에 단다. 그 밖은 첫 칸 이름에.
+      const name =
+        nested.includes(String(head)) && typeof index === 'number' && prop !== undefined
+          ? `${String(head)}[${index}].${String(prop)}`
+          : String(head ?? '');
       if (name && !fields[name]) fields[name] = { message: issue.message };
     }
     return { fields };

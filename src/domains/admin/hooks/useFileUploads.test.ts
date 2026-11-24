@@ -35,13 +35,31 @@ const makeDeps = (over: Partial<UploadDeps> = {}): UploadDeps => {
       resized: f.name.startsWith('big'),
     })),
     putFile: vi.fn(async (_r, onProgress: (p: number) => void) => onProgress(1)),
+    makeVariants: vi.fn(async () => [
+      {
+        width: 640,
+        height: 456,
+        type: 'image/jpeg' as const,
+        blob: new Blob(['v'], { type: 'image/jpeg' }),
+      },
+      {
+        width: 960,
+        height: 683,
+        type: 'image/jpeg' as const,
+        blob: new Blob(['v'], { type: 'image/jpeg' }),
+      },
+    ]),
     notice: vi.fn(),
     apiKey: 'pk',
     ...over,
   };
 };
 
-const setup = (deps: UploadDeps, initial: FileItem[] = [], opts: { max?: number } = {}) =>
+const setup = (
+  deps: UploadDeps,
+  initial: FileItem[] = [],
+  opts: { max?: number; variants?: boolean } = {}
+) =>
   renderHook(() => {
     const [value, setValue] = useState<FileItem[]>(initial);
     const uploads = useFileUploads({
@@ -210,5 +228,36 @@ describe('useFileUploads — 받아들인 파일 · 바꿔 올리기', () => {
       expect(result.current.value.map(f => f.originalName)).toEqual(['1.jpg', '2.jpg'])
     );
     expect(result.current.pending).toEqual([]);
+  });
+});
+
+describe('useFileUploads — 폭별 파일', () => {
+  it('variants 를 켜면 줄인 그림 뒤에 폭별 파일을 같은 묶음에 올리고 [가로, 경로] 로 담는다', async () => {
+    const deps = makeDeps();
+    const { result } = setup(deps, [], { variants: true });
+    act(() => result.current.add([img('1.jpg')]));
+    await waitFor(() => expect(result.current.value).toHaveLength(1));
+    expect(deps.makeVariants).toHaveBeenCalledWith(expect.any(File), {
+      width: 1200,
+      height: 854,
+      type: 'image/jpeg',
+    });
+    expect(deps.signUpload).toHaveBeenCalledTimes(3);
+    expect(result.current.value[0]).toMatchObject({
+      path: `bulletin/${LIST}/f1.jpg`,
+      variants: [
+        [640, `bulletin/${LIST}/f2.jpg`],
+        [960, `bulletin/${LIST}/f3.jpg`],
+      ],
+    });
+  });
+
+  it('끄면 만들지 않는다', async () => {
+    const deps = makeDeps();
+    const { result } = setup(deps);
+    act(() => result.current.add([img('1.jpg')]));
+    await waitFor(() => expect(result.current.value).toHaveLength(1));
+    expect(deps.makeVariants).not.toHaveBeenCalled();
+    expect(result.current.value[0].variants).toBeUndefined();
   });
 });

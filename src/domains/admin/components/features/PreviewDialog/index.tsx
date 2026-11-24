@@ -92,7 +92,8 @@ export const PreviewDialog = ({
           <iframe
             ref={frame}
             title="미리보기 화면"
-            src={`${ADMIN_PREVIEW_PATH}${menu}`}
+            // 부서는 부서마다 섹션 메뉴의 자리가 달라 slug 를 붙인다(틀은 주소의 slug 로 머리만 맞춘다 — 값은 메시지로)
+            src={`${ADMIN_PREVIEW_PATH}${menu}${payload.menu === 'departments' ? `?slug=${payload.values.slug}` : ''}`}
             className="bg-background mx-auto h-full shrink-0 border-x"
             style={{ width: px }}
           />

@@ -29,16 +29,7 @@ import parkByungwook from '@/assets/images/staff/park-byungwook.webp';
 import kimJunghan from '@/assets/images/staff/kim-junghan.webp';
 
 import type { Department, Photo } from '../components/widgets/DepartmentPage/types';
-
-export type DepartmentSlug =
-  | 'infant'
-  | 'kindergarten'
-  | 'lower-elementary'
-  | 'elementary'
-  | 'middle'
-  | 'high'
-  | 'young-adult'
-  | 'english';
+import type { DepartmentSlug } from '../config/departmentSlug';
 
 export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Photo[] }> = {
   infant: {
@@ -58,7 +49,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
             '영아부는 아이와 부모가 함께 예배하는 자리입니다. 처음 오시는 가정도 같은 자리에서 예배합니다.',
         },
       ],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: inf01, alt: '영아부 사진 샘플 1' },
@@ -87,7 +78,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
         { name: '이옥근', role: '간사', photo: leeOkgeun },
         { name: '이명화', role: '간사', photo: leeMyunghwa },
       ],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: dep02, alt: '유치부 사진 샘플 1' },
@@ -113,7 +104,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
         '유년부는 초등학교 1학년부터 3학년까지의 어린이가 모이는 부서입니다. 주일 오전 11시 30분 소망성전 2층에서 예배하며, 예배 뒤 반별 모임이 있습니다.',
       worship: { day: '주일', time: '오전 11:30', place: '소망성전 2F' },
       staff: [{ name: '천지현', role: '간사', photo: chunJihyun }],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: dep03, alt: '유년부 사진 샘플 1' },
@@ -139,7 +130,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
         '초등부는 초등학교 4학년부터 6학년까지의 어린이가 모이는 부서입니다. 주일 오전 11시 30분 화평성전 4층에서 예배하며, 예배 뒤 반별 모임이 있습니다.',
       worship: { day: '주일', time: '오전 11:30', place: '화평성전 4F' },
       staff: [{ name: '최주찬', role: '전도사', photo: choiJuchan }],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: dep04, alt: '초등부 사진 샘플 1' },
@@ -165,7 +156,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
         '중등부는 중학생이 모이는 부서입니다. 주일 오전 11시 30분 벧엘성전 4층에서 예배하며, 예배 뒤 반별로 모여 말씀을 나눕니다.',
       worship: { day: '주일', time: '오전 11:30', place: '벧엘성전 4F' },
       staff: [{ name: '최원재', role: '목사', photo: choiWonjae }],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: dep05, alt: '중등부 사진 샘플 1' },
@@ -191,7 +182,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
         '고등부는 고등학생이 모이는 부서입니다. 주일 오전 9시 벧엘성전 4층에서 예배하며, 예배 뒤 반별로 모여 말씀을 나눕니다.',
       worship: { day: '주일', time: '오전 9:00', place: '벧엘성전 4F' },
       staff: [{ name: '박병욱', role: '목사', photo: parkByungwook }],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: dep06, alt: '고등부 사진 샘플 1' },
@@ -217,7 +208,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
         '청년부는 20대와 30대 청년이 모이는 부서입니다. 주일 오후 1시 30분 예루살렘성전 3층에서 예배하며, 예배 뒤 소그룹으로 모입니다.',
       worship: { day: '주일', time: '오후 1:30', place: '예루살렘성전 3F' },
       staff: [{ name: '김정한', role: '목사', photo: kimJunghan }],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: dep08, alt: '청년부 사진 샘플 1' },
@@ -243,7 +234,7 @@ export const DEPARTMENTS: Record<DepartmentSlug, { dept: Department; photos: Pho
         '영어예배부는 영어로 예배하고 성경을 배우는 부서입니다. 주일 오후 2시 벧엘성전 4층에서 모이며, 한국어 예배가 낯선 가정의 자녀도 함께합니다.',
       worship: { day: '주일', time: '오후 2:00', place: '벧엘성전 4F' },
       staff: [{ name: '최주찬', role: '전도사', photo: choiJuchan }],
-      extra: '처음 오는 가정을 위한 안내 한 줄(도착 시각·입구)',
+      extra: '',
     },
     photos: [
       { id: 'p01', src: dep07, alt: '영어예배부 사진 샘플 1' },

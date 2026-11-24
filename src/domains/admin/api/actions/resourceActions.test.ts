@@ -119,10 +119,10 @@ describe('createResource', () => {
   it('원본 · 쪽을 각각 새 묶음에 적고, 시트지를 넣은 뒤 영상을 잇는다 — 공개 태그 갱신', async () => {
     const res = await createResource(input);
     expect(m.write).toHaveBeenNthCalledWith(1, expect.anything(), 'resources', [
-      { ...input.file[0], alt: null },
+      { ...input.file[0], alt: null, variants: null },
     ]);
     expect(m.write).toHaveBeenNthCalledWith(2, expect.anything(), 'resources', [
-      { ...input.pages[0], alt: null },
+      { ...input.pages[0], alt: null, variants: null },
     ]);
     const row = m.insert.mock.calls[0][0];
     expect(row).toEqual({

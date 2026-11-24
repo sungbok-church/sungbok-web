@@ -1,6 +1,7 @@
 // 콘텐츠 미리보기(설계 6.10 — 사용자 결정 2026-11-20) — 등록 · 수정 화면이 저장하지 않은 지금 값을 미리보기 틀(iframe)에 보낸다.
 // 서버에 아무것도 남기지 않는다. 틀은 같은 출처(관리자 주소 아래)이고, 같은 출처의 메시지만 받는다.
 import type { Album, BulletinIssue } from '@/domains/news/api/news.types';
+import type { DepartmentSlug } from '@/domains/next-generation/config/departmentSlug';
 import type { Resource } from '@/domains/resources/api/resource.types';
 import type { Sermon } from '@/domains/worship-video/api/worshipVideo.types';
 import { storagePublicUrl } from '@/shared/lib/storageUrl';
@@ -53,8 +54,20 @@ export type ResourcePreviewValues = {
   videoIds: string[];
 };
 
+/** 다음세대 부서 — 직분은 이름으로, 담당자 사진은 한 장(없으면 null) */
+export type DepartmentPreviewValues = {
+  slug: DepartmentSlug;
+  ages: string;
+  tagline: string;
+  intro: string;
+  extra: string;
+  photos: FileItem[];
+  staff: { name: string; roleLabel: string; greeting: string; photo: FileItem | null }[];
+};
+
 /** 메뉴마다 보내는 값 */
 export type PreviewPayload =
+  | { menu: 'departments'; values: DepartmentPreviewValues }
   | { menu: 'resources'; values: ResourcePreviewValues }
   | { menu: 'bulletin'; values: BulletinPreviewValues }
   | { menu: 'album'; values: AlbumPreviewValues }
@@ -68,6 +81,7 @@ const PREVIEW_MENUS: readonly string[] = [
   'garden',
   'album',
   'resources',
+  'departments',
 ];
 
 export type PreviewMessage =

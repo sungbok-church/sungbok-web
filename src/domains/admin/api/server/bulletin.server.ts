@@ -14,6 +14,8 @@ type FileRow = {
   original_name: string;
   alt: string | null;
   sort: number;
+  /** 폭별 파일 — 부서 · 히어로 사진만 읽는다 */
+  variants?: unknown;
 };
 
 export type AdminBulletin = {
@@ -41,6 +43,9 @@ export const toFileItems = (rows: readonly FileRow[]): FileItem[] =>
       bytes: f.bytes,
       originalName: f.original_name,
       alt: f.alt,
+      ...(Array.isArray(f.variants) && f.variants.length > 0
+        ? { variants: f.variants as [number, string][] }
+        : {}),
     }));
 
 /** 주보 한 호(휴지통에 든 것 포함)와 쪽을 한 번에 읽는다 — 로그인한 사람의 세션(RLS: 주보 조회 권한) */

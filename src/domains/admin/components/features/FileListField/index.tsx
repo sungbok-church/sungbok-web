@@ -6,6 +6,7 @@ import type { ContentMenu, FileItem } from '@/domains/admin/lib/input/fileInput'
 import { readSupabaseEnv } from '@/shared/api/supabase/env';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { reorder } from '@/shared/lib/reorder';
 import { storagePublicUrl } from '@/shared/lib/storageUrl';
@@ -52,6 +53,8 @@ export const FileListField = ({
   uploaderRef,
   invalid,
   disabled = false,
+  variants = false,
+  withAlt = false,
 }: {
   /** 고르기 단추의 id — 칸 이름(FieldLabel htmlFor)이 이 단추를 가리킨다 */
   id: string;
@@ -74,6 +77,10 @@ export const FileListField = ({
   invalid?: boolean;
   /** 저장하는 동안 — 고르기 · 끌어 놓기 · 순서 · 빼기를 막는다(저장 뒤 화면이 바뀌며 말없이 사라지지 않게) */
   disabled?: boolean;
+  /** 그림마다 폭별 파일도 만들어 올린다(홈 히어로 · 부서 사진) */
+  variants?: boolean;
+  /** 그림마다 대체 텍스트 칸(공개 화면의 alt) */
+  withAlt?: boolean;
 }) => {
   const { pending, busy, add, replace, retry, dismiss } = useFileUploads({
     menuKey,
@@ -82,6 +89,7 @@ export const FileListField = ({
     onChange,
     max,
     unit,
+    variants,
   });
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -148,63 +156,85 @@ export const FileListField = ({
           {value.map((f, i) => {
             const name = `${i + 1}${itemLabel}`;
             return (
-              <li key={f.path} className="bg-muted relative overflow-hidden rounded-lg border">
-                {f.kind === 'IMAGE' ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- Storage 에 올린 그대로를 보인다(next/image 변환기를 쓰지 않는다, ADR 0013)
-                  <img
-                    src={storagePublicUrl(baseUrl, MEDIA_BUCKET, f.path)}
-                    alt={name}
-                    width={f.width ?? undefined}
-                    height={f.height ?? undefined}
-                    className="aspect-[4/3] w-full object-contain"
-                  />
-                ) : (
-                  <div className="text-muted-foreground flex aspect-[4/3] flex-col items-center justify-center gap-1 p-2 text-xs">
-                    <FileIcon aria-hidden />
-                    <span className="line-clamp-2 text-center break-all">{f.originalName}</span>
-                  </div>
-                )}
-                <Badge aria-hidden variant="secondary" className="absolute top-1 left-1">
-                  {i + 1}
-                </Badge>
-                {value.length > 1 && (
-                  <div className="absolute inset-x-1 bottom-1 flex justify-between">
-                    <Button
-                      ref={buttonRef(`${f.path}:prev`)}
-                      type="button"
-                      size="icon-sm"
-                      variant="secondary"
-                      disabled={disabled || i === 0}
-                      aria-label={`${name} 앞으로`}
-                      onClick={() => move(i, i - 1)}
-                    >
-                      <ArrowLeftIcon />
-                    </Button>
-                    <Button
-                      ref={buttonRef(`${f.path}:next`)}
-                      type="button"
-                      size="icon-sm"
-                      variant="secondary"
-                      disabled={disabled || i === value.length - 1}
-                      aria-label={`${name} 뒤로`}
-                      onClick={() => move(i, i + 1)}
-                    >
-                      <ArrowRightIcon />
-                    </Button>
-                  </div>
-                )}
-                <Button
-                  ref={buttonRef(`${f.path}:remove`)}
-                  type="button"
-                  size="icon-sm"
-                  variant="secondary"
-                  className="absolute top-1 right-1"
-                  disabled={disabled}
-                  aria-label={`${name} 빼기`}
-                  onClick={() => remove(i)}
+              <li key={f.path} className="bg-muted rounded-lg border">
+                {/* 잘라 내기(둥근 모서리)는 그림 쪽에만 — 아래 대체 텍스트 칸의 포커스 링이 잘리지 않게 */}
+                <div
+                  className={cn(
+                    'relative overflow-hidden',
+                    withAlt && f.kind === 'IMAGE' ? 'rounded-t-lg' : 'rounded-lg'
+                  )}
                 >
-                  <XIcon />
-                </Button>
+                  {f.kind === 'IMAGE' ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- Storage 에 올린 그대로를 보인다(next/image 변환기를 쓰지 않는다, ADR 0013)
+                    <img
+                      src={storagePublicUrl(baseUrl, MEDIA_BUCKET, f.path)}
+                      alt={name}
+                      width={f.width ?? undefined}
+                      height={f.height ?? undefined}
+                      className="aspect-[4/3] w-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground flex aspect-[4/3] flex-col items-center justify-center gap-1 p-2 text-xs">
+                      <FileIcon aria-hidden />
+                      <span className="line-clamp-2 text-center break-all">{f.originalName}</span>
+                    </div>
+                  )}
+                  <Badge aria-hidden variant="secondary" className="absolute top-1 left-1">
+                    {i + 1}
+                  </Badge>
+                  {value.length > 1 && (
+                    <div className="absolute inset-x-1 bottom-1 flex justify-between">
+                      <Button
+                        ref={buttonRef(`${f.path}:prev`)}
+                        type="button"
+                        size="icon-sm"
+                        variant="secondary"
+                        disabled={disabled || i === 0}
+                        aria-label={`${name} 앞으로`}
+                        onClick={() => move(i, i - 1)}
+                      >
+                        <ArrowLeftIcon />
+                      </Button>
+                      <Button
+                        ref={buttonRef(`${f.path}:next`)}
+                        type="button"
+                        size="icon-sm"
+                        variant="secondary"
+                        disabled={disabled || i === value.length - 1}
+                        aria-label={`${name} 뒤로`}
+                        onClick={() => move(i, i + 1)}
+                      >
+                        <ArrowRightIcon />
+                      </Button>
+                    </div>
+                  )}
+                  <Button
+                    ref={buttonRef(`${f.path}:remove`)}
+                    type="button"
+                    size="icon-sm"
+                    variant="secondary"
+                    className="absolute top-1 right-1"
+                    disabled={disabled}
+                    aria-label={`${name} 빼기`}
+                    onClick={() => remove(i)}
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
+                {withAlt && f.kind === 'IMAGE' && (
+                  <div className="p-1">
+                    <Input
+                      value={f.alt ?? ''}
+                      maxLength={300}
+                      placeholder="대체 텍스트"
+                      aria-label={`${name} 대체 텍스트`}
+                      disabled={disabled}
+                      onChange={e =>
+                        onChange(value.map((v, k) => (k === i ? { ...v, alt: e.target.value } : v)))
+                      }
+                    />
+                  </div>
+                )}
               </li>
             );
           })}

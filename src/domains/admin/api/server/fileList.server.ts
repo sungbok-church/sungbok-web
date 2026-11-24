@@ -46,6 +46,8 @@ export const writeFileList = async (
         bytes: f.bytes,
         original_name: f.originalName,
         alt: f.alt,
+        // 폭별 파일은 부서 · 히어로 사진만 — 없으면 칸을 비운다(기본값 null)
+        ...(f.variants ? { variants: f.variants } : {}),
       }))
     );
     if (filesError) return { ok: false, error: toActionError(filesError) };
@@ -67,7 +69,7 @@ export const copyFileList = async (
   if (!menuKey) return fail('NOT_FOUND');
   const { data: rows, error } = await client
     .from('files')
-    .select('path, kind, width, height, bytes, original_name, alt')
+    .select('path, kind, width, height, bytes, original_name, alt, variants')
     .eq('list_id', sourceListId)
     .order('sort');
   if (error) return { ok: false, error: toActionError(error) };
@@ -82,6 +84,7 @@ export const copyFileList = async (
       bytes: r.bytes,
       originalName: r.original_name,
       alt: r.alt,
+      ...(Array.isArray(r.variants) ? { variants: r.variants as [number, string][] } : {}),
     }))
   );
 };

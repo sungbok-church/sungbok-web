@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { prepareImage } from './prepareImage';
+import { makeVariants, prepareImage } from './prepareImage';
 
 const file = (type: string, name = 'a') => new File(['x'], name, { type });
 const blob = (type: string) => new Blob(['y'], { type });
@@ -38,5 +38,38 @@ describe('prepareImage', () => {
   it('그림을 읽지 못하면 던진다(부르는 쪽이 «올릴 수 없는 파일» 로 알린다)', async () => {
     const d = { readSize: vi.fn(async () => Promise.reject(new Error('x'))), encode: vi.fn() };
     await expect(prepareImage(file('image/webp'), d)).rejects.toThrow();
+  });
+});
+
+describe('makeVariants — 폭별 파일', () => {
+  it('원본보다 좁은 폭마다 같은 형식으로 만든다', async () => {
+    const d = deps({ width: 0, height: 0 });
+    const out = await makeVariants(
+      file('image/jpeg'),
+      { width: 1500, height: 1000, type: 'image/webp' },
+      d
+    );
+    expect(out.map(v => [v.width, v.height])).toEqual([
+      [640, 427],
+      [960, 640],
+      [1280, 853],
+    ]);
+    expect(d.encode).toHaveBeenCalledWith(
+      expect.any(File),
+      640,
+      427,
+      'image/webp',
+      expect.any(Number)
+    );
+    expect(out.every(v => v.blob.type === 'image/webp')).toBe(true);
+  });
+  it('그 형식을 못 만들면(Safari 의 WebP) JPEG 로 다시 만든다', async () => {
+    const d = deps({ width: 0, height: 0 }, ['image/jpeg']);
+    const out = await makeVariants(
+      file('image/webp'),
+      { width: 700, height: 500, type: 'image/webp' },
+      d
+    );
+    expect(out).toEqual([{ width: 640, height: 457, type: 'image/jpeg', blob: expect.any(Blob) }]);
   });
 });

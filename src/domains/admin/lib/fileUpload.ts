@@ -50,6 +50,19 @@ export const isAllowedPath = (path: string, menuKey: string, kind?: FileKind): b
   return !kind || Object.values(TYPES).some(t => t.kind === kind && t.ext === m[4]);
 };
 
+/**
+ * 폭별 파일의 가로 폭(설계 6.8 — 홈 히어로 · 다음세대 부서 사진만). 화면은 요청 폭 이상인 가장 작은 파일을 고른다
+ * (`pickVariant`) — 접속 시점에 줄이지 않기 때문이다(ADR 0013).
+ */
+export const VARIANT_WIDTHS = [640, 960, 1280, 1920] as const;
+
+/** 원본(줄인 뒤)보다 좁은 폭마다의 크기 — 비율대로, 높이는 반올림 */
+export const variantSizes = (width: number, height: number) =>
+  VARIANT_WIDTHS.filter(w => w < width).map(w => ({
+    width: w,
+    height: Math.round((height * w) / width),
+  }));
+
 /** 긴 변이 max 를 넘으면 비율대로 줄인 크기, 아니면 그대로 */
 export const fitLongEdge = (width: number, height: number, max: number) => {
   const scale = Math.min(1, max / Math.max(width, height));

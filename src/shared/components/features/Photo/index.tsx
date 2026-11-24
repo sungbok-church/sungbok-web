@@ -1,7 +1,7 @@
 'use client';
 
 import { PHOTO_VARIANTS } from '@/assets/photoVariants.generated';
-import { pickVariant } from '@/shared/lib/photoVariant';
+import { pickVariant, type UploadedPhoto } from '@/shared/lib/photoVariant';
 import Image, { type ImageLoader, type ImageProps, type StaticImageData } from 'next/image';
 
 // srcset 의 각 폭을 미리 만들어 둔 파일(src/assets/sized)로 잇는다 — 서버가 접속 시점에 크기를 줄이지 않는다.
@@ -13,17 +13,35 @@ const sizedLoader: ImageLoader = ({ src, width }) => {
 };
 
 type Props = Omit<ImageProps, 'src' | 'loader' | 'quality' | 'unoptimized'> & {
-  /** 레포에 있는 사진(정적 import). 유튜브 썸네일은 <YoutubeThumb> 를 쓴다. */
-  src: StaticImageData;
+  /** 레포에 있는 사진(정적 import) 또는 관리자에서 올린 사진. 유튜브 썸네일은 <YoutubeThumb> 를 쓴다. */
+  src: StaticImageData | UploadedPhoto;
 };
 
+const isUploaded = (src: StaticImageData | UploadedPhoto): src is UploadedPhoto =>
+  typeof src === 'object' && 'variants' in src && Array.isArray(src.variants);
+
 /**
- * 레포 사진용 next/image. 크기별 파일은 `pnpm images:variants` 가 미리 만들어 두며(화질도 거기서 정한다),
- * 크기 파일이 없는 작은 그림은 원본을 그대로 준다. 어느 쪽이든 /_next/image 변환을 거치지 않는다.
+ * 사진용 next/image. 크기별 파일은 미리 만들어 둔 것을 고른다 — 레포 사진은 `pnpm images:variants` 가,
+ * 올린 사진은 올릴 때 브라우저가 만든다(`files.variants`). 크기 파일이 없으면 원본을 그대로 준다.
+ * 어느 쪽이든 /_next/image 변환을 거치지 않는다(ADR 0013).
  */
-export const Photo = ({ src, alt, ...rest }: Props) =>
-  PHOTO_VARIANTS[src.src] ? (
+export const Photo = ({ src, alt, ...rest }: Props) => {
+  if (isUploaded(src)) {
+    const { variants, ...image } = src;
+    return variants.length > 0 ? (
+      <Image
+        src={image}
+        alt={alt}
+        loader={({ src: url, width }) => pickVariant(variants, url, width)}
+        {...rest}
+      />
+    ) : (
+      <Image src={image} alt={alt} unoptimized {...rest} />
+    );
+  }
+  return PHOTO_VARIANTS[src.src] ? (
     <Image src={src} alt={alt} loader={sizedLoader} {...rest} />
   ) : (
     <Image src={src} alt={alt} unoptimized {...rest} />
   );
+};

@@ -37,7 +37,8 @@
 │   ├── 2026-11-17-admin-design.md
 │   ├── 2026-11-17-admin-p1-setup-plan.md
 │   ├── 2026-11-19-admin-pa-foundation-plan.md
-│   └── 2026-11-24-admin-pb-content-plan.md
+│   ├── 2026-11-24-admin-pb-content-plan.md
+│   └── 2026-11-25-admin-pc-site-plan.md
 └── decisions/                      # 의사결정 기록 (ADR — 불변)
     ├── 0001-sky-palette.md
     ├── 0002-home-ia-and-tone.md

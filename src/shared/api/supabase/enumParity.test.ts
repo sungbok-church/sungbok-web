@@ -1,5 +1,5 @@
 import type { NewsVideo, NewsVideoFeed } from '@/domains/news/api/news.types';
-import type { DepartmentSlug } from '@/domains/next-generation/data/departments';
+import type { DepartmentSlug } from '@/domains/next-generation/config/departmentSlug';
 import type { ResourceSection } from '@/domains/resources/api/resource.types';
 import type { ContentStatus } from '@/shared/api/content.types';
 import { expectTypeOf, it } from 'vitest';

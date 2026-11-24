@@ -98,7 +98,9 @@ afterEach(() => {
 describe('createBulletin', () => {
   it('쪽을 새 묶음에 적고 그 묶음을 가리키는 주보를 넣는다 — 공개 화면 태그를 갱신', async () => {
     const res = await createBulletin(input);
-    expect(m.write).toHaveBeenCalledWith(expect.anything(), 'bulletin', [{ ...page, alt: null }]);
+    expect(m.write).toHaveBeenCalledWith(expect.anything(), 'bulletin', [
+      { ...page, alt: null, variants: null },
+    ]);
     const row = m.insert.mock.calls[0][0];
     expect(row).toMatchObject({ date: '2026-11-29', pages_list_id: NEW_LIST, status: 'PUBLISHED' });
     expect(res).toEqual({ ok: true, data: { id: row.id }, message: '공개했습니다.' });
