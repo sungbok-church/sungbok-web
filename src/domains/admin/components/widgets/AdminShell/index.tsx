@@ -7,6 +7,7 @@ import { type ReactNode, Suspense } from 'react';
 
 import { CommandMenu } from '@/domains/admin/components/features/CommandMenu';
 import { NavigationProgress } from '@/domains/admin/components/features/NavigationProgress';
+import { PendingScreen } from '@/domains/admin/components/features/PendingScreen';
 
 import { AdminSidebar } from './AdminSidebar';
 import { HeaderBreadcrumbs } from './HeaderTitle';
@@ -47,7 +48,10 @@ export const AdminShell = ({ user, userName, nav, defaultOpen = true, children }
           </div>
           <CommandMenu nav={nav} />
         </header>
-        <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
+          {/* 다른 화면으로 가는 동안 누르는 순간 뼈대를 그린다(서버의 loading.tsx 대신) */}
+          <PendingScreen>{children}</PendingScreen>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   </TooltipProvider>

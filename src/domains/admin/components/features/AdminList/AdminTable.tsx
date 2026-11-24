@@ -239,8 +239,8 @@ export const AdminTable = ({ query, spec, columns, rows, total, bulk, empty }: P
                   data-state={selected.includes(row.id) ? 'selected' : undefined}
                   className={row.href ? 'cursor-pointer' : undefined}
                   onClick={e => openRow(e, row.href)}
-                  // 줄은 링크가 아니라 미리 받기가 없다 — 마우스를 올리면 그 화면의 틀을 받아 두어, 누르는 순간
-                  // «불러오는 중» 이 뜨게 한다(안 받아 두면 서버 응답이 올 때까지 화면이 멈춰 있다)
+                  // 줄은 링크가 아니라 미리 받기가 없다 — 이름 칸 링크(IntentLink)처럼 마우스를 올리면 그 화면을 미리 받기
+                  // 시작한다. 누르는 순간의 뼈대는 브라우저가 바로 그린다(PendingScreen)
                   onMouseEnter={row.href ? () => router.prefetch(row.href!) : undefined}
                 >
                   {bulk && (
