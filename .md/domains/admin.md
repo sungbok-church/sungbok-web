@@ -241,7 +241,7 @@
 - [HeroVideo](../../src/domains/home/components/widgets/HomeHero/HeroVideo.tsx): 대표 사진을 먼저(첫 화면의 가장 큰 그림 — 먼저 받는다), 넓은 화면(lg) · 동작 줄이기 꺼짐 · 데이터 절약 꺼짐일 때만 소리 없이 반복 재생. 실제 재생이 시작되고 0.9초 뒤에야 서서히 보인다(유튜브 시작 화면의 제목 · 로고를 가리려고), 1.2배로 키워 가장자리를 잘라 낸다. 클릭 · 포커스 없음, 화면 밖이면 멈춘다.
 - **관리자** `/admin/home-hero`([HomeHeroForm](../../src/domains/admin/components/widgets/HomeHeroForm/index.tsx)): 종류(사진 · 유튜브 영상) · 대표 사진(어느 종류에서나 꼭 한 장 — 대체 텍스트 · 폭별 파일) · 유튜브 주소(주소나 id). 설정이라 저장하면 바로 공개. 미리보기는 홈 히어로 그대로(스크롤 연출까지). 한 줄뿐인 설정(`home_hero` singleton)을 고치기만 한다 — 줄은 옮기기 스크립트가 만든다.
 - **공개 홈**: [homeHeroLoad.server](../../src/domains/home/api/homeHeroLoad.server.ts) — 서버 캐시(태그 `home-hero`), 저장하면 `updateTag`. 못 읽으면 운영은 직전 홈, 그것도 없으면 레포의 `main01.webp` 한 장(장애 대비 — 설계 11절 23번).
-- **옮기기**: `scripts/import-home-hero.mjs`(일회용) — 지금 사진(main01)으로 설정 한 줄(사진)을 만든다. 레포의 main01 은 지우지 않는다(장애 대비 · 홈의 다른 곳도 쓴다).
+- **기존 사진 옮기기(끝, 2026-11-25)**: 일회용 스크립트(`scripts/import-home-hero.mjs` — git 기록에 있다)로 지금 사진(main01)을 운영 Storage 에 올려 설정 한 줄(사진)을 만들었다(운영 확인: 홈이 Storage 사진). 레포의 main01 은 지우지 않는다(장애 대비 · 홈의 다른 곳도 쓴다).
 
 ### 새가족(C3)
 
