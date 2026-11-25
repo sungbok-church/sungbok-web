@@ -2,7 +2,7 @@
 #
 # 환경변수의 정본은 이 레포의 GitHub Secrets 다. 값을 추가·변경한 뒤
 # Actions 탭 → "Sync env to Vercel" → Run workflow → 변수 이름 입력 → 실행하면
-# 그 Secret 하나를 Vercel 프로젝트의 production·preview 환경변수에 덮어쓴다.
+# 그 Secret 하나를 Vercel 프로젝트의 production·preview(또는 production 만) 환경변수에 덮어쓴다.
 #
 # - 입력한 이름의 Secret 만 읽는다(secrets[inputs.name]). 다른 Secret 은 이 실행에 노출되지 않는다.
 # - Vercel REST API(`POST /v10/projects/{id}/env?upsert=true`) 로 덮어쓰므로 삭제 단계가 없다. 중간에 실패해도 기존 값은 남는다.
@@ -19,6 +19,14 @@ on:
         description: '동기화할 Secret 이름 (= Vercel 환경변수 이름, 예: YOUTUBE_API_KEY)'
         required: true
         type: string
+      targets:
+        description: '넣을 환경 — 운영 전용 표시(PRODUCTION_WRITES)는 production 만'
+        required: true
+        type: choice
+        default: production,preview
+        options:
+          - production,preview
+          - production
 
 permissions: {}
 
@@ -30,12 +38,13 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Push one secret to Vercel (production, preview)
+      - name: Push one secret to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           NAME: ${{ inputs.name }}
+          TARGETS: ${{ inputs.targets }}
           VALUE: ${{ secrets[inputs.name] }}
         run: |
           set -euo pipefail
@@ -51,9 +60,12 @@ jobs:
           # 부르지만, 그 전에 GET /v2/user 를 먼저 호출하고 팀 범위 토큰은 거기서 404 가 나 "Could not retrieve Project Settings" 로
           # 멈춘다(vercel@65.14.0, 2026-11-11 실측). 토큰을 전체 계정 범위로 넓히는 대신 CLI 를 뺐다 — 설치 13초도 사라진다.
           # 값은 인자가 아니라 stdin 으로 넘긴다(프로세스 목록 노출 방지). 응답 본문은 에러 메시지만 출력한다(레코드에 값이 포함됨).
-          code=$(jq -nc --arg k "$NAME" --arg v "$VALUE" '{key:$k, value:$v, type:"encrypted", target:["production","preview"]}' \
+          case "$TARGETS" in production|production,preview) ;; *) echo "::error::Invalid targets '$TARGETS'"; exit 1;; esac
+          # 운영 전용 표시가 preview 에 들어가면 preview 가 운영 DB 를 바꾼다(sharedDbWrites.server) — 막는다
+          [ "$NAME" != PRODUCTION_WRITES ] || [ "$TARGETS" = production ] || { echo "::error::PRODUCTION_WRITES 는 production 에만 넣는다"; exit 1; }
+          code=$(jq -nc --arg k "$NAME" --arg v "$VALUE" --arg t "$TARGETS" '{key:$k, value:$v, type:"encrypted", target:($t | split(","))}' \
             | curl -sS -o resp.json -w '%{http_code}' -X POST \
                 "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&upsert=true" \
                 -H "Authorization: Bearer $VERCEL_TOKEN" -H 'Content-Type: application/json' --data-binary @-)
           case "$code" in 200|201) ;; *) echo "::error::Vercel API HTTP $code: $(jq -r '.error.message // "(no message)"' resp.json 2>/dev/null)"; exit 1;; esac
-          echo "synced: $NAME → production, preview"
+          echo "synced: $NAME → $TARGETS"

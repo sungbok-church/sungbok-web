@@ -1,5 +1,6 @@
 import { syncAllVideoPages } from '@/domains/worship-video/api/youtubeSync.server';
 import { runDailyCleanup } from '@/shared/api/dailyCleanup.server';
+import { mayWriteSharedDb } from '@/shared/api/sharedDbWrites.server';
 import { createSupabaseAdminClient } from '@/shared/api/supabase/adminClient.server';
 import { timingSafeEqual } from 'node:crypto';
 import { connection } from 'next/server';
@@ -21,8 +22,8 @@ export async function GET(request: Request) {
   if (!authorized(request.headers.get('authorization'))) {
     return Response.json({ ok: false }, { status: 401 });
   }
-  // preview 배포도 운영 DB 를 본다 — 브랜치 코드로 운영 행 · 파일 · 영상을 지우거나 바꾸지 않게 운영에서만 돈다
-  if (process.env.VERCEL_ENV === 'preview') return Response.json({ ok: true, skipped: 'preview' });
+  // preview 배포도 운영 DB 를 본다 — 브랜치 코드로 운영 행 · 파일 · 영상을 지우거나 바꾸지 않게 운영(과 로컬 DB)에서만 돈다
+  if (!mayWriteSharedDb()) return Response.json({ ok: true, skipped: 'not-production' });
   const db = createSupabaseAdminClient();
   if (!db) {
     console.error('[cron daily] 만능 키가 설정되지 않았습니다');

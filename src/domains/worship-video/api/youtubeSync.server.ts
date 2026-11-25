@@ -6,6 +6,7 @@
 
 import 'server-only'; // 화면(클라이언트) 코드가 가져다 쓰면 빌드가 실패한다
 
+import { mayWriteSharedDb } from '@/shared/api/sharedDbWrites.server';
 import { createSupabaseAdminClient } from '@/shared/api/supabase/adminClient.server';
 
 import { PLAYLIST_PAGES, WORSHIP_PAGES, type WorshipPage } from '../config/worshipPages';
@@ -44,25 +45,15 @@ export const syncVideoPage = async (
 };
 
 /**
- * 받아도 되는 곳 — 허용 목록: 운영 배포, 또는 로컬 DB 를 보는 로컬 개발. 그 밖(preview 배포 · 로컬에서 운영 키로 띄운 서버 ·
- * 시스템 변수가 없는 배포)은 운영 DB 를 볼 수 있으므로 브랜치의 재생목록 설정 · 받기 코드로 운영 영상 줄을 바꾸지 않게 읽기만 한다.
- */
-const mayWrite = () => {
-  if (process.env.VERCEL_ENV === 'production') return true;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  return /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(url);
-};
-
-/**
  * 영상 페이지가 다시 그려질 때 — 10분이 지났으면 받는다. 받지 않는 때:
- *  · 운영 배포도 로컬 개발도 아닐 때(mayWrite — preview 배포 등은 읽기만 한다)
+ *  · 운영도 로컬 개발도 아닐 때(mayWriteSharedDb — preview 배포 · 운영 키로 띄운 로컬 서버는 읽기만 한다)
  *  · 빌드 중 — 빌드는 캐시 설정이 없는 fetch 를 몰래 캐시해 worker 끼리 나눈다(Next): 차례 잡기 · 바꾸기 RPC 가 실제로
  *    돌지 않고 캐시된 답만 받을 수 있다. 빌드는 DB 에 있는 줄(또는 15분 안 이전 빌드가 읽은 응답 — 같은 몰래 캐시)로
  *    그리고, 받기는 첫 다시 그리기 · 예약 작업이 한다
  *  · 서버 설정(만능 키)이 없을 때(개발 · 시험)
  */
 export const syncVideoPageIfDue = async (page: WorshipPage): Promise<SyncResult> => {
-  if (!mayWrite()) return { status: 'skipped' };
+  if (!mayWriteSharedDb()) return { status: 'skipped' };
   if (process.env.NEXT_PHASE === 'phase-production-build') return { status: 'skipped' };
   const db = createSupabaseAdminClient();
   if (!db) return { status: 'skipped' };

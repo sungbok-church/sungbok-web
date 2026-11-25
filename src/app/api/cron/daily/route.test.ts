@@ -23,6 +23,7 @@ const call = (auth?: string) =>
 
 beforeEach(() => {
   vi.stubEnv('CRON_SECRET', 's3cret-value');
+  vi.stubEnv('PRODUCTION_WRITES', 'on');
   m.client = {};
   m.run.mockResolvedValue({ ok: true, rows: { bulletins: 0 }, files: 0 });
   videos.sync.mockResolvedValue({ sunday: 'synced' });
@@ -46,11 +47,12 @@ describe('GET /api/cron/daily', () => {
     expect(m.run).toHaveBeenCalledTimes(1);
   });
 
-  it('preview 배포에서는 돌지 않는다 — 운영 DB 를 같이 보므로 브랜치 코드로 운영 행 · 파일 · 영상을 지우거나 바꾸지 않게', async () => {
-    vi.stubEnv('VERCEL_ENV', 'preview');
+  it('운영 표시가 없으면(preview 배포) 돌지 않는다 — 운영 DB 를 같이 보므로 브랜치 코드로 운영 행 · 파일 · 영상을 지우거나 바꾸지 않게', async () => {
+    vi.stubEnv('PRODUCTION_WRITES', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://abcdefghijklmnopqrst.supabase.co');
     const r = await call('Bearer s3cret-value');
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: true, skipped: 'preview' });
+    expect(await r.json()).toEqual({ ok: true, skipped: 'not-production' });
     expect(m.run).not.toHaveBeenCalled();
     expect(videos.sync).not.toHaveBeenCalled();
   });

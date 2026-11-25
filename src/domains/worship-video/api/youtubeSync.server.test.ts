@@ -93,7 +93,7 @@ describe('syncVideoPage', () => {
 
 describe('syncVideoPageIfDue — 영상 페이지가 다시 그려질 때', () => {
   beforeEach(() => {
-    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('PRODUCTION_WRITES', 'on');
   });
 
   it('10분 간격으로, 서버 전용 키로', async () => {
@@ -106,9 +106,9 @@ describe('syncVideoPageIfDue — 영상 페이지가 다시 그려질 때', () =
     });
   });
 
-  it('preview 배포는 받지 않는다 — 운영 DB 를 같이 보므로 브랜치의 설정 · 코드로 운영 영상 줄을 바꾸지 않게', async () => {
+  it('운영 표시가 없으면(preview 배포) 받지 않는다 — 운영 DB 를 같이 보므로 브랜치의 설정 · 코드로 운영 영상 줄을 바꾸지 않게', async () => {
     m.client = fakeDb();
-    vi.stubEnv('VERCEL_ENV', 'preview');
+    vi.stubEnv('PRODUCTION_WRITES', '');
     expect(await syncVideoPageIfDue('sunday')).toEqual({ status: 'skipped' });
     expect((m.client as ReturnType<typeof fakeDb>).rpc).not.toHaveBeenCalled();
     expect(m.rows).not.toHaveBeenCalled();
@@ -122,9 +122,9 @@ describe('syncVideoPageIfDue — 영상 페이지가 다시 그려질 때', () =
     expect(m.rows).not.toHaveBeenCalled();
   });
 
-  it('운영 배포 밖(로컬에서 운영 키로 띄운 서버 · 시스템 변수가 없는 배포)은 받지 않는다 — 허용 목록', async () => {
+  it('운영 키로 띄운 로컬 서버는 받지 않는다 — 허용 목록', async () => {
     m.client = fakeDb();
-    vi.stubEnv('VERCEL_ENV', '');
+    vi.stubEnv('PRODUCTION_WRITES', '');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://abcdefghijklmnopqrst.supabase.co');
     expect(await syncVideoPageIfDue('sunday')).toEqual({ status: 'skipped' });
     expect(m.rows).not.toHaveBeenCalled();
@@ -133,7 +133,7 @@ describe('syncVideoPageIfDue — 영상 페이지가 다시 그려질 때', () =
   it('로컬 개발(로컬 DB)은 받는다', async () => {
     const db = fakeDb();
     m.client = db;
-    vi.stubEnv('VERCEL_ENV', '');
+    vi.stubEnv('PRODUCTION_WRITES', '');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321');
     expect(await syncVideoPageIfDue('sunday')).toMatchObject({ status: 'synced' });
   });
