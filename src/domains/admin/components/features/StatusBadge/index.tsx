@@ -38,3 +38,13 @@ export const ContentStatusBadge = ({
   ) : (
     <Badge variant="neutral">임시저장</Badge>
   );
+
+/** 새가족 처리 상태 — 접수(아직 연락 전, 눈에 띄게) · 연락함 · 완료 */
+export const NewcomerStatusBadge = ({ status }: { status: string }) =>
+  status === 'NEW' ? (
+    <Badge variant="warning">접수</Badge>
+  ) : status === 'CONTACTED' ? (
+    <Badge variant="accent">연락함</Badge>
+  ) : (
+    <Badge variant="success">완료</Badge>
+  );

@@ -235,6 +235,17 @@
 - 미리보기: 공개 부서 페이지(`DepartmentPage`) — 틀 주소에 `?slug=` 를 붙여 섹션 메뉴의 자리를 맞춘다. 변경 이력은 부서 행 + 담당자 줄(부서에 묶임).
 - **기존 값 옮기기(끝, 2026-11-25)**: 코드의 값(소개 · 담당자 9명 · 사진 부서마다 12장)을 일회용 스크립트(`scripts/import-departments.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮겼다 — 여러 부서가 같이 쓰는 사진은 한 번만 올려(23장 + 폭별 파일) 부서마다 파일 줄을 두고, «맨 아래 한 줄» 자리표시는 비웠다(운영 확인: 공개 8곳 모두 Storage 사진). 그 뒤 `data/departments.ts` · 부서 전용 사진(`standin-*`) · 쓰지 않던 `DepartmentDetail` · `dep_manager*` · 스크립트를 지웠다. 담당자 사진(`assets/images/staff`)은 «섬기는 이들» 이 같이 써서 남겼다.
 
+### 새가족(C3)
+
+- **공개 접수**: 홈 «새가족 등록 · 문의» 패널의 폼([RegisterPanel](../../src/domains/home/components/widgets/FirstVisit/RegisterPanel.tsx)) → Server Action [submitNewcomerForm](../../src/domains/home/api/newcomerActions.ts) → [newcomerSubmit.server](../../src/domains/home/api/newcomerSubmit.server.ts). 방문자에게는 DB 권한이 전혀 없다 — 서버가 검증(같은 스키마 [newcomerInput](../../src/domains/home/api/newcomerInput.ts)) · 횟수 제한 뒤 **만능 키로** 넣는다. 공개 쪽에서 만능 키를 쓰는 파일은 이것 하나다(lint 예외 — `eslint.config.mjs` `NEWCOMER_SUBMIT`, 잠그는 시험 `tests/lint/adminBoundary.test.ts`).
+  - 동의해야 보낸다(동의 시각 · 문구의 판 `CONSENT_VERSION` 을 남긴다 — 문구를 바꾸면 판도 바꾼다). 문의는 방문 예정일을 받지 않는다.
+  - 스팸: 숨긴 칸(`website` — 채워지면 넣지 않고 성공처럼) + 같은 접속(IP 의 HMAC 해시 — IP 를 남기지 않는다. IPv6 은 /64 대역)에서 10분에 3건 · 하루 10건(`submission_attempts`). **먼저 적고 센다** — 읽고 나서 적으면 동시에 보낸 것들이 모두 통과한다. 기록을 남기지 못하면 접수하지 않는다.
+  - 실패하면 폼 아래에 그 문장과 교회 전화번호. 칸 오류는 칸 밑에.
+- **알림 메일**: 접수되면 «새가족» 조회 권한이 있는 활성 사용자에게 «새 접수 1건» 과 관리자 링크만(개인정보 없이, bcc). 보내기는 한곳 [mail.server](../../src/shared/api/mail.server.ts)(Resend) — **`RESEND_API_KEY` · `MAIL_FROM` 이 없으면 보내지 않는다**(지금 상태 — `sungbok.or.kr` DNS 인증 뒤 키를 넣으면 코드 변경 없이 켜진다, 설계 12절 1번). 메일은 응답 뒤에 보낸다(`after` — 5초 제한), 실패해도 접수는 성공.
+- **접수함** `/admin/newcomers`: 최신 접수부터, 조건은 상태 · 종류 · 접수 기간(검색어 칸은 없다 — 이름 · 연락처가 주소에 남지 않게). 상세에서 상태(접수 → 연락함 → 완료) · 메모를 고친다 — 상태가 바뀌면 처리한 사람 · 시각을 남기고 «접수» 로 되돌리면 비운다. 휴지통 없이 «완전 삭제»(개인정보 — 1년이 지나면 예약 작업이 지운다). 이력에는 개인정보 칸의 값이 남지 않는다(DB).
+- **엑셀** `/admin/newcomers/export`: 지금 조건 그대로 `.xlsx`(서버에서 `exceljs` — 모든 칸 글자, 연락처의 앞자리 0 보존), «내려받기» 권한, 내려받은 건수를 변경 이력에 남긴다(남기지 못하면 내주지 않는다). 캐시 금지.
+- 첫 화면 «처리 안 된 새가족» 카드 · 왼쪽 메뉴 숫자 = 상태 «접수» 건수(조회 권한이 없으면 0).
+
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 패키지 B 는 끝(2026-11-25) → C(다음세대 부서 → 새가족 → 홈 히어로 — 사용자 결정 2026-11-25, [계획](../specs/2026-11-25-admin-pc-site-plan.md)) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
+설계 문서 9절의 순서대로 만든다: 패키지 B 는 끝(2026-11-25) → C(다음세대 부서 끝 → 새가족 끝(메일만 남음) → 홈 히어로 — 사용자 결정 2026-11-25, [계획](../specs/2026-11-25-admin-pc-site-plan.md)) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.

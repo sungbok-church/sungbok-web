@@ -25,7 +25,7 @@ export type AdminNavItem = {
   key: string;
   href: string;
   label: string;
-  /** 처리할 건수(예: 처리 안 된 새가족) — 0 보다 크면 왼쪽 메뉴에 숫자로 보인다. 값은 그 화면이 생기는 패키지 C 에서 채운다 */
+  /** 처리할 건수(예: 처리 안 된 새가족) — 0 보다 크면 왼쪽 메뉴에 숫자로 보인다. 값은 loadAdminContext 가 채운다 */
   badge?: number;
 };
 

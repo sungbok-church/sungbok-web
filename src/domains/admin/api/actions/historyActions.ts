@@ -24,6 +24,8 @@ const ROW_HISTORY: Record<string, readonly string[]> = {
   news_videos: ['announcements', 'garden'],
   // 담당자 줄(department_staff)은 부서에 묶여(parent) 함께 나온다
   departments: ['departments'],
+  // 개인정보 칸은 값 없이 «바뀜» 만 남는다(DB 감사 트리거)
+  newcomers: ['newcomers'],
 };
 const TABLE_HISTORY: Record<string, readonly string[]> = {
   menus: ['menus'],
@@ -41,6 +43,7 @@ const inputSchema = z.union([
       'albums',
       'resources',
       'departments',
+      'newcomers',
     ]),
     rowId: z.uuid(),
   }),

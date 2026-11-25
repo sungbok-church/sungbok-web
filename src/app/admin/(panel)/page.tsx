@@ -1,5 +1,5 @@
 import { loadAdminContext } from '@/domains/admin/api/server/adminContext.server';
-import { can, SCREENS_READY } from '@/domains/admin/lib/adminNav';
+import { can } from '@/domains/admin/lib/adminNav';
 import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/screenDescriptions';
 import { periodStart } from '@/domains/admin/lib/adminTime';
 import { seoulToday, upcomingSunday } from '@/domains/admin/lib/content';
@@ -38,8 +38,8 @@ const TODOS: Todo[] = [
   },
   {
     key: 'newcomers',
-    title: '처리 안 된 새가족',
-    description: '아직 연락하지 않은 새가족 등록 건수를 보여 줍니다.',
+    title: '연락 전 새가족',
+    description: '아직 연락하지 않은 새가족 접수 건수를 보여 줍니다.',
   },
 ];
 
@@ -84,6 +84,8 @@ export default async function AdminHomePage() {
         .limit(1)
         .maybeSingle(),
     ]);
+  // 연락 전 새가족 — 왼쪽 메뉴의 숫자(loadAdminContext 가 센다)와 같은 값을 쓴다
+  const newcomers = nav.flatMap(g => g.items).find(item => item.key === 'newcomers')?.badge ?? 0;
   const stats: Stat[] = [
     can(permissions, 'users', 'READ') && {
       label: '사용 중인 계정',
@@ -107,7 +109,9 @@ export default async function AdminHomePage() {
     },
   ].filter((s): s is Stat => Boolean(s));
 
-  const todos = TODOS.filter(t => SCREENS_READY.has(t.key) && can(permissions, t.key, 'READ'));
+  // 왼쪽 메뉴에 있는 화면만(만들었고 · 켜져 있고 · 권한이 있는) — 메뉴를 끄면 카드도 빠진다
+  const onNav = new Set(nav.flatMap(g => g.items).map(item => item.key));
+  const todos = TODOS.filter(t => onNav.has(t.key) && can(permissions, t.key, 'READ'));
   // 할 일 카드의 값 — 화면이 생긴 것만(주보 · 주일광고). 누르면 그 글로, 없으면 날짜를 채운 등록 화면으로(등록 권한이 있을 때)
   const weekly = (
     menu: string,
@@ -128,6 +132,16 @@ export default async function AdminHomePage() {
   const todoState: Record<string, { detail: string; badge: ReactNode; href?: string }> = {
     bulletin: weekly('bulletin', thisWeek.data),
     announcements: weekly('announcements', thisAd.data),
+    newcomers: {
+      detail: '상태 «접수»',
+      badge:
+        newcomers > 0 ? (
+          <Badge variant="warning">{newcomers}건</Badge>
+        ) : (
+          <Badge variant="success">없음</Badge>
+        ),
+      href: '/admin/newcomers?status=NEW',
+    },
   };
   const screens = nav.flatMap(group =>
     group.items

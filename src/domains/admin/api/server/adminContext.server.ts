@@ -38,7 +38,7 @@ export const loadAdminContext = cache(async (): Promise<AdminContext> => {
   const supabase = await createSupabaseServerClient();
   // 판단은 아래 requireActive 가 한다 — 여기서는 읽기만
 
-  const [profileRes, permRes, menuRes] = await Promise.all([
+  const [profileRes, permRes, menuRes, newcomersRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('name, must_change_password, is_active')
@@ -50,6 +50,8 @@ export const loadAdminContext = cache(async (): Promise<AdminContext> => {
       .select('id, key, parent_id, label, default_label, path, sort, is_active')
       .eq('area', 'ADMIN')
       .order('sort'),
+    // 왼쪽 메뉴의 «새가족» 숫자 — 아직 연락하지 않은 접수(조회 권한이 없으면 RLS 가 0 으로 준다)
+    supabase.from('newcomers').select('id', { count: 'exact', head: true }).eq('status', 'NEW'),
   ]);
 
   // 사용자 정보가 없거나(계정만 남음) 꺼진 계정은 관리자가 아니다 — 레이아웃이 로그아웃시킨다
@@ -75,7 +77,14 @@ export const loadAdminContext = cache(async (): Promise<AdminContext> => {
         isActive: m.is_active,
       }));
 
-  return { user, profile, permissions, nav: buildAdminNav(menus, permissions, SCREENS_READY) };
+  const badges: Record<string, number> = { newcomers: newcomersRes.count ?? 0 };
+  const nav = buildAdminNav(menus, permissions, SCREENS_READY).map(group => ({
+    ...group,
+    items: group.items.map(item =>
+      badges[item.key] ? { ...item, badge: badges[item.key] } : item
+    ),
+  }));
+  return { user, profile, permissions, nav };
 });
 
 /**

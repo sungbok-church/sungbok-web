@@ -88,13 +88,20 @@ export type Field = {
   type: 'text' | 'tel' | 'date' | 'textarea';
   required?: boolean;
 };
-// 수집 항목 — 전송처(담당자 메일) 연동 시 함께 확정.
+// 수집 항목(설계 6.11) — 서버가 같은 이름으로 받는다(api/newcomerInput). 문의는 방문 예정일을 받지 않는다.
 export const FORM_FIELDS: Field[] = [
   { name: 'name', label: '이름', type: 'text', required: true },
   { name: 'phone', label: '연락처', type: 'tel', required: true },
   { name: 'visit', label: '방문 예정일', type: 'date' },
   { name: 'message', label: '남기실 말', type: 'textarea' },
 ];
+
+/** 개인정보 수집 · 이용 동의 — 문구를 바꾸면 api/newcomerInput 의 CONSENT_VERSION 도 바꾼다 */
+export const CONSENT = {
+  label: '개인정보 수집·이용에 동의합니다',
+  detail:
+    '이름 · 연락처 · 방문 예정일 · 남기실 말은 새가족 안내 연락에만 쓰고, 접수한 날부터 1년이 지나면 지웁니다. 동의하지 않으실 수 있으며, 그 경우 이 폼으로는 접수되지 않습니다(전화로 문의하실 수 있습니다).',
+};
 
 export const DONE = {
   heading: '접수되었습니다',

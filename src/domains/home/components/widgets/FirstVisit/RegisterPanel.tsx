@@ -9,7 +9,9 @@ import { createPortal } from 'react-dom';
 import { useIsClient } from '@/shared/lib/hooks/useIsClient';
 import { cn } from '@/shared/lib/utils';
 
+import { submitNewcomerForm } from '../../../api/newcomerActions';
 import {
+  CONSENT,
   CONTACT,
   COURSE_WEEKS,
   DONE,
@@ -265,45 +267,178 @@ function GuidePanel({ onRegister }: { onRegister: () => void }) {
   );
 }
 
+const INPUT =
+  'border-b1-border bg-b1-surface text-b1-text focus:border-b1-accent text-body w-full rounded-lg border px-3.5 py-2.5 transition-colors outline-none aria-invalid:border-b1-danger aria-invalid:focus:border-b1-accent focus-visible:ring-2 focus-visible:ring-b1-accent/50';
+
+type Values = Record<'name' | 'phone' | 'visit' | 'message', string>;
+const without = (errors: Record<string, string>, name: string) => {
+  const next = { ...errors };
+  delete next[name];
+  return next;
+};
+const EMPTY: Values = { name: '', phone: '', visit: '', message: '' };
+
+/**
+ * 등록 · 문의 폼(설계 6.11) — 서버(submitNewcomerForm)가 검증 · 횟수 제한 뒤 접수한다. 동의해야 보낼 수 있다.
+ * 숨긴 칸(website)은 사람에게 보이지 않는다 — 채워지면 기계가 보낸 것으로 본다. 칸 오류는 칸 밑에, 그 밖의 실패는 폼 아래에.
+ */
 function MiniForm({ intent, onSubmit }: { intent: IntentKey; onSubmit: () => void }) {
   const fields = FORM_FIELDS.filter(f => !(intent === 'inquiry' && f.name === 'visit'));
+  const [values, setValues] = useState<Values>(EMPTY);
+  const [consent, setConsent] = useState(false);
+  const [website, setWebsite] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [failure, setFailure] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const id = (name: string) => `newcomer-${name}`;
+
+  const send = async () => {
+    if (pending) return;
+    setPending(true);
+    setFailure(null);
+    try {
+      const res = await submitNewcomerForm({ intent, ...values, consent, website });
+      if (res.ok) {
+        onSubmit();
+        return;
+      }
+      // 화면에 있는 칸(그 폼의 칸 · 동의)의 오류만 칸 밑에 — 그 밖의 실패는 폼 아래 문장으로
+      const shown = new Set([...fields.map(f => f.name), 'consent']);
+      const fieldErrors = Object.fromEntries(
+        Object.entries(res.error.fields ?? {})
+          .filter(([k]) => shown.has(k))
+          .map(([k, v]) => [k, v[0] ?? ''])
+      );
+      setErrors(fieldErrors);
+      const first = Object.keys(fieldErrors)[0];
+      if (first) document.getElementById(id(first))?.focus();
+      else setFailure(res.error.message);
+    } catch {
+      setFailure('보내지 못했습니다. 잠시 뒤에 다시 보내 주세요.');
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <form
+      noValidate
       onSubmit={e => {
         e.preventDefault();
-        // TODO: 전송처(담당자 메일) 연동 — 현재 미동작, 제출 시 완료 화면만 표시.
-        onSubmit();
+        void send();
       }}
       className="flex flex-col gap-4"
     >
-      {fields.map(f => (
-        <label key={f.name} className="block">
-          <span className="text-b1-sub text-caption mb-1.5 block font-semibold">
-            {f.label}
-            {f.required ? (
-              <span className="text-b1-accent"> *</span>
+      {fields.map(f => {
+        const key = f.name as keyof Values;
+        const error = errors[f.name];
+        const control = {
+          id: id(f.name),
+          name: f.name,
+          value: values[key],
+          'aria-invalid': error ? true : undefined,
+          'aria-describedby': error ? `${id(f.name)}-error` : undefined,
+          onChange: (e: { target: { value: string } }) => {
+            setValues(v => ({ ...v, [key]: e.target.value }));
+            // 고친 칸의 오류는 바로 걷는다
+            if (error) setErrors(e => without(e, f.name));
+          },
+        };
+        return (
+          <div key={f.name}>
+            <label
+              htmlFor={id(f.name)}
+              className="text-b1-sub text-caption mb-1.5 block font-semibold"
+            >
+              {f.label}
+              {f.required ? (
+                <span className="text-b1-accent"> *</span>
+              ) : (
+                <span className="text-b1-sub"> (선택)</span>
+              )}
+            </label>
+            {f.type === 'textarea' ? (
+              <textarea
+                rows={3}
+                maxLength={2000}
+                className={cn(INPUT, 'resize-none')}
+                {...control}
+              />
             ) : (
-              <span className="text-b1-muted"> (선택)</span>
+              <input
+                type={f.type}
+                required={f.required}
+                maxLength={f.type === 'tel' ? 20 : 50}
+                autoComplete={f.type === 'tel' ? 'tel' : f.name === 'name' ? 'name' : undefined}
+                inputMode={f.type === 'tel' ? 'tel' : undefined}
+                className={INPUT}
+                {...control}
+              />
             )}
-          </span>
-          {f.type === 'textarea' ? (
-            <textarea
-              rows={3}
-              className="border-b1-border bg-b1-surface text-b1-text focus:border-b1-accent text-body w-full resize-none rounded-lg border px-3.5 py-2.5 transition-colors outline-none"
-            />
-          ) : (
-            <input
-              type={f.type}
-              className="border-b1-border bg-b1-surface text-b1-text focus:border-b1-accent text-body w-full rounded-lg border px-3.5 py-2.5 transition-colors outline-none"
-            />
-          )}
+            {error && (
+              <p id={`${id(f.name)}-error`} className="text-b1-danger text-caption mt-1">
+                {error}
+              </p>
+            )}
+          </div>
+        );
+      })}
+      {/* 숨긴 칸 — 사람에게는 보이지 않고 키보드로도 가지 않는다 */}
+      <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label>
+          웹사이트
+          <input
+            tabIndex={-1}
+            autoComplete="off"
+            value={website}
+            onChange={e => setWebsite(e.target.value)}
+          />
         </label>
-      ))}
+      </div>
+      <div>
+        <label className="flex min-h-11 cursor-pointer items-start gap-2.5">
+          <input
+            id={id('consent')}
+            type="checkbox"
+            checked={consent}
+            onChange={e => {
+              setConsent(e.target.checked);
+              if (errors.consent) setErrors(e => without(e, 'consent'));
+            }}
+            aria-required
+            aria-invalid={errors.consent ? true : undefined}
+            aria-describedby={`${id('consent')}-detail${errors.consent ? ` ${id('consent')}-error` : ''}`}
+            className="accent-b1-accent mt-1 size-5 shrink-0"
+          />
+          <span className="text-b1-text text-caption font-semibold">
+            {CONSENT.label}
+            <span className="text-b1-accent"> *</span>
+          </span>
+        </label>
+        <p id={`${id('consent')}-detail`} className="text-b1-sub text-caption mt-0.5 pl-7.5">
+          {CONSENT.detail}
+        </p>
+        {errors.consent && (
+          <p id={`${id('consent')}-error`} className="text-b1-danger text-caption mt-1 pl-7.5">
+            {errors.consent}
+          </p>
+        )}
+      </div>
+      {/* 실패 문장 — 나타날 때 낭독기가 바로 읽는다(role=alert) */}
+      {failure && (
+        <p role="alert" className="text-b1-danger text-caption m-0">
+          {failure} 급하시면 전화 주세요:{' '}
+          <a href={`tel:${CONTACT.phone}`} className="underline">
+            {CONTACT.phone}
+          </a>
+        </p>
+      )}
       <button
         type="submit"
-        className="bg-b1-accent text-label mt-1 rounded-xl py-3 font-bold text-white"
+        disabled={pending}
+        className="bg-b1-accent text-label mt-1 min-h-11 rounded-xl py-3 font-bold text-white disabled:opacity-60"
       >
-        보내기
+        {pending ? '보내는 중…' : '보내기'}
       </button>
     </form>
   );

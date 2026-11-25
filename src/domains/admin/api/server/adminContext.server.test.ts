@@ -13,6 +13,7 @@ const db = vi.hoisted(() => ({
   permissions: [] as { menu_key: string; action: string }[],
   menus: [] as unknown[],
   failed: false,
+  newcomers: 0,
 }));
 
 vi.mock('react', async importOriginal => ({
@@ -39,7 +40,9 @@ vi.mock('@/shared/api/supabase/serverClient.server', () => ({
       const result =
         table === 'profiles'
           ? { data: db.profile, error: null }
-          : { data: db.menus, error: db.failed ? { message: 'x' } : null };
+          : table === 'newcomers'
+            ? { count: db.newcomers, error: null }
+            : { data: db.menus, error: db.failed ? { message: 'x' } : null };
       const chain = {
         select: () => chain,
         eq: () => chain,
@@ -56,6 +59,7 @@ afterEach(() => {
   db.permissions = [];
   db.menus = [];
   db.failed = false;
+  db.newcomers = 0;
   db.profile = { name: '홍길동', must_change_password: false, is_active: true };
   vi.clearAllMocks();
 });
@@ -111,6 +115,32 @@ describe('loadAdminContext', () => {
     db.profile = profile;
     await expect(loadAdminContext()).rejects.toThrow('REDIRECT');
     expect(redirect).toHaveBeenCalledWith('/admin/logout?reason=inactive');
+  });
+
+  it('«새가족» 메뉴에는 연락 전 접수 건수를 단다(0 이면 달지 않는다)', async () => {
+    db.permissions = [{ menu_key: 'newcomers', action: 'READ' }];
+    db.menus = [
+      MENUS[0],
+      { ...MENUS[1], id: 'i', key: 'intake', default_label: '접수', sort: 30 },
+      {
+        ...MENUS[2],
+        id: 'n',
+        key: 'newcomers',
+        parent_id: 'i',
+        default_label: '새가족',
+        path: '/admin/newcomers',
+      },
+    ];
+    db.newcomers = 3;
+    const item = (await loadAdminContext()).nav
+      .flatMap(g => g.items)
+      .find(i => i.key === 'newcomers');
+    expect(item?.badge).toBe(3);
+    db.newcomers = 0;
+    const none = (await loadAdminContext()).nav
+      .flatMap(g => g.items)
+      .find(i => i.key === 'newcomers');
+    expect(none?.badge).toBeUndefined();
   });
 
   it('DB 를 읽지 못하면 권한 없음 + 첫 화면만(오류 화면을 내지 않는다)', async () => {

@@ -65,6 +65,7 @@
 - **fork 에서 온 PR 의 Vercel 배포를 승인하지 않는다.** 승인하면 그 코드가 preview 환경변수(유튜브 키)를 읽을 수 있다. 협업자는 fork 가 아니라 조직 레포의 브랜치에서 작업한다.
 - 레포 Secrets 에는 Vercel 환경변수와 제어용 5개만 둔다: Vercel 동기화용 3개(`VERCEL_TOKEN` · `VERCEL_ORG_ID` · `VERCEL_PROJECT_ID`)와 DB 변경 적용용 2개(`SUPABASE_ACCESS_TOKEN` · `SUPABASE_PROJECT_ID`). 제어용 이름은 워크플로우가 앱 변수로 받지 않는다 — DB 비밀번호가 Vercel 환경변수로 들어가지 않는다.
 - Supabase 의 만능 키(`SUPABASE_SECRET_KEY` — GitHub Secret 에 등록됨, 2026-11-20)는 서버 전용이다(`NEXT_PUBLIC_` 없음). Vercel 에는 Sync env to Vercel 로 넣는다. preview 배포도 이 키를 가진다 — fork PR 의 배포를 승인하지 않는 규칙이 이것도 지킨다.
+- 메일(새가족 알림, 설계 12절 1번): `RESEND_API_KEY` · `MAIL_FROM`(예: `성복교회 <noreply@sungbok.or.kr>`) — 둘 다 있어야 보낸다. **아직 넣지 않았다**(`sungbok.or.kr` 의 DNS 인증 전). 넣을 때는 GitHub Secret 에 등록하고 Sync env to Vercel 로. 서버 전용(`NEXT_PUBLIC_` 없음).
 - Supabase 의 만능 키(secret key)와 프로젝트 주소를 코드·문서·로그에 적지 않는다. 주소는 환경변수로만 받는다(프로젝트를 교회 계정으로 옮길 수 있어야 한다).
 - Vercel 대시보드에서 환경변수를 직접 고치지 않는다. 정본은 Secrets 다.
 - 협업자가 빠지면 Vercel 토큰을 재발급하고 `VERCEL_TOKEN` 을 교체한다. 토큰은 소유자 팀 전체 범위라, 레포 Admin 은 사실상 그 권한을 갖는다.

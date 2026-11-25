@@ -85,7 +85,9 @@ describe('loadHistory', () => {
       ok: false,
       error: '권한이 없습니다.',
     });
-    expect(await loadHistory({ table: 'newcomers', rowId: ID })).toMatchObject({ ok: false });
+    expect(await loadHistory({ table: 'submission_attempts', rowId: ID })).toMatchObject({
+      ok: false,
+    });
     expect(await loadHistory({ table: 'groups', rowId: 'x),or(id.gt.0' })).toMatchObject({
       ok: false,
     });

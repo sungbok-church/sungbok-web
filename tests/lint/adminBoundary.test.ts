@@ -1,12 +1,17 @@
 // @vitest-environment node
 import { ESLint } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 // 공개 사이트 쪽 코드가 관리자 코드·관리자 전용 라이브러리를 import 하면 방문자 번들에 실린다(ADR 0008).
 // eslint.config.mjs 의 no-restricted-imports 블록이 막는지, 관리자·연결 계층은 그대로 쓸 수 있는지 확인한다.
 const eslint = new ESLint();
 const ruleIds = async (code: string, filePath: string) =>
   (await eslint.lintText(code, { filePath }))[0].messages.map(m => m.ruleId);
+
+// 첫 검사가 설정 · 플러그인을 읽느라 몇 초 걸린다 — 시험 하나의 시간 한도에 걸리지 않게 먼저 데워 둔다
+beforeAll(async () => {
+  await eslint.lintText('', { filePath: 'src/x.ts' });
+}, 60_000);
 
 describe('공개 쪽 ↔ 관리자 경계', () => {
   it.each([
@@ -66,6 +71,32 @@ describe('공개 쪽 ↔ 관리자 경계', () => {
     ["import { x } from './data';", 'src/domains/home/x.tsx'],
   ])('관리자·연결 계층에서 %s 는 된다', async (code, file) => {
     expect(await ruleIds(code, file)).not.toContain('no-restricted-imports');
+  });
+});
+
+// 새가족 접수(설계 6.11)는 방문자에게 DB 권한을 열지 않고 서버가 만능 키로 넣는다 — 그 한 파일만 만능 키를 쓴다.
+describe('만능 키는 관리자 코드와 새가족 접수 파일만', () => {
+  const code =
+    "import { createSupabaseAdminClient } from '@/shared/api/supabase/adminClient.server';";
+  it('새가족 접수 파일은 된다', async () => {
+    expect(await ruleIds(code, 'src/domains/home/api/newcomerSubmit.server.ts')).not.toContain(
+      'no-restricted-imports'
+    );
+  });
+  it.each([
+    'src/domains/home/api/newcomerActions.ts',
+    'src/domains/home/components/widgets/FirstVisit/RegisterPanel.tsx',
+    'src/domains/news/api/x.server.ts',
+  ])('%s 에서는 막힌다', async file => {
+    expect(await ruleIds(code, file)).toContain('no-restricted-imports');
+  });
+  it('그 파일도 관리자 코드는 못 가져온다', async () => {
+    expect(
+      await ruleIds(
+        "import { signIn } from '@/domains/admin/api/actions/authActions';",
+        'src/domains/home/api/newcomerSubmit.server.ts'
+      )
+    ).toContain('no-restricted-imports');
   });
 });
 

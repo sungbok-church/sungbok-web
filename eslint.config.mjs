@@ -3,6 +3,39 @@ import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 
 // Next 16 부터 `next lint` 가 없어지고 eslint-config-next 가 flat config 를 직접 내보낸다(FlatCompat 불필요).
+const NEWCOMER_SUBMIT = 'src/domains/home/api/newcomerSubmit.server.ts';
+
+// 공개 쪽(방문자 번들에 실리는 코드)이 가져오면 안 되는 것 — 아래 경계 블록 두 곳(공개 쪽 · 새가족 접수 파일)이 같이 쓴다.
+const PUBLIC_IMPORT_BANS = [
+  {
+    // 별칭(@/…)과 상대 경로(../admin/…) 둘 다
+    group: ['@/domains/admin', '@/domains/admin/**', '@/app/admin/**', '**/admin/**'],
+    message: '관리자 전용이다 — 방문자 번들에 실린다(ADR 0008).',
+  },
+  {
+    group: [
+      '@tanstack/react-form',
+      'react-hook-form',
+      '@hookform/*',
+      '@tanstack/react-table',
+      '@supabase/*',
+      'cmdk',
+    ],
+    message:
+      '관리자 전용이다 — 방문자 번들에 실린다(ADR 0008). DB 는 @/shared/api/supabase 를 거쳐 서버에서 읽는다.',
+  },
+  {
+    group: ['@/shared/components/ui/command'],
+    message: '명령 팔레트(cmdk)는 관리자 전용이다 — 방문자 번들에 실린다(ADR 0008).',
+  },
+];
+// 만능 키 클라이언트 — 관리자의 계정 만들기 · 비밀번호 초기화, 그리고 새가족 접수 파일(아래)만(설계 6.1 · 6.11)
+const ADMIN_CLIENT_BAN = {
+  group: ['@/shared/api/supabase/adminClient.server', '**/adminClient.server'],
+  message:
+    '만능 키(SUPABASE_SECRET_KEY) 클라이언트는 관리자 코드와 새가족 접수 파일(newcomerSubmit.server)에서만 쓴다(설계 6.1 · 6.11).',
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -77,42 +110,23 @@ const eslintConfig = defineConfig([
       'src/proxy.test.ts',
       // 명령 팔레트 부품은 cmdk 를 쓴다 — 부품 파일 자체는 풀고, 공개 코드가 이 부품을 가져오는 것은 아래에서 막는다
       'src/shared/components/ui/command.tsx',
+      // 새가족 접수 — 아래 블록(만능 키만 푼다)
+      NEWCOMER_SUBMIT,
     ],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              // 별칭(@/…)과 상대 경로(../admin/…) 둘 다
-              group: ['@/domains/admin', '@/domains/admin/**', '@/app/admin/**', '**/admin/**'],
-              message: '관리자 전용이다 — 방문자 번들에 실린다(ADR 0008).',
-            },
-            {
-              group: [
-                '@tanstack/react-form',
-                'react-hook-form',
-                '@hookform/*',
-                '@tanstack/react-table',
-                '@supabase/*',
-                'cmdk',
-              ],
-              message:
-                '관리자 전용이다 — 방문자 번들에 실린다(ADR 0008). DB 는 @/shared/api/supabase 를 거쳐 서버에서 읽는다.',
-            },
-            {
-              // 만능 키 클라이언트는 관리자의 계정 만들기 · 비밀번호 초기화에만 쓴다(설계 6.1)
-              group: ['@/shared/api/supabase/adminClient.server', '**/adminClient.server'],
-              message: '만능 키(SUPABASE_SECRET_KEY) 클라이언트는 관리자 코드에서만 쓴다(설계 6.1).',
-            },
-            {
-              group: ['@/shared/components/ui/command'],
-              message: '명령 팔레트(cmdk)는 관리자 전용이다 — 방문자 번들에 실린다(ADR 0008).',
-            },
-          ],
+          patterns: [...PUBLIC_IMPORT_BANS, ADMIN_CLIENT_BAN],
         },
       ],
     },
+  },
+  // 새가족 접수(설계 6.11) — 방문자에게 DB 권한을 열지 않고 서버가 검증한 뒤 만능 키로 넣는다. 이 파일만 만능 키를 쓴다
+  // (서버 전용 — server-only). 나머지 공개 쪽 금지는 그대로.
+  {
+    files: [NEWCOMER_SUBMIT],
+    rules: { 'no-restricted-imports': ['error', { patterns: PUBLIC_IMPORT_BANS }] },
   },
   // 관리자 화면의 링크는 손을 올렸을 때만 미리 받는다(IntentLink) — next/link 기본(보이면 미리 받기)이면 첫 화면 카드 · 목록 줄마다
   // 서버 요청이 나가고(운영 실측: 첫 화면 12건), 무엇을 저장할 때마다 그것들이 다시 받아진다. 로그인 화면 쪽(로그인 전)은 예외.
