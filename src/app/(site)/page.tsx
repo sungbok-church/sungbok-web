@@ -1,3 +1,4 @@
+import { loadHomeHero } from '@/domains/home/api/homeHeroLoad.server';
 import { loadHomeVideoFeed } from '@/domains/home/api/homeVideoCache.server';
 import { HomeVideoFeedProvider } from '@/domains/home/api/useHomeVideoFeed';
 import { ChurchNews } from '@/domains/home/components/widgets/ChurchNews';
@@ -38,14 +39,16 @@ const HomeVideoSections = async ({ feed }: { feed: Promise<HomeVideoFeedData | u
   </HomeVideoFeedProvider>
 );
 
-export default function Home() {
+export default async function Home() {
   // 실패 규칙은 loadForPage — 운영 중 다시 그리다 실패하면 직전 홈을 유지하고, 빌드 · 개발 서버에서는
   // 영상 영역을 비운 채 그려 브라우저가 /api/home-video 로 받게 한다.
   const feed = loadForPage(() => loadHomeVideoFeed());
+  // 홈 히어로(관리자 설정 — 서버 캐시, 저장하면 바로 반영). 못 읽으면 직전 홈 · 장애 대비 사진
+  const hero = await loadHomeHero();
   return (
     <>
       {/* 히어로 → 사진 띠 → 표어 → 담임 (HomeLead 가 HomeHero 를 품고 변형 무대로 잇는다) */}
-      <HomeLead />
+      <HomeLead hero={hero} />
       <HomeVideoWarmup />
       <div className="bg-b1-bg relative z-0">
         <WorshipTimes />

@@ -65,8 +65,16 @@ export type DepartmentPreviewValues = {
   staff: { name: string; roleLabel: string; greeting: string; photo: FileItem | null }[];
 };
 
+/** 홈 히어로 — 종류 · 대표 사진(한 장) · 유튜브 주소(글자 그대로 — 틀이 영상 id 로 바꾼다) */
+export type HomeHeroPreviewValues = {
+  kind: 'PHOTO' | 'YOUTUBE';
+  photo: FileItem | null;
+  video: string;
+};
+
 /** 메뉴마다 보내는 값 */
 export type PreviewPayload =
+  | { menu: 'home-hero'; values: HomeHeroPreviewValues }
   | { menu: 'departments'; values: DepartmentPreviewValues }
   | { menu: 'resources'; values: ResourcePreviewValues }
   | { menu: 'bulletin'; values: BulletinPreviewValues }
@@ -82,6 +90,7 @@ const PREVIEW_MENUS: readonly string[] = [
   'album',
   'resources',
   'departments',
+  'home-hero',
 ];
 
 export type PreviewMessage =

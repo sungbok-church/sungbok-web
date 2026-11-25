@@ -69,4 +69,22 @@ describe('exteriorAlign (전경 연속 정렬)', () => {
     expect(bx + tx + (leftB - bx) * k).toBeCloseTo(leftA);
     expect(ty + topB * k).toBeCloseTo(topA);
   });
+  it('히어로 상자를 바꿀 수 있다 — 유튜브의 대표 사진(화면 전체, object-position 60%)에 맞춘다', () => {
+    const vw = 1440;
+    const vh = 900;
+    const g = 0.24;
+    const box = { left: 0, width: 1, pos: 0.6 };
+    const { k, tx, ty } = exteriorAlign(0, vw, vh, img, g, box);
+    const bx = -g * vw;
+    const bw = (1 + g) * vw;
+    const sB = Math.max(bw / img.w, vh / img.h);
+    const leftB = bx + (bw - img.w * sB) * 0.55;
+    const topB = (vh - img.h * sB) * 0.5;
+    const sA = Math.max(vw / img.w, vh / img.h);
+    const leftA = (vw - img.w * sA) * 0.6;
+    const topA = (vh - img.h * sA) * 0.5;
+    expect(sB * k).toBeCloseTo(sA);
+    expect(bx + tx + (leftB - bx) * k).toBeCloseTo(leftA);
+    expect(ty + topB * k).toBeCloseTo(topA);
+  });
 });

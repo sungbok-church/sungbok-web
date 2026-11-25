@@ -22,6 +22,8 @@ const MENUS = {
   album: { section: 'news', path: '/news/album' },
   resources: { section: 'resources', path: '/resources/sunday-sermon' },
   departments: { section: 'next-generation', path: '/next-generation/infant' },
+  // 홈은 섹션 머리가 없다
+  'home-hero': { section: null, path: '/' },
 } as const;
 
 export default async function AdminPreviewPage({
@@ -45,9 +47,13 @@ export default async function AdminPreviewPage({
     <AppProvider>
       <Header />
       <main className="flex-1">
-        <SectionShell section={target.section} pathname={path}>
+        {target.section ? (
+          <SectionShell section={target.section} pathname={path}>
+            <PreviewFrame menu={menu as keyof typeof MENUS} />
+          </SectionShell>
+        ) : (
           <PreviewFrame menu={menu as keyof typeof MENUS} />
-        </SectionShell>
+        )}
       </main>
       <Footer />
     </AppProvider>

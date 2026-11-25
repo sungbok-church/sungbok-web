@@ -26,6 +26,7 @@ const ROW_HISTORY: Record<string, readonly string[]> = {
   departments: ['departments'],
   // 개인정보 칸은 값 없이 «바뀜» 만 남는다(DB 감사 트리거)
   newcomers: ['newcomers'],
+  home_hero: ['home-hero'],
 };
 const TABLE_HISTORY: Record<string, readonly string[]> = {
   menus: ['menus'],
@@ -44,6 +45,7 @@ const inputSchema = z.union([
       'resources',
       'departments',
       'newcomers',
+      'home_hero',
     ]),
     rowId: z.uuid(),
   }),

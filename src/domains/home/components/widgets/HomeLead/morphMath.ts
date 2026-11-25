@@ -29,20 +29,26 @@ export const shortest = (a: number, b: number, m: number) => {
   return d;
 };
 
+/** 히어로 사진 상자 — 화면 폭 비율의 왼쪽 · 폭, 가로 object-position(0~1). 기본은 사진 히어로의 우측 74% · 55% */
+export type HeroBox = { left: number; width: number; pos: number };
+export const PHOTO_HERO_BOX: HeroBox = { left: 0.26, width: 0.74, pos: 0.55 };
+
 /**
- * 전경 연속 정렬 — 히어로 사진 상자(우측 74%, object-position 55% 50%, cover) 위에, 왼쪽으로 g·vw 만큼 넓힌
- * 전체폭 전경 레이어(cover, 같은 object-position)를 겹치는 변환(origin = 레이어 좌상단). q=0 정렬, q=1 identity.
+ * 전경 연속 정렬 — 히어로 사진 상자(기본: 우측 74%, object-position 55% 50%, cover) 위에, 왼쪽으로 g·vw 만큼 넓힌
+ * 전체폭 전경 레이어(cover, object-position 55% 50%)를 겹치는 변환(origin = 레이어 좌상단). q=0 정렬, q=1 identity.
+ * 유튜브 히어로의 대표 사진처럼 상자가 다르면 box 로 준다.
  */
 export const exteriorAlign = (
   q: number,
   vw: number,
   vh: number,
   img: { w: number; h: number },
-  g: number
+  g: number,
+  box: HeroBox = PHOTO_HERO_BOX
 ) => {
-  const wA = vw * 0.74;
+  const wA = vw * box.width;
   const sA = Math.max(wA / img.w, vh / img.h);
-  const leftA = vw * 0.26 + (wA - img.w * sA) * 0.55;
+  const leftA = vw * box.left + (wA - img.w * sA) * box.pos;
   const topA = (vh - img.h * sA) * 0.5;
   const bx = -g * vw;
   const bw = (1 + g) * vw;

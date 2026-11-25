@@ -11,11 +11,13 @@
 import { Photo } from '@/shared/components/features/Photo';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 
-import mainExterior from '@/assets/images/main/main01.webp';
+import type { HomeHeroData } from '@/domains/home/api/homeHero';
 import { HomeHero } from '@/domains/home/components/widgets/HomeHero';
-import { HERO_IMAGE_SIZES } from '@/domains/home/components/widgets/HomeHero/imageConfig';
+import { heroImageSizes } from '@/domains/home/components/widgets/HomeHero/imageConfig';
 
-import { exteriorAlign, fullRect, type Rect } from './morphMath';
+import { exteriorAlign, fullRect, PHOTO_HERO_BOX, type Rect } from './morphMath';
+
+const YOUTUBE_HERO_BOX = { left: 0, width: 1, pos: 0.6 };
 
 export type FrameState = {
   /** 카드 픽셀 기하(뷰포트 좌표). null = 전체화면 */
@@ -33,103 +35,107 @@ export type MorphFrameHandle = { update: (s: FrameState) => void };
 
 /** 전경 연속 레이어의 왼쪽 여유 폭(뷰포트 비율) */
 export const EXT_G = 0.24;
-const IMG = { w: mainExterior.width, h: mainExterior.height };
 
 // 보이지 않는 동안은 visibility 도 끈다 — 투명한 히어로 CTA 가 키보드 포커스/클릭을 받지 않도록(a11y)
 const CSS = `.mf-copy{opacity:var(--copy);visibility:var(--copy-vis)}`;
 
-export const MorphFrame = forwardRef<MorphFrameHandle, { className?: string; radius: number }>(
-  ({ className, radius }, ref) => {
-    const rootRef = useRef<HTMLDivElement>(null);
-    const extRef = useRef<HTMLDivElement>(null);
+export const MorphFrame = forwardRef<
+  MorphFrameHandle,
+  { className?: string; radius: number; hero: HomeHeroData }
+>(({ className, radius, hero }, ref) => {
+  // 전경 레이어를 히어로 사진 상자에 픽셀 정렬하는 데 쓰는 사진 크기(관리자에서 바꾸면 따라간다)
+  const img = { w: hero.photo.width, h: hero.photo.height };
+  // 유튜브면 대표 사진이 화면 전체(object-position 60%)라 그 구도에 맞춘다(HeroVideo 의 포스터와 같은 값)
+  const box = hero.kind === 'youtube' ? YOUTUBE_HERO_BOX : PHOTO_HERO_BOX;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const extRef = useRef<HTMLDivElement>(null);
 
-    useImperativeHandle(ref, () => ({
-      update(s) {
-        const el = rootRef.current;
-        if (!el) return;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const g = s.rect ?? fullRect(vw, vh);
-        const sx = g.w / vw;
-        const sy = g.h / vh;
-        const k = Math.max(sx, sy);
-        const st = el.style;
-        st.setProperty('--fx', `${(g.cx - vw / 2).toFixed(2)}px`);
-        st.setProperty('--fy', `${(g.cy - vh / 2).toFixed(2)}px`);
-        st.setProperty('--sx', sx.toFixed(4));
-        st.setProperty('--sy', sy.toFixed(4));
-        st.setProperty('--ix', (k / sx).toFixed(4));
-        st.setProperty('--iy', (k / sy).toFixed(4));
-        st.setProperty('--r', `${(radius * s.q).toFixed(1)}px`);
-        st.setProperty('--f1', s.f1.toFixed(3));
-        st.setProperty('--copy', s.copy.toFixed(3));
-        st.setProperty('--copy-vis', s.copy > 0 ? 'visible' : 'hidden');
-        st.setProperty('--vis', s.visible ? '1' : '0');
-        st.setProperty('--vis-v', s.visible ? 'visible' : 'hidden');
-        if (extRef.current) {
-          const a = exteriorAlign(s.q, vw, vh, IMG, EXT_G);
-          extRef.current.style.transform = `translate(${a.tx.toFixed(2)}px,${a.ty.toFixed(2)}px) scale(${a.k.toFixed(5)})`;
-        }
-      },
-    }));
+  useImperativeHandle(ref, () => ({
+    update(s) {
+      const el = rootRef.current;
+      if (!el) return;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const g = s.rect ?? fullRect(vw, vh);
+      const sx = g.w / vw;
+      const sy = g.h / vh;
+      const k = Math.max(sx, sy);
+      const st = el.style;
+      st.setProperty('--fx', `${(g.cx - vw / 2).toFixed(2)}px`);
+      st.setProperty('--fy', `${(g.cy - vh / 2).toFixed(2)}px`);
+      st.setProperty('--sx', sx.toFixed(4));
+      st.setProperty('--sy', sy.toFixed(4));
+      st.setProperty('--ix', (k / sx).toFixed(4));
+      st.setProperty('--iy', (k / sy).toFixed(4));
+      st.setProperty('--r', `${(radius * s.q).toFixed(1)}px`);
+      st.setProperty('--f1', s.f1.toFixed(3));
+      st.setProperty('--copy', s.copy.toFixed(3));
+      st.setProperty('--copy-vis', s.copy > 0 ? 'visible' : 'hidden');
+      st.setProperty('--vis', s.visible ? '1' : '0');
+      st.setProperty('--vis-v', s.visible ? 'visible' : 'hidden');
+      if (extRef.current) {
+        const a = exteriorAlign(s.q, vw, vh, img, EXT_G, box);
+        extRef.current.style.transform = `translate(${a.tx.toFixed(2)}px,${a.ty.toFixed(2)}px) scale(${a.k.toFixed(5)})`;
+      }
+    },
+  }));
 
-    return (
+  return (
+    <div
+      ref={rootRef}
+      className={`pointer-events-none ${className ?? ''}`}
+      style={
+        {
+          '--fx': '0px',
+          '--fy': '0px',
+          '--sx': 1,
+          '--sy': 1,
+          '--ix': 1,
+          '--iy': 1,
+          '--r': '0px',
+          '--f1': 0,
+          '--copy': 1,
+          '--copy-vis': 'visible',
+          '--vis': 1,
+          '--vis-v': 'visible',
+        } as React.CSSProperties
+      }
+    >
+      <style>{CSS}</style>
       <div
-        ref={rootRef}
-        className={`pointer-events-none ${className ?? ''}`}
-        style={
-          {
-            '--fx': '0px',
-            '--fy': '0px',
-            '--sx': 1,
-            '--sy': 1,
-            '--ix': 1,
-            '--iy': 1,
-            '--r': '0px',
-            '--f1': 0,
-            '--copy': 1,
-            '--copy-vis': 'visible',
-            '--vis': 1,
-            '--vis-v': 'visible',
-          } as React.CSSProperties
-        }
+        className="bg-b1-bg pointer-events-auto absolute inset-0 overflow-hidden"
+        style={{
+          transform: 'translate3d(var(--fx),var(--fy),0) scale(var(--sx),var(--sy))',
+          borderRadius: 'calc(var(--r) / var(--sx)) / calc(var(--r) / var(--sy))',
+          opacity: 'var(--vis)',
+          visibility: 'var(--vis-v)' as React.CSSProperties['visibility'],
+          willChange: 'transform',
+        }}
       >
-        <style>{CSS}</style>
         <div
-          className="bg-b1-bg pointer-events-auto absolute inset-0 overflow-hidden"
-          style={{
-            transform: 'translate3d(var(--fx),var(--fy),0) scale(var(--sx),var(--sy))',
-            borderRadius: 'calc(var(--r) / var(--sx)) / calc(var(--r) / var(--sy))',
-            opacity: 'var(--vis)',
-            visibility: 'var(--vis-v)' as React.CSSProperties['visibility'],
-            willChange: 'transform',
-          }}
+          className="absolute inset-0"
+          style={{ transform: 'scale(var(--ix),var(--iy))', willChange: 'transform' }}
         >
+          <div className="absolute inset-0" style={{ opacity: 'calc(1 - var(--f1))' }}>
+            <HomeHero copyClassName="mf-copy" hero={hero} />
+          </div>
           <div
-            className="absolute inset-0"
-            style={{ transform: 'scale(var(--ix),var(--iy))', willChange: 'transform' }}
+            ref={extRef}
+            aria-hidden
+            className="absolute inset-y-0 right-0 origin-top-left"
+            style={{ left: `${-EXT_G * 100}%`, opacity: 'var(--f1)', willChange: 'transform' }}
           >
-            <div className="absolute inset-0" style={{ opacity: 'calc(1 - var(--f1))' }}>
-              <HomeHero copyClassName="mf-copy" />
-            </div>
-            <div
-              ref={extRef}
-              aria-hidden
-              className="absolute inset-y-0 right-0 origin-top-left"
-              style={{ left: `${-EXT_G * 100}%`, opacity: 'var(--f1)', willChange: 'transform' }}
-            >
-              <Photo
-                src={mainExterior}
-                alt=""
-                fill
-                sizes={HERO_IMAGE_SIZES}
-                className="object-cover object-[55%_50%]"
-              />
-            </div>
+            <Photo
+              src={hero.photo}
+              alt=""
+              fill
+              sizes={heroImageSizes(hero.kind)}
+              className="object-cover object-[55%_50%]"
+            />
           </div>
         </div>
       </div>
-    );
-  }
-);
+    </div>
+  );
+});
 MorphFrame.displayName = 'MorphFrame';

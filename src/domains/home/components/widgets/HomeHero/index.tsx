@@ -10,13 +10,14 @@
  * 교단 소속 문장은 lg 이상에서 히어로 하단 왼쪽(블록과 같은 기준선), 그 미만에서는 CTA 아래 본문 흐름.
  */
 
+import type { HomeHeroData } from '@/domains/home/api/homeHero';
 import { ArrowRight } from 'lucide-react';
 import { Photo } from '@/shared/components/features/Photo';
 import Link from 'next/link';
 
-import mainExterior from '@/assets/images/main/main01.webp';
 import { GapckSymbol } from '@/shared/components/brand/GapckSymbol';
-import { HERO_IMAGE_SIZES } from './imageConfig';
+import { HeroVideo } from './HeroVideo';
+import { heroImageSizes } from './imageConfig';
 
 const PHOTO_MASK =
   'linear-gradient(to left,#000 0%,#000 50%,rgba(0,0,0,0.55) 74%,rgba(0,0,0,0.12) 90%,transparent 100%)';
@@ -39,7 +40,6 @@ const KEYFRAMES = `
    색(.hh-blob)은 번짐 폭(예전 blur 반경의 2배)만큼 밖으로 넓혀 그린다. */
 const Mesh = () => (
   <>
-    <style>{KEYFRAMES}</style>
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         className="hh-mesh absolute -top-[15%] -left-[5%] h-[65vh] w-[65vh] opacity-70"
@@ -84,30 +84,61 @@ const Affiliation = ({ className }: { className?: string }) => (
   </p>
 );
 
-/** copyClassName: 카피 블록·소속 문장 래퍼에 얹을 클래스(HomeLead 변형 무대가 스크롤로 퇴장시킬 때 사용) */
-export const HomeHero = ({ copyClassName }: { copyClassName?: string } = {}) => (
+// 유튜브일 때 카피를 덮는 밝은 막 — 관리자가 고른 아무 영상 · 사진 위에서도 글자가 읽히게, 브랜드의 밝은 톤 유지(시안 B).
+// 넓은 화면: 카피 블록(화면 폭의 절반 안쪽)까지 진하게 덮고 오른쪽은 영상. 좁은 화면: 카피가 폭 전체라 고르게 덮는다(영상은 꺼지고 사진).
+const VEIL_WIDE =
+  'linear-gradient(90deg, rgba(247,244,238,0.95) 0%, rgba(247,244,238,0.9) 36%, rgba(247,244,238,0.72) 50%, rgba(247,244,238,0) 74%)'; /* design-lint-ignore: 히어로 배경색(#f7f4ee)의 알파 막 — 토큰 없는 1회성 */
+const VEIL_NARROW = 'rgba(247,244,238,0.86)'; /* design-lint-ignore: 위와 같은 막(좁은 화면) */
+
+/**
+ * copyClassName: 카피 블록·소속 문장 래퍼에 얹을 클래스(HomeLead 변형 무대가 스크롤로 퇴장시킬 때 사용).
+ * hero: 관리자에서 고른 히어로(설계 6.12) — 사진이면 오른쪽 전경, 유튜브면 첫 화면 전체가 영상(카피 쪽은 밝은 막, 시안 B).
+ */
+export const HomeHero = ({
+  copyClassName,
+  hero,
+}: {
+  copyClassName?: string;
+  hero: HomeHeroData;
+}) => (
   <section
     aria-label="성복교회"
     className="relative min-h-[100svh] w-full overflow-hidden bg-[#f7f4ee]"
   >
-    <Mesh />
-    {/* 전경 — 우측 74%, 좌측 경계는 메시로 페이드 */}
-    <div
-      aria-hidden
-      className="absolute top-0 right-0 bottom-0 w-[74%]"
-      style={{ WebkitMaskImage: PHOTO_MASK, maskImage: PHOTO_MASK }}
-    >
-      <Photo
-        src={mainExterior}
-        alt="성복교회 전경"
-        fill
-        preload
-        // 첫 화면의 가장 큰 그림 — 폰트(최우선)·JS·사진 띠보다 먼저 받게 한다
-        fetchPriority="high"
-        sizes={HERO_IMAGE_SIZES}
-        className="object-cover object-[55%_50%]"
-      />
-    </div>
+    {/* 제목 강조색(.hh-acc) · 메시 움직임 — 강조색은 어느 종류에서나 쓴다 */}
+    <style>{KEYFRAMES}</style>
+    {/* 메시는 사진일 때만 — 유튜브면 대표 사진 · 영상이 화면 전체를 덮어 보이지 않는다 */}
+    {hero.kind === 'photo' && <Mesh />}
+    {hero.kind === 'youtube' && hero.videoId && (
+      <div className="absolute inset-0">
+        <HeroVideo
+          key={hero.videoId}
+          videoId={hero.videoId}
+          poster={hero.photo}
+          sizes={heroImageSizes('youtube')}
+          controlsClassName={copyClassName}
+        />
+      </div>
+    )}
+    {hero.kind === 'photo' && (
+      // 전경 — 우측 74%, 좌측 경계는 메시로 페이드
+      <div
+        aria-hidden
+        className="absolute top-0 right-0 bottom-0 w-[74%]"
+        style={{ WebkitMaskImage: PHOTO_MASK, maskImage: PHOTO_MASK }}
+      >
+        <Photo
+          src={hero.photo}
+          alt={hero.alt}
+          fill
+          preload
+          // 첫 화면의 가장 큰 그림 — 폰트(최우선)·JS·사진 띠보다 먼저 받게 한다
+          fetchPriority="high"
+          sizes={heroImageSizes('photo')}
+          className="object-cover object-[55%_50%]"
+        />
+      </div>
+    )}
 
     {/* 카피 블록 — 왼쪽 정렬·왼쪽 배치 */}
     <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-[1320px] items-center px-6 md:px-[clamp(24px,4vw,56px)]">
@@ -146,6 +177,22 @@ export const HomeHero = ({ copyClassName }: { copyClassName?: string } = {}) => 
         <Affiliation className="mt-10 lg:hidden" />
       </div>
     </div>
+
+    {hero.kind === 'youtube' && (
+      // 밝은 막은 카피와 함께 사라진다 — 카드로 줄어드는 영상에는 막이 없다
+      <>
+        <div
+          aria-hidden
+          className={`absolute inset-0 hidden lg:block ${copyClassName ?? ''}`}
+          style={{ background: VEIL_WIDE }}
+        />
+        <div
+          aria-hidden
+          className={`absolute inset-0 lg:hidden ${copyClassName ?? ''}`}
+          style={{ background: VEIL_NARROW }}
+        />
+      </>
+    )}
 
     {/* lg 이상: 소속 문장을 히어로 하단 왼쪽에 — 카피 블록과 같은 좌측 기준선 */}
     <div className={`absolute inset-x-0 bottom-0 z-10 hidden lg:block ${copyClassName ?? ''}`}>

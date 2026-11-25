@@ -11,7 +11,12 @@ import {
   toPreviewResource,
   toPreviewSermon,
 } from '@/domains/admin/lib/preview';
+import type { HomeHeroData } from '@/domains/home/api/homeHero';
+import { HomeLead } from '@/domains/home/components/widgets/HomeLead';
+import { WorshipTimes } from '@/domains/home/components/widgets/WorshipTimes';
 import { toDepartmentPage } from '@/domains/next-generation/api/departmentPage';
+import { parseYoutubeVideoId } from '@/domains/resources/api/resourceInput';
+import { toUploadedPhoto } from '@/shared/lib/uploadedPhoto';
 import { DepartmentPage } from '@/domains/next-generation/components/widgets/DepartmentPage';
 import { ResourceViewPage } from '@/domains/resources/components/features/ResourceViewPage';
 import { AlbumPage } from '@/domains/news/components/widgets/AlbumPage';
@@ -22,6 +27,27 @@ import { useEffect, useState } from 'react';
 
 /** 저장 전 값을 공개 화면 부품 그대로 — 주보는 주보 화면, 교회앨범은 앨범 화면, 주일광고 · 성복의 뜰은 «영상 한 편» 화면 */
 const Preview = ({ payload }: { payload: PreviewPayload }) => {
+  if (payload.menu === 'home-hero') {
+    const v = payload.values;
+    const photo = v.photo ? toUploadedPhoto(readSupabaseEnv()?.url ?? '', v.photo) : null;
+    if (!photo) return null;
+    const videoId = v.kind === 'YOUTUBE' ? (parseYoutubeVideoId(v.video) ?? null) : null;
+    const hero: HomeHeroData = {
+      kind: videoId ? 'youtube' : 'photo',
+      photo,
+      alt: v.photo?.alt || '성복교회',
+      videoId,
+    };
+    // 홈처럼 히어로 다음 섹션까지 — 스크롤하면 카드로 줄어들어 사진 띠에 내려앉는 것까지 본다
+    return (
+      <>
+        <HomeLead hero={hero} />
+        <div className="bg-b1-bg relative z-0">
+          <WorshipTimes />
+        </div>
+      </>
+    );
+  }
   if (payload.menu === 'departments') {
     const v = payload.values;
     const page = toDepartmentPage(v.slug, readSupabaseEnv()?.url ?? '', {

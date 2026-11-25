@@ -235,6 +235,14 @@
 - 미리보기: 공개 부서 페이지(`DepartmentPage`) — 틀 주소에 `?slug=` 를 붙여 섹션 메뉴의 자리를 맞춘다. 변경 이력은 부서 행 + 담당자 줄(부서에 묶임).
 - **기존 값 옮기기(끝, 2026-11-25)**: 코드의 값(소개 · 담당자 9명 · 사진 부서마다 12장)을 일회용 스크립트(`scripts/import-departments.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮겼다 — 여러 부서가 같이 쓰는 사진은 한 번만 올려(23장 + 폭별 파일) 부서마다 파일 줄을 두고, «맨 아래 한 줄» 자리표시는 비웠다(운영 확인: 공개 8곳 모두 Storage 사진). 그 뒤 `data/departments.ts` · 부서 전용 사진(`standin-*`) · 쓰지 않던 `DepartmentDetail` · `dep_manager*` · 스크립트를 지웠다. 담당자 사진(`assets/images/staff`)은 «섬기는 이들» 이 같이 써서 남겼다.
 
+### 홈 히어로(C2)
+
+- **시안 B 승격(사용자 결정 2026-11-25)**: 유튜브면 첫 화면 전체가 영상(카피 쪽은 밝은 막 — 카피와 함께 사라진다), 스크롤하면 영상이 재생된 채로 카드로 줄어들다가 내려앉기 직전에 대표 사진으로 바뀌어 사진 띠에 내려앉는다(`HomeLead` 의 사진 전환 구간 0.62~0.8). 사진이면 지금처럼 오른쪽 전경.
+- [HeroVideo](../../src/domains/home/components/widgets/HomeHero/HeroVideo.tsx): 대표 사진을 먼저(첫 화면의 가장 큰 그림 — 먼저 받는다), 넓은 화면(lg) · 동작 줄이기 꺼짐 · 데이터 절약 꺼짐일 때만 소리 없이 반복 재생. 실제 재생이 시작되고 0.9초 뒤에야 서서히 보인다(유튜브 시작 화면의 제목 · 로고를 가리려고), 1.2배로 키워 가장자리를 잘라 낸다. 클릭 · 포커스 없음, 화면 밖이면 멈춘다.
+- **관리자** `/admin/home-hero`([HomeHeroForm](../../src/domains/admin/components/widgets/HomeHeroForm/index.tsx)): 종류(사진 · 유튜브 영상) · 대표 사진(어느 종류에서나 꼭 한 장 — 대체 텍스트 · 폭별 파일) · 유튜브 주소(주소나 id). 설정이라 저장하면 바로 공개. 미리보기는 홈 히어로 그대로(스크롤 연출까지). 한 줄뿐인 설정(`home_hero` singleton)을 고치기만 한다 — 줄은 옮기기 스크립트가 만든다.
+- **공개 홈**: [homeHeroLoad.server](../../src/domains/home/api/homeHeroLoad.server.ts) — 서버 캐시(태그 `home-hero`), 저장하면 `updateTag`. 못 읽으면 운영은 직전 홈, 그것도 없으면 레포의 `main01.webp` 한 장(장애 대비 — 설계 11절 23번).
+- **옮기기**: `scripts/import-home-hero.mjs`(일회용) — 지금 사진(main01)으로 설정 한 줄(사진)을 만든다. 레포의 main01 은 지우지 않는다(장애 대비 · 홈의 다른 곳도 쓴다).
+
 ### 새가족(C3)
 
 - **공개 접수**: 홈 «새가족 등록 · 문의» 패널의 폼([RegisterPanel](../../src/domains/home/components/widgets/FirstVisit/RegisterPanel.tsx)) → Server Action [submitNewcomerForm](../../src/domains/home/api/newcomerActions.ts) → [newcomerSubmit.server](../../src/domains/home/api/newcomerSubmit.server.ts). 방문자에게는 DB 권한이 전혀 없다 — 서버가 검증(같은 스키마 [newcomerInput](../../src/domains/home/api/newcomerInput.ts)) · 횟수 제한 뒤 **만능 키로** 넣는다. 공개 쪽에서 만능 키를 쓰는 파일은 이것 하나다(lint 예외 — `eslint.config.mjs` `NEWCOMER_SUBMIT`, 잠그는 시험 `tests/lint/adminBoundary.test.ts`).
@@ -248,4 +256,4 @@
 
 ## 아직 없는 것
 
-설계 문서 9절의 순서대로 만든다: 패키지 B 는 끝(2026-11-25) → C(다음세대 부서 끝 → 새가족 끝(메일만 남음) → 홈 히어로 — 사용자 결정 2026-11-25, [계획](../specs/2026-11-25-admin-pc-site-plan.md)) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.
+설계 문서 9절의 순서대로 만든다: 패키지 B 는 끝(2026-11-25) → C(다음세대 부서 · 새가족(메일만 남음) · 홈 히어로 — 사용자 결정 2026-11-25, [계획](../specs/2026-11-25-admin-pc-site-plan.md)) → 홈페이지 메뉴 · 예약 작업 · 정리(D). 화면을 만들면 [adminScreens.ts](../../src/shared/config/adminScreens.ts) 의 `ADMIN_SCREENS_READY` 에 메뉴 key 를 더한다.

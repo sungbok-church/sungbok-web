@@ -18,8 +18,9 @@
 import { Photo } from '@/shared/components/features/Photo';
 import { Fragment, useEffect, useRef } from 'react';
 
-import mainExterior from '@/assets/images/main/main01.webp';
-import { HERO_IMAGE_SIZES } from '@/domains/home/components/widgets/HomeHero/imageConfig';
+import type { HomeHeroData } from '@/domains/home/api/homeHero';
+import { useHeroVideoEnabled } from '@/domains/home/components/widgets/HomeHero/HeroVideo';
+import { heroImageSizes } from '@/domains/home/components/widgets/HomeHero/imageConfig';
 
 import { FLOW_PHOTOS, THIRD_PHOTOS } from './flowPhotos';
 import { EXT_G, MorphFrame, type MorphFrameHandle } from './MorphFrame';
@@ -56,7 +57,19 @@ const THIRD: Tile[] = THIRD_PHOTOS.map(src => ({ src }));
 const TILES = [TOP, BOTTOM, THIRD];
 const MASK = `linear-gradient(to right, transparent, #000 ${EDGE}%, #000 ${100 - EDGE}%, transparent)`;
 
-export const HomeLead = () => {
+/**
+ * hero: 관리자에서 고른 홈 히어로(설계 6.12). 유튜브 영상이 돌면 영상이 카드로 줄어드는 동안 그대로 보이고 내려앉기 직전에
+ * 사진으로 바뀐다(시안 B). 사진이거나 영상이 꺼진 화면이면 줄어들기 시작할 무렵 바뀐다(변형은 진행도 0.05~0.8).
+ */
+export const HomeLead = ({ hero }: { hero: HomeHeroData }) => {
+  // 영상이 실제로 돌 수 있을 때만 늦게 바꾼다 — 대표 사진만 보일 때(좁은 화면 · 동작 줄이기 등)는 사진처럼 일찍(같은 사진이
+  // 다른 구도로 오래 겹쳐 보이지 않게, 전경 레이어는 MorphFrame 이 대표 사진 구도에 맞춘다)
+  const videoOn = useHeroVideoEnabled() && hero.kind === 'youtube';
+  const photoFadeAt: readonly [number, number] = videoOn ? [0.62, 0.8] : [0.05, 0.3];
+  const fadeAt = useRef(photoFadeAt);
+  useEffect(() => {
+    fadeAt.current = photoFadeAt;
+  });
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const frame = useRef<MorphFrameHandle>(null);
@@ -123,7 +136,7 @@ export const HomeLead = () => {
       frame.current?.update({
         rect: mixRect(fullRect(vw, vh), target, q),
         q,
-        f1: seg(p, [0.05, 0.3]),
+        f1: seg(p, fadeAt.current as [number, number]),
         copy: 1 - seg(p, [0.04, 0.12]),
         visible: !landed,
       });
@@ -159,10 +172,10 @@ export const HomeLead = () => {
                 style={{ left: `${-EXT_G * 100}%` }}
               >
                 <Photo
-                  src={mainExterior}
-                  alt="성복교회 전경"
+                  src={hero.photo}
+                  alt={hero.alt}
                   fill
-                  sizes={HERO_IMAGE_SIZES}
+                  sizes={heroImageSizes(hero.kind)}
                   className="object-cover object-[55%_50%]"
                 />
               </div>
@@ -223,7 +236,7 @@ export const HomeLead = () => {
           </div>
           {TILES.map(row)}
           {/* 히어로 — 전체화면에서 윗줄 빈 칸으로 변형 */}
-          <MorphFrame ref={frame} className="absolute inset-0 z-10" radius={RADIUS} />
+          <MorphFrame ref={frame} className="absolute inset-0 z-10" radius={RADIUS} hero={hero} />
         </div>
       </div>
       <PastorStatic />
