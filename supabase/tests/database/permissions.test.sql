@@ -139,7 +139,7 @@ select set_config('request.jwt.claims', '{"role":"anon"}', true);
 
 select is((select count(*)::int from public.albums), 1, '방문자: 공개 앨범만 보인다');
 select is((select count(*)::int from public.files), 1, '방문자: 공개 글에 붙은 파일만 보인다');
-select is((select count(*)::int from public.menus), 0, '방문자: 관리자 메뉴는 보이지 않는다');
+select is((select count(*)::int from public.menus where area = 'ADMIN'), 0, '방문자: 관리자 메뉴는 보이지 않는다');
 select throws_ok('select * from public.newcomers', '42501', null, '방문자: 새가족을 읽을 수 없다');
 select throws_ok(
   $$insert into public.newcomers (intent, name, phone, consent_at, consent_version)

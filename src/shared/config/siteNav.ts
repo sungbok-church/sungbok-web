@@ -84,15 +84,22 @@ export const childHref = (s: NavSection, c: NavChild): string => `/${s.slug}/${c
 const segments = (pathname: string): string[] =>
   pathname.split(/[?#]/)[0].split('/').filter(Boolean);
 
-export const findSection = (pathname: string): NavSection | undefined => {
+/** nav: 찾을 메뉴 — 기본은 코드 메뉴, 공개 화면은 DB 를 덮어쓴 메뉴(useSiteNav · loadSiteNav) */
+export const findSection = (
+  pathname: string,
+  nav: readonly NavSection[] = sections
+): NavSection | undefined => {
   const [first] = segments(pathname);
-  return first ? sections.find(s => s.slug === first) : undefined;
+  return first ? nav.find(s => s.slug === first) : undefined;
 };
 
-export const findChild = (pathname: string): NavChild | undefined => {
+export const findChild = (
+  pathname: string,
+  nav: readonly NavSection[] = sections
+): NavChild | undefined => {
   const [first, second] = segments(pathname);
   if (!first || !second) return undefined;
-  return sections.find(s => s.slug === first)?.children?.find(c => c.slug === second);
+  return nav.find(s => s.slug === first)?.children?.find(c => c.slug === second);
 };
 
 // 미공개 사이트라 영구(308) 캐시를 피한다 — 전부 permanent:false(307).
@@ -104,13 +111,7 @@ const LEGACY_REDIRECTS = [
   { source: '/worship/guide', destination: '/location#worship-times' },
 ] as const;
 
-export const buildRedirects = () => [
-  ...sections
-    .filter(s => s.children?.length)
-    .map(s => ({
-      source: `/${s.slug}`,
-      destination: sectionHref(s),
-      permanent: false as const,
-    })),
-  ...LEGACY_REDIRECTS.map(r => ({ ...r, permanent: false as const })),
-];
+// 상위 메뉴 주소(`/about`)는 여기서 넘기지 않는다 — 관리자에서 끈 하위를 건너뛰어야 해서 접속 때 넘기는 페이지가 맡는다
+// (src/app/(site)/<섹션>/route.ts · sectionLandingRoute, ADR 0026).
+export const buildRedirects = () =>
+  LEGACY_REDIRECTS.map(r => ({ ...r, permanent: false as const }));

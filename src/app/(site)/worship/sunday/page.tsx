@@ -1,7 +1,5 @@
 import SermonLibrary from '@/domains/worship-video/components/widgets/SermonLibrary';
-import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: '주일예배 | 성복교회' };
 // 미리 그려 두고, 영상 목록의 서버 캐시(worshipVideo.server — 10분마다 확인)가 바뀌면 다시 그린다(ADR 0024).
 // 새 영상은 늦어도 약 1시간 10분 안에 보인다. 열어 둔 페이지는 자동 갱신하지 않는다 — 다른 페이지에 갔다 오면 최신으로 보인다.
 

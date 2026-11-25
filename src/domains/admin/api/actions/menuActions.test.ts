@@ -8,7 +8,7 @@ const m = vi.hoisted(() => ({
   reorder: vi.fn(async () => ({ ok: true, message: '순서를 바꿨습니다.' })),
 }));
 
-const cache = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
+const cache = vi.hoisted(() => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }));
 vi.mock('next/cache', () => cache);
 vi.mock('../server/adminContext.server', () => ({
   actionPermission: m.permission,
@@ -31,6 +31,9 @@ describe('updateMenu', () => {
       label: null,
       is_active: false,
     });
+    // 홈페이지 메뉴도 같은 표 — 공개 메뉴 캐시도 갱신한다
+    expect(cache.revalidatePath).toHaveBeenCalledWith('/admin', 'layout');
+    expect(cache.updateTag).toHaveBeenCalledWith('site-menus');
   });
 
   it('DB 가 거절하면(켜기 · 끄기는 «전체 관리» 만) 그 까닭을 그대로 돌려주고 다시 그리지 않는다', async () => {

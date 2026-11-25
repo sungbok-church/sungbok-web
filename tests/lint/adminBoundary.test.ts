@@ -74,19 +74,22 @@ describe('공개 쪽 ↔ 관리자 경계', () => {
   });
 });
 
-// 새가족 접수(설계 6.11)는 방문자에게 DB 권한을 열지 않고 서버가 만능 키로 넣는다 — 그 한 파일만 만능 키를 쓴다.
-describe('만능 키는 관리자 코드와 새가족 접수 파일만', () => {
+// 새가족 접수(설계 6.11)는 방문자에게 DB 권한을 열지 않고 서버가 만능 키로 넣는다. 하루 한 번 예약 작업(6.9)도 만능 키로
+// 지난 행 · 파일을 지운다 — 공개 쪽에서는 그 두 파일만 만능 키를 쓴다.
+describe('만능 키는 관리자 코드 · 새가족 접수 파일 · 예약 작업만', () => {
   const code =
     "import { createSupabaseAdminClient } from '@/shared/api/supabase/adminClient.server';";
-  it('새가족 접수 파일은 된다', async () => {
-    expect(await ruleIds(code, 'src/domains/home/api/newcomerSubmit.server.ts')).not.toContain(
-      'no-restricted-imports'
-    );
-  });
+  it.each(['src/domains/home/api/newcomerSubmit.server.ts', 'src/app/api/cron/daily/route.ts'])(
+    '%s 는 된다',
+    async file => {
+      expect(await ruleIds(code, file)).not.toContain('no-restricted-imports');
+    }
+  );
   it.each([
     'src/domains/home/api/newcomerActions.ts',
     'src/domains/home/components/widgets/FirstVisit/RegisterPanel.tsx',
     'src/domains/news/api/x.server.ts',
+    'src/app/api/home-video/route.ts',
   ])('%s 에서는 막힌다', async file => {
     expect(await ruleIds(code, file)).toContain('no-restricted-imports');
   });

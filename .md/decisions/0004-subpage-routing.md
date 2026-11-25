@@ -1,6 +1,6 @@
 # ADR 0004: 서브페이지 라우팅 구조 — `/{section}/{page}` + 섹션 중첩 레이아웃 + 공통 머리 S1
 
-**상태**: 채택
+**상태**: 채택 — 메뉴 이름 · 순서 · 사용 여부와 상위 주소 넘김은 [ADR 0026](0026-site-menu-db-overrides.md) 이 바꿈(2026-11-25)
 **날짜**: 2026-10-10
 **관련**: [specs/2026-10-10-site-nav-skeleton-design.md](../specs/2026-10-10-site-nav-skeleton-design.md), [specs/2026-10-10-subpage-layouts-round2-analysis.md](../specs/2026-10-10-subpage-layouts-round2-analysis.md), [meetings/2026-10-08-pastor-review.md](../meetings/2026-10-08-pastor-review.md)
 

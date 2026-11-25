@@ -38,7 +38,8 @@
 │   ├── 2026-11-17-admin-p1-setup-plan.md
 │   ├── 2026-11-19-admin-pa-foundation-plan.md
 │   ├── 2026-11-24-admin-pb-content-plan.md
-│   └── 2026-11-25-admin-pc-site-plan.md
+│   ├── 2026-11-25-admin-pc-site-plan.md
+│   └── 2026-11-25-admin-pd-sitemenu-plan.md
 └── decisions/                      # 의사결정 기록 (ADR — 불변)
     ├── 0001-sky-palette.md
     ├── 0002-home-ia-and-tone.md
@@ -63,7 +64,9 @@
     ├── 0021-code-cache-strategy.md
     ├── 0022-api-response-and-error-codes.md
     ├── 0023-codes-read-without-cache.md
-    └── 0024-cache-components.md
+    ├── 0024-cache-components.md
+    ├── 0025-admin-drag-reorder-dnd-kit.md
+    └── 0026-site-menu-db-overrides.md
 ```
 
 향후 추가될 카테고리(빈 폴더는 미리 만들지 않음):
@@ -151,6 +154,7 @@
 - [0023-codes-read-without-cache.md](decisions/0023-codes-read-without-cache.md) — 2026-11-20 — 공통코드 · 분류는 캐시하지 않고 그릴 때마다 DB 에서 읽는다(`React.cache` 로 한 요청 안에서만 중복 제거). 관리자 화면은 요청 때 그리는데 그냥 `'use cache'` 는 Vercel 에서 요청 때 거의 맞지 않고, 공유 캐시(`use cache: remote`)는 DB 읽기와 같은 왕복이라 아낄 것이 없어 뺐다(Vercel 은 Hobby 로 운영해 청구가 없고, Pro 였어도 월 1센트 미만이라 비용은 이유가 아님 — 2026-11-21 근거 정정). `updateTag` · 캐시 태그 제거. ADR 0021 대체
 - [0024-cache-components.md](decisions/0024-cache-components.md) — 2026-11-20 — 캐시를 Cache Components(`cacheComponents` · `partialPrefetching`, `'use cache'` + `cacheLife`) 한 방식으로. 페이지 `revalidate` 를 없애고 데이터 쪽에서(영상 10분 · 홈 60초, 만료 없음). 서버가 받아 props 로 넘겨 HTML 에 그린다(react-query 는 브라우저에 붙은 뒤에만). 캐시 안의 실패는 값으로(`settle` · `unwrap`, 1분) — 던지면 빌드가 멈춘다. 실패 규칙은 `loadForPage`. 상세는 빌드 때 한 주소만(`oneBuildParam`). 관리자는 요청마다 그려 nonce CSP 유지. 없는 영상은 `VideoNotFound` 한 부품(첫 방문 200 + noindex)
 - [0025-admin-drag-reorder-dnd-kit.md](decisions/0025-admin-drag-reorder-dnd-kit.md) — 2026-11-23 — 메뉴 · 분류 · 코드의 순서는 ↑/↓ 대신 끌어서 놓기(`@dnd-kit/core` · `sortable` · `utilities`, 판 고정 — 손잡이 · 키보드 · 한글 낭독 · 터치), 놓은 순서는 DB 함수 `reorder_rows` 한 번(security invoker, 한 무리 전부인지 확인 · 잠금 · 한 트랜잭션). `@dnd-kit/react`(1.0 전) · motion Reorder · HTML5 끌기 탈락. ADR 0012 의 «끌어서 순서 바꾸기는 다시 본다» 를 정함
+- [0026-site-menu-db-overrides.md](decisions/0026-site-menu-db-overrides.md) — 2026-11-25 — 홈페이지 메뉴: 코드 `siteNav` 는 «어떤 페이지», DB `menus(area = SITE)` 는 «덮어쓸 값»(이름 · 순서 · 사용 여부) — `mergeSiteNav` · `loadSiteNav`(태그 `site-menus`) · `SiteNavProvider`. 끈 메뉴는 폴더 레이아웃(`siteMenuRoute`)이 404 · 제목, 상위 주소는 켜진 첫 하위로 접속 때 넘김(ADR 0004 의 빌드 때 넘김을 바꿈). 홈 고정 링크는 잠김
 
 ## 컨벤션
 

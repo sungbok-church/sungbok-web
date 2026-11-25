@@ -60,6 +60,8 @@ export type SortableRow = {
   locked?: boolean;
   /** locked 일 때 그 까닭(풍선 도움말) */
   lockedNote?: string;
+  /** 이름 칸 글자 수 한도(기본 50 — 홈페이지 메뉴는 더 짧다, DB check 와 같다) */
+  maxLength?: number;
   updatedAt: string;
 };
 
@@ -300,7 +302,7 @@ const RowFields = ({
           id={inputId}
           value={label}
           placeholder={row.defaultLabel}
-          maxLength={50}
+          maxLength={row.maxLength ?? 50}
           disabled={!editable || pending}
           onChange={e => setLabel(e.target.value)}
           onBlur={saveLabel}

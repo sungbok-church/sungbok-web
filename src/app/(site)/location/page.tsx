@@ -1,9 +1,6 @@
 import { WorshipTimesTable } from '@/domains/home/components/widgets/WorshipTimes/WorshipTimesTable';
 import { Directions } from '@/domains/location/components/widgets/Directions';
 import { SectionShell } from '@/shared/components/layout/SectionShell';
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = { title: '찾아오시는 길 | 성복교회' };
 
 // 처음 오는 분이 어디로·언제를 한 페이지에서 본다. 위치(지도·주소·주차·대중교통)가 먼저, 예배 시간이 다음.
 // 지도는 홈에 있던 섹션을 옮겨 왔고(2026-11-16, ADR 0015), 예배 시간표는 예배 메뉴의 «예배 안내»에서

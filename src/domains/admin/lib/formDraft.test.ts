@@ -38,6 +38,25 @@ describe('formDraft', () => {
     expect(s.map.has(key)).toBe(false);
   });
 
+  it('7일은 처음 보관한 때부터 — 고칠 때마다 늘지 않는다(올린 파일은 8일 뒤 지워지므로, 불러온 글의 그림이 깨지지 않게)', () => {
+    const s = memoryStorage();
+    const key = draftKey('u1', 'f');
+    const day = 24 * 60 * 60 * 1000;
+    writeDraft(s, key, { a: 1 }, now);
+    writeDraft(s, key, { a: 2 }, now + 3 * day);
+    expect(readDraft(s, key, now + 6 * day)).toEqual({ a: 2 });
+    expect(readDraft(s, key, now + DRAFT_TTL_MS + 1)).toBeNull();
+  });
+
+  it('지난(버릴) 보관 위에 다시 쓰면 그때부터 7일', () => {
+    const s = memoryStorage();
+    const key = draftKey('u1', 'f');
+    writeDraft(s, key, { a: 1 }, now);
+    const later = now + DRAFT_TTL_MS + 1000;
+    writeDraft(s, key, { a: 2 }, later);
+    expect(readDraft(s, key, later + 1000)).toEqual({ a: 2 });
+  });
+
   it('깨진 값은 버리고 지운다', () => {
     const s = memoryStorage();
     s.setItem('admin-draft:u1:f', '{not json');

@@ -1,7 +1,8 @@
 'use client';
 
 import menuIcon from '@/assets/icons/menu-black.svg';
-import { sectionHref, siteNav } from '@/shared/config/siteNav';
+import { useSiteNav } from '@/shared/components/layout/SiteNavProvider';
+import { sectionHref } from '@/shared/config/siteNav';
 import { cn } from '@/shared/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -11,6 +12,7 @@ import { createPortal } from 'react-dom';
 
 export const SideMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const siteNav = useSiteNav();
   // 포털 대상(document.body)은 브라우저에만 있다
   const mounted = useIsClient();
 

@@ -2,7 +2,8 @@
 
 import { HomeLogo } from '@/shared/components/layout/Header/HomeLogo';
 import { SideMenu } from '@/shared/components/layout/Header/SideMenu';
-import { childHref, findSection, sectionHref, sections } from '@/shared/config/siteNav';
+import { useSiteNav } from '@/shared/components/layout/SiteNavProvider';
+import { childHref, findSection, sectionHref } from '@/shared/config/siteNav';
 import { cn } from '@/shared/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -14,7 +15,7 @@ import { useCallback, useEffect, useRef, useState, type FocusEvent, type MouseEv
  * 토스(toss.im) GNB 실측을 옮겼다: 바 64px·투명(최상단) → 스크롤하면 흰 반투명+blur, 항목 16px·비활성 opacity .5,
  * 패널 300ms 페이드, 행 40ms stagger, 아래쪽은 backdrop 블러가 아니라 흰 radial 안개 2겹(+blur 90px).
  * 토스와 다른 점(사용자 결정): 펼치면 hover한 메뉴의 하위 메뉴만 한 열로, 그 항목 바로 아래 x 위치에. 바는 스크롤해도 숨지 않는다.
- * 이전 글래스 캡슐 + 항목별 드롭다운 카드는 폐기. 메뉴·서브메뉴는 siteNav(단일 소스)에서 파생.
+ * 이전 글래스 캡슐 + 항목별 드롭다운 카드는 폐기. 메뉴·서브메뉴는 홈페이지 메뉴(useSiteNav — 코드 siteNav + DB 덮어쓰기)에서 파생.
  * 터치(hover 없음)는 첫 탭으로 열고, 키보드 포커스로도 연다. 모바일은 SideMenu.
  */
 
@@ -28,7 +29,8 @@ const KEYFRAMES = `
 
 export const DockNav = () => {
   const pathname = usePathname();
-  const activeSlug = findSection(pathname)?.slug;
+  const sections = useSiteNav();
+  const activeSlug = findSection(pathname, sections)?.slug;
   const [hover, setHover] = useState<string | null>(null);
   const [shown, setShown] = useState<string | null>(null); // 닫히는 동안 마지막 섹션 유지
   const [atTop, setAtTop] = useState(true);
@@ -72,6 +74,9 @@ export const DockNav = () => {
       window.removeEventListener('scroll', onScroll);
     };
   }, [measure]);
+
+  // 메뉴(이름 · 켜진 항목)가 바뀌면 하위 열 자리를 다시 잰다
+  useEffect(() => measure(), [measure, sections]);
 
   const onBlur = (e: FocusEvent<HTMLElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHover(null);
@@ -124,7 +129,7 @@ export const DockNav = () => {
                   <Link
                     href={childHref(sec, c)}
                     onClick={() => setHover(null)}
-                    className="text-b1-text hover:text-b1-accent block text-body leading-[1.6] font-semibold whitespace-nowrap opacity-90 transition-colors hover:opacity-100"
+                    className="text-b1-text hover:text-b1-accent text-body block leading-[1.6] font-semibold whitespace-nowrap opacity-90 transition-colors hover:opacity-100"
                   >
                     {c.label}
                   </Link>
@@ -174,7 +179,7 @@ export const DockNav = () => {
                     setHover(null); // 이동 뒤 패널이 열린 채 남지 않게
                   }}
                   className={cn(
-                    'text-b1-text grid text-body transition-opacity duration-200',
+                    'text-b1-text text-body grid transition-opacity duration-200',
                     dim ? 'opacity-50' : 'opacity-100',
                     emph ? 'font-semibold' : 'font-medium'
                   )}

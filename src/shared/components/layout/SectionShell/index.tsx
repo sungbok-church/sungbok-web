@@ -2,6 +2,7 @@
 
 import { HeaderGlow } from '@/shared/components/layout/SectionShell/HeaderGlow';
 import { SubNav } from '@/shared/components/layout/SectionShell/SubNav';
+import { useSiteNav } from '@/shared/components/layout/SiteNavProvider';
 import { findChild, siteNav, type NavSection, type SectionSlug } from '@/shared/config/siteNav';
 import { usePathname } from 'next/navigation';
 import type { PropsWithChildren } from 'react';
@@ -37,11 +38,14 @@ const ENTRANCE = `
  * 근거: .md/specs/2026-10-10-site-nav-skeleton-design.md §4
  */
 export const SectionShell = ({ section, pathname, children }: PropsWithChildren<Props>) => {
-  // as const 유니온 → 넓힌 타입으로 받아야 children 접근이 된다(하위 없는 섹션엔 키가 없음)
-  const s: NavSection | undefined = siteNav.find(x => x.slug === section);
+  // 홈페이지 메뉴(DB 덮어쓰기 · 끈 메뉴 빠짐). 섹션이 통째로 꺼졌으면 코드 메뉴로 그린다 — 그 아래 페이지는 어차피
+  // 없는 페이지(404)가 된다(siteMenuRoute). as const 유니온 → 넓힌 타입으로 받아야 children 접근이 된다
+  const nav = useSiteNav();
+  const s: NavSection | undefined =
+    nav.find(x => x.slug === section) ?? siteNav.find(x => x.slug === section);
   if (!s) throw new Error(`siteNav 에 없는 섹션: ${section}`);
   const current = usePathname();
-  const child = findChild(pathname ?? current);
+  const child = findChild(pathname ?? current, [s]);
   const subs = s.children ?? [];
   const title = child?.label ?? s.label;
 
@@ -52,7 +56,7 @@ export const SectionShell = ({ section, pathname, children }: PropsWithChildren<
       <header className="relative mx-auto w-full max-w-[1320px] pt-[84px] md:pt-[100px] lg:pt-[128px]">
         <h1
           key={title}
-          className="ss-in-title text-b1-text text-[30px] leading-[1.05] font-bold tracking-[-0.03em] text-balance md:text-[44px] lg:text-[64px]" /* design-lint-ignore: 서브페이지 제목 고유 단계(30·44·64px) — 기존 64px 와 같은 계열, 맞는 토큰 없음 */
+          className="ss-in-title text-b1-text text-[30px] leading-[1.05] font-bold tracking-[-0.03em] text-balance break-words md:text-[44px] lg:text-[64px]" /* design-lint-ignore: 서브페이지 제목 고유 단계(30·44·64px) — 기존 64px 와 같은 계열, 맞는 토큰 없음 */
         >
           {title}
         </h1>

@@ -4,6 +4,8 @@ import nextTs from 'eslint-config-next/typescript';
 
 // Next 16 부터 `next lint` 가 없어지고 eslint-config-next 가 flat config 를 직접 내보낸다(FlatCompat 불필요).
 const NEWCOMER_SUBMIT = 'src/domains/home/api/newcomerSubmit.server.ts';
+// 하루 한 번 예약 작업(설계 6.9) — 지난 행 · 주인 없는 Storage 파일을 만능 키로 지운다
+const DAILY_CRON = 'src/app/api/cron/daily/route.ts';
 
 // 공개 쪽(방문자 번들에 실리는 코드)이 가져오면 안 되는 것 — 아래 경계 블록 두 곳(공개 쪽 · 새가족 접수 파일)이 같이 쓴다.
 const PUBLIC_IMPORT_BANS = [
@@ -33,7 +35,7 @@ const PUBLIC_IMPORT_BANS = [
 const ADMIN_CLIENT_BAN = {
   group: ['@/shared/api/supabase/adminClient.server', '**/adminClient.server'],
   message:
-    '만능 키(SUPABASE_SECRET_KEY) 클라이언트는 관리자 코드와 새가족 접수 파일(newcomerSubmit.server)에서만 쓴다(설계 6.1 · 6.11).',
+    '만능 키(SUPABASE_SECRET_KEY) 클라이언트는 관리자 코드 · 새가족 접수 파일(newcomerSubmit.server) · 예약 작업(api/cron/daily)에서만 쓴다(설계 6.1 · 6.9 · 6.11).',
 };
 
 const eslintConfig = defineConfig([
@@ -110,8 +112,9 @@ const eslintConfig = defineConfig([
       'src/proxy.test.ts',
       // 명령 팔레트 부품은 cmdk 를 쓴다 — 부품 파일 자체는 풀고, 공개 코드가 이 부품을 가져오는 것은 아래에서 막는다
       'src/shared/components/ui/command.tsx',
-      // 새가족 접수 — 아래 블록(만능 키만 푼다)
+      // 새가족 접수 · 예약 작업 — 아래 블록(만능 키만 푼다)
       NEWCOMER_SUBMIT,
+      DAILY_CRON,
     ],
     rules: {
       'no-restricted-imports': [
@@ -125,7 +128,7 @@ const eslintConfig = defineConfig([
   // 새가족 접수(설계 6.11) — 방문자에게 DB 권한을 열지 않고 서버가 검증한 뒤 만능 키로 넣는다. 이 파일만 만능 키를 쓴다
   // (서버 전용 — server-only). 나머지 공개 쪽 금지는 그대로.
   {
-    files: [NEWCOMER_SUBMIT],
+    files: [NEWCOMER_SUBMIT, DAILY_CRON],
     rules: { 'no-restricted-imports': ['error', { patterns: PUBLIC_IMPORT_BANS }] },
   },
   // 관리자 화면의 링크는 손을 올렸을 때만 미리 받는다(IntentLink) — next/link 기본(보이면 미리 받기)이면 첫 화면 카드 · 목록 줄마다

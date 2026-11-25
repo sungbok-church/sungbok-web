@@ -7,7 +7,7 @@ import {
   sections,
   siteNav,
 } from '@/shared/config/siteNav';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -101,21 +101,16 @@ describe('findChild', () => {
 });
 
 describe('buildRedirects', () => {
-  it('하위 있는 상위 5개 → 첫 하위, 레거시 3개, 모두 permanent=false', () => {
+  it('옛 주소 3개만, 모두 permanent=false — 상위 메뉴 주소는 접속 때 넘기는 페이지가 맡는다', () => {
     expect(buildRedirects()).toEqual([
-      { source: '/about', destination: '/about/pastor-emeritus', permanent: false },
-      { source: '/worship', destination: '/worship/sunday', permanent: false },
-      { source: '/next-generation', destination: '/next-generation/infant', permanent: false },
-      { source: '/news', destination: '/news/announcements', permanent: false },
-      { source: '/resources', destination: '/resources/sunday-sermon', permanent: false },
       { source: '/worship-video', destination: '/worship/sunday', permanent: false },
       { source: '/map', destination: '/location', permanent: false },
       { source: '/worship/guide', destination: '/location#worship-times', permanent: false },
     ]);
   });
 
-  it('하위 없는 섹션(location)은 redirect 대상이 아니다', () => {
-    expect(buildRedirects().some(r => r.source === '/location')).toBe(false);
+  it('상위 메뉴 주소는 넘김 목록에 없다', () => {
+    expect(buildRedirects().some(r => sections.some(s => r.source === `/${s.slug}`))).toBe(false);
   });
 });
 
@@ -138,6 +133,22 @@ describe('라우트 정합성 (siteNav ↔ src/app/(site))', () => {
     '%s 섹션 → layout.tsx 존재',
     slug => {
       expect(existsSync(join(appDir, slug, 'layout.tsx'))).toBe(true);
+    }
+  );
+
+  // 끈 메뉴를 404 로 끊고 제목을 메뉴 이름으로 — 메뉴 페이지 폴더마다 siteMenuRoute 레이아웃이 있어야 한다(설계 6.5)
+  it.each(pages)('%s → siteMenuRoute 레이아웃', (href, file) => {
+    const layout = join(file, '..', 'layout.tsx');
+    expect(existsSync(layout)).toBe(true);
+    expect(readFileSync(layout, 'utf8')).toContain(`siteMenuRoute('${href}')`);
+  });
+
+  // 상위 메뉴 주소는 켜진 첫 하위로 넘기는 경로 처리기
+  it.each(sections.filter(s => s.children?.length).map(s => [s.slug] as const))(
+    '%s 섹션 → sectionLandingRoute',
+    slug => {
+      const route = join(appDir, slug, 'route.ts');
+      expect(readFileSync(route, 'utf8')).toContain(`sectionLandingRoute('${slug}')`);
     }
   );
 });

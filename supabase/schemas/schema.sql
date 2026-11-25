@@ -151,7 +151,9 @@ create table public.menus (
   foreign key (parent_id, area) references public.menus (id, area),
   check (not (is_locked and not is_active)),
   check (path is not null or cardinality(actions) = 0),
-  check (area = 'ADMIN' or cardinality(actions) = 0)
+  check (area = 'ADMIN' or cardinality(actions) = 0),
+  -- 홈페이지 메뉴 이름은 짧게 — 위쪽 메뉴(대메뉴)는 한 줄에 여섯 개가 로고와 함께 놓이고, 하위는 펼침 열 · 페이지 제목이 된다.
+  check (area = 'ADMIN' or char_length(label) <= case when parent_id is null then 8 else 20 end)
 );
 create index menus_parent_idx on public.menus (parent_id, area, sort);
 
@@ -557,11 +559,12 @@ create view private.file_list_owners as
     from public.department_staff join public.departments on departments.id = department_staff.department_id
    where department_staff.photo_list_id is not null;
 
--- 어느 글에도 붙지 않은 지 24시간 넘은 묶음(예약 작업이 Storage 파일과 함께 지운다).
+-- 어느 글에도 붙지 않은, 만든 지 8일 넘은 묶음(예약 작업이 Storage 파일과 함께 지운다). 쓰던 내용 임시 보관이 7일이라
+-- 그 안에 «불러오기» 한 글의 올린 파일이 지워지지 않게 하루를 더 둔다(설계 6.9).
 create view private.orphan_file_lists as
   select l.id, l.menu_id, l.created_at
     from public.file_lists l
-   where l.created_at < now() - interval '24 hours'
+   where l.created_at < now() - interval '8 days'
      and not exists (select 1 from private.file_list_owners o where o.list_id = l.id);
 
 -- ----------------------------------------------------------------------------
@@ -1625,14 +1628,15 @@ begin
   -- 횟수 제한 기록 하루
   delete from public.submission_attempts where at < now() - interval '1 day';
   get diagnostics n = row_count; result := result || jsonb_build_object('submission_attempts', n);
-  -- 어느 글에도 붙지 않은 지 24시간 넘은 묶음(파일 행은 함께 지워진다). 휴지통에서 지운 글의 묶음도 여기서 정리된다.
+  -- 어느 글에도 붙지 않은, 만든 지 8일 넘은 묶음(파일 행은 함께 지워진다). 휴지통에서 지운 글의 묶음도 여기서 정리된다.
   delete from public.file_lists where id in (select id from private.orphan_file_lists);
   get diagnostics n = row_count; result := result || jsonb_build_object('file_lists', n);
   return result;
 end
 $$;
 
--- 예약 작업 2단계: 어느 files 행도 가리키지 않는 Storage 파일(24시간 지난 것 — 올리는 중인 파일은 건드리지 않는다).
+-- 예약 작업 2단계: 어느 files 행도 가리키지 않는 Storage 파일(올린 지 8일 지난 것 — 올리는 중이거나 임시 보관한 글의 파일은
+-- 건드리지 않는다).
 -- 앱이 이 목록을 Storage API 로 지운다. purge_expired 뒤에 부른다.
 create function public.orphan_storage_objects(p_limit integer default 1000) returns setof text
 language sql stable security definer
@@ -1641,7 +1645,7 @@ as $$
   select o.name
     from storage.objects o
    where o.bucket_id = 'media'
-     and o.created_at < now() - interval '24 hours'
+     and o.created_at < now() - interval '8 days'
      and not exists (select 1 from public.files f where f.bucket = o.bucket_id and f.path = o.name)
      -- 폭별 파일(부서 · 히어로 사진 — files.variants 의 [[가로, 경로], …])도 그 줄이 가리키는 파일이다
      and not exists (

@@ -11,7 +11,7 @@
 --   · 처음 분류 · 코드: 없을 때만 넣는다(화면에서 이름을 바꿨거나 같은 이름이 있으면 건너뛴다).
 --     잠긴 공통코드(enum 과 같은 값)는 enum 값이 늘면 여기에 같이 더한다 — supabase/tests 가 어긋남을 잡는다.
 -- 사람이 없는 변경이라 변경 이력에는 «시스템» 으로 남는다.
--- 홈페이지 메뉴(area = SITE)는 패키지 7 에서 siteNav 와 함께 더한다.
+-- 홈페이지 메뉴(area = SITE)는 아래 «홈페이지 메뉴» — siteNav 와 같게 둔다.
 
 -- ----------------------------------------------------------------------------
 -- 분류(카테고리 · 칩) — 콘텐츠 › 분류 관리. 처음 분류는 지금 사이트에 있는 값이다.
@@ -132,6 +132,67 @@ on conflict (area, key) do update set
   is_locked     = excluded.is_locked,
   is_active     = public.menus.is_active or excluded.is_locked,
   actions       = excluded.actions;
+
+-- ----------------------------------------------------------------------------
+-- 홈페이지 메뉴(설계 6.5) — 어떤 페이지가 있는지는 코드(src/shared/config/siteNav.ts)가 정본이고, 여기 줄은 화면에서 덮어쓸
+-- 이름 · 순서 · 사용 여부의 자리다. siteNav 와 같아야 한다(siteMenuSeed.test.ts 가 잠근다). 잠김 = 홈이 고정 링크로 가리키는 곳
+-- (찾아오시는 길 · 교회소식 › 주일광고 · 예배 › 주일예배 · 다음세대 8부서와 그 상위).
+-- ----------------------------------------------------------------------------
+
+with spec (key, default_label, path, sort, is_locked) as (
+  values
+    ('about', '교회소개', '/about', 10, false),
+    ('worship', '예배', '/worship', 20, true),
+    ('next-generation', '다음세대', '/next-generation', 30, true),
+    ('news', '교회소식', '/news', 40, true),
+    ('resources', '자료실', '/resources', 50, false),
+    ('location', '찾아오시는 길', '/location', 60, true)
+)
+insert into public.menus (area, key, parent_id, default_label, path, sort, is_locked)
+select 'SITE', s.key, null, s.default_label, s.path, s.sort, s.is_locked from spec s
+on conflict (area, key) do update set
+  default_label = excluded.default_label,
+  path          = excluded.path,
+  is_locked     = excluded.is_locked,
+  is_active     = public.menus.is_active or excluded.is_locked;
+
+with spec (key, parent_key, default_label, path, sort, is_locked) as (
+  values
+    ('about-pastor-emeritus', 'about', '원로목사', '/about/pastor-emeritus', 10, false),
+    ('about-pastor', 'about', '담임목사', '/about/pastor', 20, false),
+    ('about-staff', 'about', '섬기는 이들', '/about/staff', 30, false),
+    ('about-training', 'about', '양육·훈련', '/about/training', 40, false),
+    ('about-history', 'about', '연혁', '/about/history', 50, false),
+    ('worship-sunday', 'worship', '주일예배', '/worship/sunday', 10, true),
+    ('worship-friday', 'worship', '금요 생수의 강·월삭예배', '/worship/friday', 20, false),
+    ('worship-special', 'worship', '특별집회·행사', '/worship/special', 30, false),
+    ('worship-weekday', 'worship', '수요·새벽·주일5부', '/worship/weekday', 40, false),
+    ('next-generation-infant', 'next-generation', '영아부', '/next-generation/infant', 10, true),
+    ('next-generation-kindergarten', 'next-generation', '유치부', '/next-generation/kindergarten', 20, true),
+    ('next-generation-lower-elementary', 'next-generation', '유년부', '/next-generation/lower-elementary', 30, true),
+    ('next-generation-elementary', 'next-generation', '초등부', '/next-generation/elementary', 40, true),
+    ('next-generation-middle', 'next-generation', '중등부', '/next-generation/middle', 50, true),
+    ('next-generation-high', 'next-generation', '고등부', '/next-generation/high', 60, true),
+    ('next-generation-young-adult', 'next-generation', '청년부', '/next-generation/young-adult', 70, true),
+    ('next-generation-english', 'next-generation', '영어예배부', '/next-generation/english', 80, true),
+    ('news-announcements', 'news', '주일광고', '/news/announcements', 10, true),
+    ('news-bulletin', 'news', '주보', '/news/bulletin', 20, false),
+    ('news-garden', 'news', '성복의 뜰', '/news/garden', 30, false),
+    ('news-album', 'news', '교회앨범', '/news/album', 40, false),
+    ('resources-sunday-sermon', 'resources', '주일 설교 시트지', '/resources/sunday-sermon', 10, false),
+    ('resources-series-sermon', 'resources', '시리즈 설교 시트지', '/resources/series-sermon', 20, false),
+    ('resources-seasonal-sermon', 'resources', '가정·명절·절기 설교 시트지', '/resources/seasonal-sermon', 30, false)
+)
+insert into public.menus (area, key, parent_id, default_label, path, sort, is_locked)
+select 'SITE', s.key, p.id, s.default_label, s.path, s.sort, s.is_locked
+  from spec s
+  join public.menus p on p.area = 'SITE' and p.key = s.parent_key
+on conflict (area, key) do update set
+  parent_id     = excluded.parent_id,
+  default_label = excluded.default_label,
+  path          = excluded.path,
+  is_locked     = excluded.is_locked,
+  is_active     = public.menus.is_active or excluded.is_locked;
 
 -- ----------------------------------------------------------------------------
 -- 처음 그룹(설계 11절 3번) — 새로 만들 때만 처음 권한을 준다.
