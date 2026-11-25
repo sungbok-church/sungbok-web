@@ -13,7 +13,7 @@
 - **쇼케이스 ≥ 900px «놓기»(Landing)** — 라운드 2 «속도»의 정지 형태(8장 주기 격자·행이 앞 행 밑으로 파고듦·±1.6~3.4° 기울기)만 킵하고, 모션 의도를 하나로 좁혔다: 장의 60% 가 보이는 순간 공중 자세에서 더미로 **한 번 놓인다**(1100~1300ms, 되돌리지 않음). 스크롤 속도 반응 모션은 «의도가 애매하다»는 판정으로 버렸다.
 - **쇼케이스 ≤ 899px «부채»(Fan)** — 라운드 3 «부채 v1»: 포개진 더미가 뷰포트를 지나는 자리에서 세로로만 부채처럼 벌어졌다 다시 포개진다(커서 하나의 함수, 100svh 핀). 작가의 v2(대각선 펼침)가 v1 을 덮어썼던 것을 사용자 판정에 따라 v1 으로 되살려 승격.
 - **분기 방식** — `DepartmentPage` 가 `useSyncExternalStore` 로 `(max-width: 899px)` 를 구독해 쇼케이스 컴포넌트만 바꿔 끼운다. 도입부는 한 번만 렌더되어 창 폭이 바뀌어도 다시 그리지 않는다. 서버 스냅샷은 데스크톱(쇼케이스는 100svh 핀 아래라 모바일의 하이드레이션 교체가 첫 화면 밖에서 일어난다).
-- **데이터 계약** — `DepartmentPage/types.ts`(Department·Staff·Photo). 8부서 데이터는 `domains/next-generation/data/departments.ts` 한 파일(slug 키). 사진 개수 상한 없음, «더 보기» 없음.
+- **데이터 계약** — `DepartmentPage/types.ts`(Department·Staff·Photo). 8부서 데이터는 `domains/next-generation/data/departments.ts` 한 파일(slug 키) — **2026-11-25 관리자 패키지 C1 로 DB 로 옮겼다**(소개 · 담당자 · 사진은 DB, 이름 · 예배 시간은 `config/departmentInfo.ts` — [admin.md](../domains/admin.md) «다음세대 부서»). 사진 개수 상한 없음, «더 보기» 없음.
 - 모션 바: 전부 transform/opacity, `prefers-reduced-motion` 이면 핀을 풀고 정적 흐름.
 
 ## 대안 비교

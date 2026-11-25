@@ -1,6 +1,6 @@
 // 공개 다음세대 부서 읽기(설계 6.9 · 6.13) — 부서 8곳의 소개 · 담당자 · 사진을 공개 키로, 서버에서만 한 번에 읽는다.
 // 서버 캐시('use cache')에 두고 태그(DEPARTMENTS_TAG)를 단다 — 관리자가 저장하면 updateTag 로 바로 바뀐다.
-// 옮기기(패키지 C1 T7) 전까지 DB 에 없는 부서는 지금 코드의 값(data/departments)으로 그린다 — 옮긴 뒤 정리(T8)에서 지운다.
+// 코드에 되돌아갈 기본값을 두지 않는다(설계 6.13) — DB 를 못 읽으면 운영에서는 직전 페이지를 유지한다.
 import 'server-only'; // 화면(클라이언트) 코드가 가져다 쓰면 빌드가 실패한다
 
 import { loadForPage } from '@/shared/api/loadForPage.server';
@@ -8,10 +8,10 @@ import { failureCacheLife, settle, unwrap } from '@/shared/api/settled.server';
 import { readSupabaseEnv } from '@/shared/api/supabase/env';
 import { createSupabaseReadClient } from '@/shared/api/supabase/readClient.server';
 import { cacheLife, cacheTag } from 'next/cache';
+import { notFound } from 'next/navigation';
 
 import type { DepartmentPageProps } from '../components/widgets/DepartmentPage/types';
 import { type DepartmentSlug, fromDbSlug } from '../config/departmentSlug';
-import { DEPARTMENTS } from '../data/departments';
 import { type DepartmentRow, rowToDepartmentData, toDepartmentPage } from './departmentPage';
 import { DEPARTMENTS_TAG } from './departmentTags';
 
@@ -36,7 +36,7 @@ const readDepartments = async (): Promise<Partial<Record<DepartmentSlug, Departm
       env.url,
       rowToDepartmentData(row as unknown as DepartmentRow)
     );
-    // 사진이 하나도 없으면 도입부를 그릴 수 없다 — 코드의 값으로(관리자는 사진을 한 장 이상 받는다)
+    // 사진이 하나도 없으면 도입부를 그릴 수 없다(관리자는 사진을 한 장 이상 받는다)
     if (page.photos.length > 0) out[slug] = page;
   }
   return out;
@@ -51,8 +51,13 @@ const cachedDepartments = async () => {
   return settled;
 };
 
-/** 공개 부서 페이지 하나 — DB 를 못 읽으면 운영에서는 직전 페이지를 유지하고, 빌드 · 개발에서는 코드의 값 */
+/**
+ * 공개 부서 페이지 하나 — DB 를 못 읽으면 운영에서는 직전 페이지를 유지한다. 빌드 · 개발에서 못 읽었거나 부서가 없으면 404
+ * (실패는 짧게만 캐시해 1분 안에 다시 읽는다).
+ */
 export const loadDepartmentPage = async (slug: DepartmentSlug): Promise<DepartmentPageProps> => {
   const all = await loadForPage(async () => unwrap(await cachedDepartments()));
-  return all?.[slug] ?? DEPARTMENTS[slug];
+  const page = all?.[slug];
+  if (!page) notFound();
+  return page;
 };

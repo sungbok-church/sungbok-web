@@ -231,9 +231,9 @@
 - 담당자: 이름 · 직분(공통코드 `STAFF_ROLE`) · 인사말 · 사진(한 장, 없어도 된다 — 공개 화면은 이름 첫 글자), 10명까지, 0명이면 공개 화면에 그 구역이 없다. 사진: 1~30장, 첫 장이 도입부, 사진마다 대체 텍스트(`FileListField withAlt` — 비우면 «<부서> 사진 N»).
 - **폭별 파일**(설계 6.8 — 부서 · 히어로 사진만, `FileListField variants`): 줄인 그림(2000px)보다 좁은 640 · 960 · 1280 · 1920px WebP 를 같은 묶음 폴더에 더 올리고 파일 줄의 `variants`([[가로, 경로], …])에 적는다. 공개 사진 부품([Photo](../../src/shared/components/features/Photo/index.tsx))이 올린 사진(`UploadedPhoto` — src · width · height · variants)도 받아 `pickVariant` 로 고른다.
 - 배열 칸 오류: `zodFormValidator(schema, { nested: ['staff'] })` 가 «staff[0].name» 칸에 단다.
-- **공개 화면**: [departmentsLoad.server](../../src/domains/next-generation/api/departmentsLoad.server.ts) — 8곳을 한 번에 서버 캐시(태그 `departments`, stale 300 · revalidate 60), 저장하면 `updateTag`. 이름 · 예배 요일/시간/장소는 코드([departmentInfo](../../src/domains/next-generation/config/departmentInfo.ts)). «맨 아래 한 줄» 이 비면 그리지 않는다. **옮기기 전까지 DB 에 없는 부서는 코드의 값**(`data/departments`)으로 그린다 — 옮긴 뒤 지운다.
+- **공개 화면**: [departmentsLoad.server](../../src/domains/next-generation/api/departmentsLoad.server.ts) — 8곳을 한 번에 서버 캐시(태그 `departments`, stale 300 · revalidate 60), 저장하면 `updateTag`. 이름 · 예배 요일/시간/장소는 코드([departmentInfo](../../src/domains/next-generation/config/departmentInfo.ts)). «맨 아래 한 줄» 이 비면 그리지 않는다. 코드에 되돌아갈 기본값은 없다 — DB 를 못 읽으면 운영에서는 직전 페이지, 빌드 · 개발에서 못 읽거나 부서가 없으면 404(1분 뒤 다시 읽는다).
 - 미리보기: 공개 부서 페이지(`DepartmentPage`) — 틀 주소에 `?slug=` 를 붙여 섹션 메뉴의 자리를 맞춘다. 변경 이력은 부서 행 + 담당자 줄(부서에 묶임).
-- **옮기기**: [import-departments](../../scripts/import-departments.mjs)(일회용) — 지금 코드의 값(소개 · 담당자 9명 · 사진 부서마다 12장)을, 여러 부서가 같이 쓰는 사진은 한 번만 올려(23장 + 폭별 파일) 부서마다 파일 줄을 둔다. «맨 아래 한 줄» 자리표시는 비운다. 여러 번 돌려도 DB 에 있는 부서는 건드리지 않는다.
+- **기존 값 옮기기(끝, 2026-11-25)**: 코드의 값(소개 · 담당자 9명 · 사진 부서마다 12장)을 일회용 스크립트(`scripts/import-departments.mjs` — git 기록에 있다)로 운영 DB · Storage 에 옮겼다 — 여러 부서가 같이 쓰는 사진은 한 번만 올려(23장 + 폭별 파일) 부서마다 파일 줄을 두고, «맨 아래 한 줄» 자리표시는 비웠다(운영 확인: 공개 8곳 모두 Storage 사진). 그 뒤 `data/departments.ts` · 부서 전용 사진(`standin-*`) · 쓰지 않던 `DepartmentDetail` · `dep_manager*` · 스크립트를 지웠다. 담당자 사진(`assets/images/staff`)은 «섬기는 이들» 이 같이 써서 남겼다.
 
 ## 아직 없는 것
 

@@ -50,5 +50,5 @@
 - [x] **T4 서버** — 부서 읽기(담당자 · 사진 묶음 · 직함 코드), 입력 스키마(사진 1장 이상 · 30장까지 · 담당자 10명까지 · 사진은 그림만), Server Action `saveDepartment`(담당자 사진은 저장마다 새 묶음), 공개 태그 `departments`.
 - [x] **T5 관리자 화면** — `/admin/departments`(고칠 수 있는 부서 목록 — 담당 부서가 있으면 그 부서로 바로) · `/admin/departments/[slug]`(소개 · 담당자 · 사진 세 구역, 미리보기 = 공개 부서 페이지, 변경 이력). `ADMIN_SCREENS_READY` 에 넣는다.
 - [x] **T6 공개 화면** — `departmentsLoad.server`(캐시 · 태그 · 장애 대비) → 부서 페이지 8개가 DB 를 읽는다. «맨 아래 한 줄» 이 비면 그리지 않고, 고정 문구 «부서에서 취합한 뒤…» 를 지운다.
-- [ ] **T7 옮기기** — `scripts/import-departments.mjs`(여러 번 돌려도 같은 결과, 공유 사진은 한 번만 올림, 폭별 파일은 `sharp`) → 로컬 확인 → **사용자 승인 뒤** 운영.
-- [ ] **T8 정리** — 운영 확인 뒤 `departments.ts` 의 값 · 부서 전용 사진(`standin-*` · 쓰지 않는 `staff/*` · `dep_manager*` · 고아 `DepartmentDetail`) · 옮기기 스크립트를 지우고 `images:variants` 를 다시 만든다.
+- [x] **T7 옮기기** — `scripts/import-departments.mjs`(여러 번 돌려도 같은 결과, 공유 사진은 한 번만 올림, 폭별 파일은 `sharp`) → 로컬 확인 → **사용자 승인 뒤** 운영.
+- [x] **T8 정리** — 운영 확인 뒤 `departments.ts` 의 값 · 부서 전용 사진(`standin-*` · `dep_manager*` · 고아 `DepartmentDetail` — `staff/*` 는 «섬기는 이들» 이 같이 써서 남김) · 옮기기 스크립트를 지우고 `images:variants` 를 다시 만든다.
