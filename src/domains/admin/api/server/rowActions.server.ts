@@ -4,6 +4,7 @@ import type { Database } from '@/shared/api/supabase/database.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ZodType } from 'zod';
 
+import { fail } from '@/shared/api/result';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 
 import { type ActionResult, parseInput, toActionError } from '../../lib/actionResult';
@@ -29,9 +30,21 @@ interface RowSpec {
 /** 한 줄 고치기 입력(스키마가 다듬은 뒤) — 메뉴는 이름을 비우면 null(기본 이름) */
 type RowPatch = { id: string; updatedAt: string; label: string | null; isActive: boolean };
 
-/** 이름 · 사용 여부를 열었을 때의 updated_at 으로 고친다(동시 수정 막기 — updateVersioned). */
+/**
+ * 이름 · 사용 여부를 열었을 때의 updated_at 으로 고친다(동시 수정 막기 — updateVersioned).
+ * precheck: 저장 전에 DB 를 읽어 볼 규칙(홈페이지 메뉴 이름 한도 등) — 문장을 돌려주면 저장하지 않고 그 문장으로 알린다.
+ */
 export const saveRow = async (
-  { table, menuKey, revalidate, schema }: RowSpec & { schema: ZodType<RowPatch> },
+  {
+    table,
+    menuKey,
+    revalidate,
+    schema,
+    precheck,
+  }: RowSpec & {
+    schema: ZodType<RowPatch>;
+    precheck?: (supabase: SupabaseClient<Database>, patch: RowPatch) => Promise<string | null>;
+  },
   raw: unknown
 ): Promise<ActionResult<{ updatedAt: string }>> => {
   if (!(await actionPermission(menuKey, 'UPDATE'))) return NO_PERMISSION;
@@ -39,6 +52,8 @@ export const saveRow = async (
   if (!input.ok) return input;
   const { id, updatedAt, label, isActive } = input.data;
   const supabase = await createSupabaseServerClient();
+  const problem = await precheck?.(supabase, input.data);
+  if (problem) return fail('INVALID_INPUT', { detail: problem, fields: { label: [problem] } });
   const result = await updateVersioned(supabase, table, id, updatedAt, {
     label,
     is_active: isActive,

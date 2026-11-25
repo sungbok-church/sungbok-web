@@ -10,29 +10,20 @@ const PREFIX = 'admin-draft:';
 
 export const draftKey = (userId: string, formKey: string) => `${PREFIX}${userId}:${formKey}`;
 
-/** 아직 버릴 때가 안 된 보관의 처음 시각 — 없거나 지났거나 깨졌으면 null */
-const firstSavedAt = (raw: string | null, now: number): number | null => {
-  if (raw === null) return null;
-  try {
-    const { savedAt } = JSON.parse(raw) as { savedAt?: unknown };
-    return typeof savedAt === 'number' && now - savedAt <= DRAFT_TTL_MS ? savedAt : null;
-  } catch {
-    return null;
-  }
-};
-
 /**
- * 7일은 처음 보관한 때부터 센다(savedAt 을 이어받는다) — 고칠 때마다 늘면 안 된다. 올린 파일은 글을 저장하기 전까지
- * 어느 글에도 붙지 않아 올린 지 8일이 지나면 예약 작업이 지운다(설계 6.9). 보관이 그보다 오래 살면 «불러오기» 한 글이
- * 지워진 그림을 가리킨 채 저장된다.
+ * savedAt = 그 글을 처음 보관한 때 — 부르는 쪽(useFormDraft)이 흐름마다 들고 다니며 넘긴다. 7일은 이때부터 센다: 고치거나
+ * 불러올 때마다 다시 세면 안 된다. 올린 파일은 글을 저장하기 전까지 어느 글에도 붙지 않아 올린 지 8일이 지나면 예약 작업이
+ * 지운다(설계 6.9) — 보관이 그보다 오래 살면 «불러오기» 한 글이 지워진 그림을 가리킨 채 저장된다.
  */
-export const writeDraft = (storage: KeyStorage, key: string, values: unknown, now: number) =>
-  safely(() => {
-    const savedAt = firstSavedAt(storage.getItem(key), now) ?? now;
-    storage.setItem(key, JSON.stringify({ savedAt, values }));
-  }, undefined);
+export const writeDraft = (storage: KeyStorage, key: string, values: unknown, savedAt: number) =>
+  safely(() => storage.setItem(key, JSON.stringify({ savedAt, values })), undefined);
 
-export const readDraft = <T>(storage: KeyStorage, key: string, now: number): T | null =>
+/** 보관된 값과 처음 보관한 때 — 없거나 7일이 지났거나 깨졌으면 null(지난 것 · 깨진 것은 지운다) */
+export const readDraftEntry = <T>(
+  storage: KeyStorage,
+  key: string,
+  now: number
+): { values: T; savedAt: number } | null =>
   safely(() => {
     const raw = storage.getItem(key);
     if (raw === null) return null;
@@ -43,7 +34,7 @@ export const readDraft = <T>(storage: KeyStorage, key: string, now: number): T |
         now - parsed.savedAt <= DRAFT_TTL_MS &&
         'values' in parsed
       ) {
-        return parsed.values as T;
+        return { values: parsed.values as T, savedAt: parsed.savedAt };
       }
     } catch {
       // 깨진 값 — 아래에서 지운다
@@ -51,6 +42,9 @@ export const readDraft = <T>(storage: KeyStorage, key: string, now: number): T |
     storage.removeItem(key);
     return null;
   }, null);
+
+export const readDraft = <T>(storage: KeyStorage, key: string, now: number): T | null =>
+  readDraftEntry<T>(storage, key, now)?.values ?? null;
 
 export const removeDraft = (storage: KeyStorage, key: string) =>
   safely(() => storage.removeItem(key), undefined);

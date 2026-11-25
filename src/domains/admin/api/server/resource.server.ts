@@ -27,6 +27,8 @@ export type AdminResource = {
   videoIds: string[];
   status: 'DRAFT' | 'PUBLISHED';
   trashed: boolean;
+  /** 휴지통에 넣은 시각(휴지통 표시의 «완전 삭제» 날) */
+  deletedAt: string | null;
   createdAt: string;
   createdBy: string | null;
   updatedAt: string;
@@ -85,6 +87,7 @@ export const loadResource = async (
     videoIds: row.resource_videos.map(v => v.video_id),
     status: row.status,
     trashed: row.deleted_at !== null,
+    deletedAt: row.deleted_at,
     createdAt: row.created_at,
     createdBy: row.created_by,
     updatedAt: row.updated_at,

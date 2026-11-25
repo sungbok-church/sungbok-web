@@ -74,7 +74,7 @@ export default async function AdminBulletinPage({
   const rows: TableRowData[] = (data ?? []).map(b => {
     const href = `${PATH}/${b.id}`;
     const pages = (b.file_lists as { files: { count: number }[] } | null)?.files?.[0]?.count ?? 0;
-    const status = <ContentStatusBadge status={b.status} deletedAt={b.deleted_at} />;
+    const status = <ContentStatusBadge status={b.status} deletedAt={b.deleted_at} compact />;
     const updated = `${formatShortTime(b.updated_at, now)}${b.updated_by && names[b.updated_by] ? ` · ${names[b.updated_by]}` : ''}`;
     return {
       id: b.id,

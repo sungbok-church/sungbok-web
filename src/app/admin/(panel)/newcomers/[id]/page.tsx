@@ -76,8 +76,8 @@ export default async function AdminNewcomerPage({ params }: { params: Promise<{ 
                   ]
                 : []),
               { label: '접수 시각', value: formatAdminTime(n.created_at) },
-              // 접수한 날부터 1년 — 예약 작업이 처리 상태와 상관없이 지운다(동의 문구에 적은 기간)
-              { label: '보관 기한', value: cleanupDay(n.created_at, { years: 1 }) },
+              // 접수한 날부터 1년 — 예약 작업이 처리 상태와 상관없이 지운다(동의 문구에 적은 기간). 휴지통 표시와 같은 말
+              { label: '완전 삭제', value: cleanupDay(n.created_at, { years: 1 }) },
               ...(n.handled_at
                 ? [
                     {

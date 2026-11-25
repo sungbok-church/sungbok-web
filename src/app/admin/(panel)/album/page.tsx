@@ -73,7 +73,7 @@ export default async function AdminAlbumPage({
     const href = `${PATH}/${a.id}`;
     const label = (a.categories as { label: string } | null)?.label ?? '';
     const images = (a.file_lists as { files: { count: number }[] } | null)?.files?.[0]?.count ?? 0;
-    const status = <ContentStatusBadge status={a.status} deletedAt={a.deleted_at} />;
+    const status = <ContentStatusBadge status={a.status} deletedAt={a.deleted_at} compact />;
     const updated = `${formatShortTime(a.updated_at, now)}${a.updated_by && names[a.updated_by] ? ` · ${names[a.updated_by]}` : ''}`;
     return {
       id: a.id,
@@ -93,7 +93,7 @@ export default async function AdminAlbumPage({
         <Card size="sm">
           <CardContent className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{a.title}</span>
+              <span className="min-w-0 font-medium break-words">{a.title}</span>
               {status}
             </div>
             <span className="text-muted-foreground text-xs tabular-nums">

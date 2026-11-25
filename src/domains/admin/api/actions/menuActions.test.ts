@@ -6,6 +6,9 @@ const m = vi.hoisted(() => ({
   permission: vi.fn(async () => ({ user: { id: 'actor' } }) as unknown),
   versioned: vi.fn(async () => ({ ok: true, data: { updatedAt: 't2' }, message: '저장했습니다.' })),
   reorder: vi.fn(async () => ({ ok: true, message: '순서를 바꿨습니다.' })),
+  // 고칠 메뉴 줄 · 다른 홈페이지 대메뉴
+  row: { area: 'ADMIN', parent_id: null, default_label: '주보' } as Record<string, unknown> | null,
+  tops: [] as Record<string, unknown>[],
 }));
 
 const cache = vi.hoisted(() => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }));
@@ -17,12 +20,28 @@ vi.mock('../server/adminContext.server', () => ({
 vi.mock('../server/versionedUpdate.server', () => ({ updateVersioned: m.versioned }));
 vi.mock('../server/sortRows.server', () => ({ applyReorder: m.reorder }));
 vi.mock('@/shared/api/supabase/serverClient.server', () => ({
-  createSupabaseServerClient: vi.fn(async () => ({})),
+  createSupabaseServerClient: vi.fn(async () => ({
+    from: () => ({
+      select: () => {
+        const c = {
+          eq: () => c,
+          is: () => c,
+          neq: async () => ({ data: m.tops, error: null }),
+          maybeSingle: async () => ({ data: m.row, error: null }),
+        };
+        return c;
+      },
+    }),
+  })),
 }));
 
 const ID = '0190a0b0-0000-7000-8000-000000000001';
 const ID2 = '0190a0b0-0000-7000-8000-000000000002';
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  m.row = { area: 'ADMIN', parent_id: null, default_label: '주보' };
+  m.tops = [];
+});
 
 describe('updateMenu', () => {
   it('이름(비우면 기본 이름) · 사용 여부만 고친다', async () => {
@@ -46,6 +65,45 @@ describe('updateMenu', () => {
       rejected
     );
     expect(cache.revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateMenu — 홈페이지 메뉴 이름 한도', () => {
+  const tops = ['예배', '다음세대', '교회소식', '자료실'].map(d => ({
+    label: null,
+    default_label: d,
+    is_active: true,
+  }));
+
+  it('켜진 대메뉴 이름을 모두 합쳐 28자가 넘으면 저장하지 않는다', async () => {
+    m.row = { area: 'SITE', parent_id: null, default_label: '교회소개' };
+    m.tops = [
+      ...tops,
+      { label: '오시는 길 안내', default_label: '찾아오시는 길', is_active: true },
+    ];
+    const res = await updateMenu({
+      id: ID,
+      updatedAt: 't',
+      label: '우리교회소개하기',
+      isActive: true,
+    });
+    expect(res).toMatchObject({
+      ok: false,
+      error: { message: '켜진 대메뉴 이름을 모두 합쳐 28자까지입니다(지금 29자).' },
+    });
+    expect(m.versioned).not.toHaveBeenCalled();
+  });
+
+  it('한도 안이면 저장한다', async () => {
+    m.row = { area: 'SITE', parent_id: null, default_label: '교회소개' };
+    m.tops = [...tops, { label: null, default_label: '찾아오시는 길', is_active: true }];
+    await updateMenu({ id: ID, updatedAt: 't', label: '우리교회소개하기', isActive: true });
+    expect(m.versioned).toHaveBeenCalled();
+  });
+
+  it('관리자 메뉴는 전처럼 50자까지(합계를 보지 않는다)', async () => {
+    await updateMenu({ id: ID, updatedAt: 't', label: '가'.repeat(30), isActive: true });
+    expect(m.versioned).toHaveBeenCalled();
   });
 });
 

@@ -50,7 +50,7 @@ export default async function AdminResourceDetailPage({
     <>
       <PageHeader
         title={r.title}
-        badge={<ContentStatusBadge status={r.status} trashed={r.trashed} />}
+        badge={<ContentStatusBadge status={r.status} deletedAt={r.deletedAt} />}
         actions={
           <>
             <ListNav listPath={PATH} id={r.id} />

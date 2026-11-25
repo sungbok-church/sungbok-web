@@ -46,7 +46,7 @@ export default async function AdminAlbumDetailPage({
     <>
       <PageHeader
         title={album.title}
-        badge={<ContentStatusBadge status={album.status} trashed={album.trashed} />}
+        badge={<ContentStatusBadge status={album.status} deletedAt={album.deletedAt} />}
         actions={
           <>
             <ListNav listPath={PATH} id={album.id} />

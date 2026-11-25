@@ -19,6 +19,8 @@ export type AdminNewsVideo = {
   description: string;
   status: 'DRAFT' | 'PUBLISHED';
   trashed: boolean;
+  /** 휴지통에 넣은 시각(휴지통 표시의 «완전 삭제» 날) */
+  deletedAt: string | null;
   createdAt: string;
   createdBy: string | null;
   updatedAt: string;
@@ -52,6 +54,7 @@ export const loadNewsVideo = async (
     description: data.description ?? '',
     status: data.status,
     trashed: data.deleted_at !== null,
+    deletedAt: data.deleted_at,
     createdAt: data.created_at,
     createdBy: data.created_by,
     updatedAt: data.updated_at,

@@ -153,7 +153,7 @@ export const DockNav = () => {
         >
           <HomeLogo />
 
-          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-7 lg:flex">
+          <nav className="absolute left-1/2 hidden w-max -translate-x-1/2 items-center gap-7 lg:flex">
             {sections.map(item => {
               const has = !!item.children?.length;
               const isHover = hover === item.slug;
@@ -179,7 +179,7 @@ export const DockNav = () => {
                     setHover(null); // 이동 뒤 패널이 열린 채 남지 않게
                   }}
                   className={cn(
-                    'text-b1-text text-body grid transition-opacity duration-200',
+                    'text-b1-text text-body grid whitespace-nowrap transition-opacity duration-200',
                     dim ? 'opacity-50' : 'opacity-100',
                     emph ? 'font-semibold' : 'font-medium'
                   )}

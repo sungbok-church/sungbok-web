@@ -33,6 +33,8 @@ describe('GET /api/cron/daily', () => {
   it('비밀 값(Vercel Cron 이 붙이는 Bearer)이 맞을 때만 돈다', async () => {
     expect((await call()).status).toBe(401);
     expect((await call('Bearer wrong')).status).toBe(401);
+    // 길이가 같은 틀린 값 — 고정 시간 비교(timingSafeEqual)까지 가서 막힌다
+    expect((await call('Bearer s3cret-valuX')).status).toBe(401);
     expect(m.run).not.toHaveBeenCalled();
     const ok = await call('Bearer s3cret-value');
     expect(ok.status).toBe(200);

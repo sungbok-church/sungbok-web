@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import { SITE_CHILD_MAX, SITE_TOP_MAX } from '@/domains/admin/lib/siteMenuLimits';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { LockIcon } from 'lucide-react';
 
@@ -40,9 +41,9 @@ const toRow = (m: MenuRow): SortableRow => ({
   locked: m.is_locked,
   updatedAt: m.updated_at,
   ...(m.area === 'SITE' && {
-    lockedNote: '홈 화면이 바로 가리키는 메뉴라 끌 수 없습니다.',
+    lockedNote: '홈 화면이 가리키는 메뉴라 끌 수 없습니다.',
     // 대메뉴는 한 줄에 여섯 개가 로고와 함께 놓인다(DB check 와 같다)
-    maxLength: m.parent_id === null ? 8 : 20,
+    maxLength: m.parent_id === null ? SITE_TOP_MAX : SITE_CHILD_MAX,
   }),
 });
 
@@ -107,6 +108,19 @@ export default async function AdminMenusPage() {
 }
 
 /**
+ * 하위 메뉴 줄 — 홈페이지 메뉴는 켜진 하위가 하나 남으면 그것을 끌 수 없게 한다(다 끄면 공개 화면에서 대메뉴도 빠지는데
+ * 대메뉴 스위치는 켜진 채로 보여 화면과 공개 결과가 어긋난다 — 대메뉴를 끄면 된다).
+ */
+const childRows = (area: 'ADMIN' | 'SITE', children: MenuRow[]): SortableRow[] => {
+  const lastOn = area === 'SITE' && children.filter(c => c.is_active).length === 1;
+  return children.map(c =>
+    lastOn && c.is_active
+      ? { ...toRow(c), locked: true, lockedNote: '하나 남은 하위 메뉴는 끌 수 없습니다.' }
+      : toRow(c)
+  );
+};
+
+/**
  * 한 영역의 메뉴 — 대메뉴 한 카드 + 하위가 있는 대메뉴마다 한 카드(같은 상위 안에서만 옮긴다).
  * 관리자 메뉴의 대메뉴는 묶음 머리(주소 없음), 홈페이지 메뉴의 대메뉴는 주소가 있다(하위가 있으면 켜진 첫 하위로 넘어간다).
  */
@@ -154,7 +168,10 @@ function AreaMenus({
             <SortableRows
               kind="menus"
               caption={`${group.label ?? group.default_label} 메뉴`}
-              rows={menus.filter(m => m.parent_id === group.id).map(toRow)}
+              rows={childRows(
+                area,
+                menus.filter(m => m.parent_id === group.id)
+              )}
               editable={editable}
               toggleable={toggleable}
             />

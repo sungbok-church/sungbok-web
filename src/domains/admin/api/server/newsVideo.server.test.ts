@@ -51,6 +51,7 @@ describe('loadNewsVideo', () => {
       description: '',
       status: 'PUBLISHED',
       trashed: true,
+      deletedAt: '2026-11-24T00:00:00Z',
       createdAt: 'c',
       createdBy: null,
       updatedAt: 'u',

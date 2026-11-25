@@ -53,20 +53,21 @@ export const dayRange = (from: string, to: string): { gte: string | null; lt: st
 };
 
 const KST_MS = 9 * 60 * 60 * 1000;
-const CLEANUP_HOUR = 3;
+// 예약 작업이 도는 한 시간(vercel.json crons 0 18 * * * = 03시 서울 — Hobby 는 그 시간 안 어느 때)이 끝나는 때
+const CLEANUP_WINDOW_END_HOUR = 4;
 
 /**
- * 하루 한 번 예약 작업(매일 03:00 서울 — vercel.json crons)이 이 줄을 지울 날(«YYYY-MM-DD», 서울).
- * keep: 보관 기간 — 휴지통 { days: 30 } · 새가족 { years: 1 }(DB 의 interval 처럼 달력으로). 기간이 끝난 뒤 처음 오는 03:00 의 날.
- * 읽지 못하는 값은 빈 글자.
+ * 하루 한 번 예약 작업(매일 03:00~03:59 서울)이 이 줄을 지울 수 있는 가장 이른 날(«YYYY-MM-DD», 서울).
+ * keep: 보관 기간 — 휴지통 { days: 30 } · 새가족 { years: 1 }(DB 의 interval 처럼 달력으로). 기간이 그날 04:00 전에 차면
+ * 그날(03시대에 찬 것은 그날 돌 수도 다음 날 돌 수도 있다 — 이른 쪽), 아니면 다음 날. 읽지 못하는 값은 빈 글자.
  */
 export const cleanupDay = (iso: string, keep: { days?: number; years?: number }): string => {
   const due = new Date(iso);
   if (Number.isNaN(due.getTime())) return '';
   if (keep.years) due.setUTCFullYear(due.getUTCFullYear() + keep.years);
   if (keep.days) due.setTime(due.getTime() + keep.days * DAY_MS);
-  // 서울 시각으로 옮겨 03:00 뒤면 다음 날
+  // 서울 시각으로 옮겨 그날 예약 작업이 끝난 뒤(04:00 부터)면 다음 날
   const kst = new Date(due.getTime() + KST_MS);
-  if (kst.getUTCHours() >= CLEANUP_HOUR) kst.setUTCDate(kst.getUTCDate() + 1);
+  if (kst.getUTCHours() >= CLEANUP_WINDOW_END_HOUR) kst.setUTCDate(kst.getUTCDate() + 1);
   return kst.toISOString().slice(0, 10);
 };

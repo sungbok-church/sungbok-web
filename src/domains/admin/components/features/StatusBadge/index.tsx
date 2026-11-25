@@ -25,20 +25,21 @@ export const CONTENT_STATUS_OPTIONS = [
   { value: 'DRAFT', label: '임시저장' },
 ];
 
-/** 콘텐츠 5종의 상태 — «공개»(초록) · «임시저장»(회색) · 휴지통에 들었으면 «휴지통» */
+/** 콘텐츠 5종의 상태 — «공개»(초록) · «임시저장»(회색) · 휴지통에 들었으면 완전히 지울 날 */
 export const ContentStatusBadge = ({
   status,
-  trashed,
   deletedAt,
+  compact,
 }: {
   status: 'DRAFT' | 'PUBLISHED';
-  trashed?: boolean;
   /** 휴지통에 넣은 시각 — 주면 예약 작업이 완전히 지울 날을 함께 보인다(«휴지통 · 12-26 완전 삭제») */
   deletedAt?: string | null;
+  /** 휴지통 목록 — 줄마다 «휴지통» 은 같은 말이라 날만(«12-26 완전 삭제», 좁은 칸) */
+  compact?: boolean;
 }) =>
-  trashed || deletedAt ? (
+  deletedAt ? (
     <Badge variant="danger">
-      {deletedAt ? `휴지통 · ${cleanupDay(deletedAt, { days: 30 }).slice(5)} 완전 삭제` : '휴지통'}
+      {`${compact ? '' : '휴지통 · '}${cleanupDay(deletedAt, { days: 30 }).slice(5)} 완전 삭제`}
     </Badge>
   ) : status === 'PUBLISHED' ? (
     <Badge variant="success">공개</Badge>

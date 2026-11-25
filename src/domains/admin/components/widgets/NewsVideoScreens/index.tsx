@@ -96,7 +96,7 @@ export const NewsVideoListScreen = async ({
   const rows: TableRowData[] = (data ?? []).map(v => {
     const href = `${cfg.adminPath}/${v.id}`;
     const label = (v.categories as { label: string } | null)?.label ?? '';
-    const status = <ContentStatusBadge status={v.status} deletedAt={v.deleted_at} />;
+    const status = <ContentStatusBadge status={v.status} deletedAt={v.deleted_at} compact />;
     const updated = `${formatShortTime(v.updated_at, now)}${v.updated_by && names[v.updated_by] ? ` · ${names[v.updated_by]}` : ''}`;
     return {
       id: v.id,
@@ -116,7 +116,7 @@ export const NewsVideoListScreen = async ({
         <Card size="sm">
           <CardContent className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{v.title}</span>
+              <span className="min-w-0 font-medium break-words">{v.title}</span>
               {status}
             </div>
             <span className="text-muted-foreground text-xs tabular-nums">
@@ -244,7 +244,7 @@ export const NewsVideoDetailScreen = async ({
     <>
       <PageHeader
         title={video.title}
-        badge={<ContentStatusBadge status={video.status} trashed={video.trashed} />}
+        badge={<ContentStatusBadge status={video.status} deletedAt={video.deletedAt} />}
         actions={
           <>
             <ListNav listPath={cfg.adminPath} id={video.id} />

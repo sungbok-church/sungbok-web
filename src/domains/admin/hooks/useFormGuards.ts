@@ -4,9 +4,9 @@
 //   · useUnsavedGuard: 바뀐 내용이 있으면 창을 닫거나 새로고침할 때 브라우저가 경고한다.
 //   · useSaveShortcut: Ctrl/⌘+S 로 저장(브라우저의 «페이지 저장» 대신 — 단축키는 useKeyShortcut).
 //   · useFormDraft: 쓰던 내용 임시 보관(formDraft — 사용자별 · 7일 · 로그아웃 때 지움).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { draftKey, readDraft, removeDraft, writeDraft } from '../lib/formDraft';
+import { DRAFT_TTL_MS, draftKey, readDraftEntry, removeDraft, writeDraft } from '../lib/formDraft';
 import { useKeyShortcut, withModifier } from './useKeyShortcut';
 
 const SAVE_DELAY_MS = 500;
@@ -39,34 +39,49 @@ type DraftOptions<T> = {
 
 export const useFormDraft = <T>({ userId, formKey, values, dirty, enabled }: DraftOptions<T>) => {
   const key = draftKey(userId, formKey);
-  const [saved, setSaved] = useState<T | null>(() =>
+  const [saved, setSaved] = useState<{ values: T; savedAt: number } | null>(() =>
     enabled && typeof window !== 'undefined'
-      ? readDraft<T>(window.localStorage, key, Date.now())
+      ? readDraftEntry<T>(window.localStorage, key, Date.now())
       : null
   );
+  // 이 글을 처음 보관한 때 — 7일은 여기서부터 센다(formDraft.writeDraft). 불러오면 그 보관의 시각을 이어받고,
+  // 버리거나 저장하면 끊는다. 알림을 두고 새로 쓰면 새 흐름이다
+  const origin = useRef<number | null>(null);
 
-  // 바뀐 내용을 잠시 뒤 보관한다(입력할 때마다 쓰지 않게)
+  // 바뀐 내용을 잠시 뒤 보관한다(입력할 때마다 쓰지 않게). 처음 보관한 지 7일이 지난 흐름은 더 보관하지 않는다
   const serialized = JSON.stringify(values);
   useEffect(() => {
     if (!enabled || !dirty) return;
-    const timer = window.setTimeout(
-      () => writeDraft(window.localStorage, key, JSON.parse(serialized), Date.now()),
-      SAVE_DELAY_MS
-    );
+    const timer = window.setTimeout(() => {
+      const now = Date.now();
+      origin.current ??= now;
+      // 지난 흐름 — 남은 보관도 어차피 버릴 것이라 지운다
+      if (now - origin.current > DRAFT_TTL_MS) return removeDraft(window.localStorage, key);
+      writeDraft(window.localStorage, key, JSON.parse(serialized), origin.current);
+    }, SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [enabled, dirty, key, serialized]);
 
-  const discard = useCallback(() => {
+  const drop = useCallback(() => {
     removeDraft(window.localStorage, key);
     setSaved(null);
   }, [key]);
 
+  const discard = useCallback(() => {
+    origin.current = null;
+    drop();
+  }, [drop]);
+
   const restore = useCallback(
     (apply: (values: T) => void) => {
-      if (saved !== null) apply(saved);
-      discard();
+      // 알림을 띄운 채 7일이 지났으면 버린다 — 그사이 올린 파일이 지워졌을 수 있다
+      if (saved !== null && Date.now() - saved.savedAt <= DRAFT_TTL_MS) {
+        origin.current = saved.savedAt;
+        apply(saved.values);
+      }
+      drop();
     },
-    [saved, discard]
+    [saved, drop]
   );
 
   return { available: saved !== null, restore, discard, clear: discard };

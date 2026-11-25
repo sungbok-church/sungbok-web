@@ -48,7 +48,7 @@ export default async function AdminBulletinDetailPage({
     <>
       <PageHeader
         title={title}
-        badge={<ContentStatusBadge status={bulletin.status} trashed={bulletin.trashed} />}
+        badge={<ContentStatusBadge status={bulletin.status} deletedAt={bulletin.deletedAt} />}
         actions={
           <>
             <ListNav listPath={PATH} id={bulletin.id} />

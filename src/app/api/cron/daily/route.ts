@@ -10,7 +10,7 @@ import { connection } from 'next/server';
 const authorized = (header: string | null) => {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret || !header) return false;
-  const a = Buffer.from(header);
+  const a = Buffer.from(header.trim());
   const b = Buffer.from(`Bearer ${secret}`);
   return a.length === b.length && timingSafeEqual(a, b);
 };

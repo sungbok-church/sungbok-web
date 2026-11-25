@@ -77,7 +77,7 @@ export default async function AdminResourcesPage({
     const series = (r.categories as { label: string } | null)?.label ?? '';
     const group = `${series}${r.episode ? ` ${r.episode}회` : ''}`;
     const when = r.date ?? (r.year ? `${r.year}년` : '—');
-    const status = <ContentStatusBadge status={r.status} deletedAt={r.deleted_at} />;
+    const status = <ContentStatusBadge status={r.status} deletedAt={r.deleted_at} compact />;
     const updated = `${formatShortTime(r.updated_at, now)}${r.updated_by && names[r.updated_by] ? ` · ${names[r.updated_by]}` : ''}`;
     return {
       id: r.id,
@@ -98,7 +98,7 @@ export default async function AdminResourcesPage({
         <Card size="sm">
           <CardContent className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{r.title}</span>
+              <span className="min-w-0 font-medium break-words">{r.title}</span>
               {status}
             </div>
             <span className="text-muted-foreground text-xs tabular-nums">

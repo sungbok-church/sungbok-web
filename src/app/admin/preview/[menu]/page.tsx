@@ -2,7 +2,10 @@ import { AppProvider } from '@/app/_provider';
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { PreviewFrame } from '@/domains/admin/components/features/PreviewFrame';
 import { Footer } from '@/shared/components/layout/Footer';
+import { loadSiteNav } from '@/shared/api/siteNavLoad.server';
 import { Header } from '@/shared/components/layout/Header';
+import { SiteNavProvider } from '@/shared/components/layout/SiteNavProvider';
+import { siteNav } from '@/shared/config/siteNav';
 import { SectionShell } from '@/shared/components/layout/SectionShell';
 import { notFound } from 'next/navigation';
 import { DEPARTMENT_SLUGS } from '@/domains/next-generation/config/departmentSlug';
@@ -42,20 +45,27 @@ export default async function AdminPreviewPage({
     menu === 'departments' && typeof slug === 'string' && isDepartmentSlug(slug)
       ? `/next-generation/${slug}`
       : target.path;
-  await requirePermission(menu, 'READ');
+  // 공개 사이트와 같은 메뉴(관리자에서 바꾼 이름 · 순서)로 — 공개 키 · 캐시로 읽는다
+  // 못 읽으면 코드 메뉴로(미리보기가 오류 화면이 되지 않게)
+  const [, nav] = await Promise.all([
+    requirePermission(menu, 'READ'),
+    loadSiteNav().catch(() => siteNav),
+  ]);
   return (
     <AppProvider>
-      <Header />
-      <main className="flex-1">
-        {target.section ? (
-          <SectionShell section={target.section} pathname={path}>
+      <SiteNavProvider nav={nav}>
+        <Header />
+        <main className="flex-1">
+          {target.section ? (
+            <SectionShell section={target.section} pathname={path}>
+              <PreviewFrame menu={menu as keyof typeof MENUS} />
+            </SectionShell>
+          ) : (
             <PreviewFrame menu={menu as keyof typeof MENUS} />
-          </SectionShell>
-        ) : (
-          <PreviewFrame menu={menu as keyof typeof MENUS} />
-        )}
-      </main>
-      <Footer />
+          )}
+        </main>
+        <Footer />
+      </SiteNavProvider>
     </AppProvider>
   );
 }
