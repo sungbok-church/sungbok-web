@@ -143,7 +143,8 @@ export default function Intro({ dept, door, children }: IntroProps) {
                 {s.photo ? (
                   <SizedPhoto
                     src={s.photo}
-                    alt={`${s.name} ${s.role}`}
+                    // 이름 · 직분은 바로 옆 글자로 읽힌다 — 사진은 꾸밈으로 둔다
+                    alt=""
                     fill
                     sizes="56px"
                     className="object-cover"

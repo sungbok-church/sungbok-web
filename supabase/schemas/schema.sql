@@ -969,17 +969,14 @@ as $$
   select case p_feed when 'ANNOUNCEMENTS' then 'announcements' else 'garden' end
 $$;
 
--- 로그인한 사람이 이 부서를 다룰 수 있는가 — «다음세대 부서» 수정 권한 + 부서 범위(지정 안 됐으면 전부).
+-- 로그인한 사람이 이 부서를 다룰 수 있는가 — «다음세대 부서» 수정 권한 + 부서 범위(my_department_limit — 지정 안 됐거나
+-- «전체 관리» 면 전부. 화면의 부서 범위와 같은 기준).
 create function private.can_edit_department(p_slug public.department_slug) returns boolean
 language sql stable security definer
 set search_path = ''
 as $$
   select private.has_permission('departments', 'UPDATE')
-     and exists (
-       select 1 from public.profiles p
-        where p.id = (select auth.uid())
-          and (p.department is null or p.department = p_slug)
-     )
+     and coalesce(public.my_department_limit() = p_slug, true)
 $$;
 
 create function private.can_edit_department_id(p_department_id uuid) returns boolean
@@ -2113,7 +2110,9 @@ grant select, update on public.home_hero to authenticated;
 -- 부서 slug 는 바꾸지 못한다(주소 · 부서 범위의 기준).
 grant select, update (ages, tagline, intro, extra, photos_list_id) on public.departments to authenticated;
 grant select, insert, update, delete on public.department_staff to authenticated;
-grant select, update, delete on public.newcomers to authenticated;
+-- 접수 내용(이름 · 연락처 · 동의 기록)은 고치지 못한다 — 처리 칸만.
+grant select, delete on public.newcomers to authenticated;
+grant update (status, note, handled_by, handled_at) on public.newcomers to authenticated;
 grant select on public.audit_log to authenticated;
 grant insert (table_name, action, changes) on public.audit_log to authenticated;
 grant usage on sequence public.albums_slug_seq, public.resources_slug_seq to authenticated;

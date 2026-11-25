@@ -45,7 +45,7 @@ import {
 } from '@/shared/components/ui/select';
 import { useForm, useStore } from '@tanstack/react-form';
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 export type DepartmentStaffValues = {
   /** 화면에서 줄을 가르는 값(저장하지 않는다) */
@@ -87,7 +87,6 @@ const newKey = () => `new-${crypto.randomUUID()}`;
 export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancelHref }: Props) => {
   // 올리기 칸이 여럿(사진 · 담당자마다) — 하나라도 올리는 중이면 저장을 막는다
   const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const uploading = Object.values(busy).some(Boolean);
   const onBusy = useCallback(
     (key: string) => (b: boolean) =>
       setBusy(prev => (prev[key] === b ? prev : { ...prev, [key]: b })),
@@ -114,6 +113,28 @@ export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancel
   const [saved, setSaved] = useState(false);
 
   const values = useStore(form.store, s => s.values);
+  // 지금 화면에 있는 칸만 센다 — 올리는 중에 담당자를 빼거나 임시 보관을 불러와 칸이 사라져도 저장이 막힌 채 남지 않게
+  const uploading = Object.entries(busy).some(
+    ([k, b]) => b && (k === 'photos' || values.staff.some(s => s.key === k))
+  );
+
+  // 담당자를 옮기거나 뺀 뒤 — 포커스를 이웃 단추로 옮기고(누른 단추가 꺼지거나 사라져 화면 맨 위로 빠지지 않게) 결과를 알린다
+  const staffButtons = useRef(new Map<string, HTMLButtonElement>());
+  const focusNext = useRef<string | null>(null);
+  const [note, setNote] = useState({ text: '', seq: 0 });
+  const staffRef = (key: string) => (el: HTMLButtonElement | null) => {
+    if (el) staffButtons.current.set(key, el);
+    else staffButtons.current.delete(key);
+  };
+  useLayoutEffect(() => {
+    const key = focusNext.current;
+    if (!key) return;
+    focusNext.current = null;
+    (key === 'add'
+      ? document.getElementById('dept-staff-add')
+      : staffButtons.current.get(key)
+    )?.focus();
+  }, [values.staff]);
   const dirty = useStore(form.store, s => s.isDirty);
   const submitting = useStore(form.store, s => s.isSubmitting);
   const draft = useFormDraft<DepartmentValues>({
@@ -184,7 +205,7 @@ export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancel
                 <TextField
                   field={field}
                   id="dept-intro"
-                  label="소개"
+                  label="소개 글"
                   required
                   multiline
                   max={3000}
@@ -223,7 +244,15 @@ export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancel
                           variant="ghost"
                           aria-label={`${i + 1}번째 담당자 위로`}
                           disabled={i === 0 || submitting}
-                          onClick={() => list.moveValue(i, i - 1)}
+                          ref={staffRef(`${s.key}:up`)}
+                          onClick={() => {
+                            focusNext.current = `${s.key}:${i - 1 === 0 ? 'down' : 'up'}`;
+                            setNote(n => ({
+                              text: `${i + 1}번째 담당자를 ${i}번째로`,
+                              seq: n.seq + 1,
+                            }));
+                            list.moveValue(i, i - 1);
+                          }}
                         >
                           <ArrowUpIcon />
                         </Button>
@@ -233,7 +262,16 @@ export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancel
                           variant="ghost"
                           aria-label={`${i + 1}번째 담당자 아래로`}
                           disabled={i === list.state.value.length - 1 || submitting}
-                          onClick={() => list.moveValue(i, i + 1)}
+                          ref={staffRef(`${s.key}:down`)}
+                          onClick={() => {
+                            const last = list.state.value.length - 1;
+                            focusNext.current = `${s.key}:${i + 1 === last ? 'up' : 'down'}`;
+                            setNote(n => ({
+                              text: `${i + 1}번째 담당자를 ${i + 2}번째로`,
+                              seq: n.seq + 1,
+                            }));
+                            list.moveValue(i, i + 1);
+                          }}
                         >
                           <ArrowDownIcon />
                         </Button>
@@ -243,8 +281,15 @@ export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancel
                           variant="ghost"
                           aria-label={`${i + 1}번째 담당자 빼기`}
                           disabled={submitting}
+                          ref={staffRef(`${s.key}:remove`)}
                           onClick={() => {
-                            onBusy(s.key)(false);
+                            const rest = list.state.value.filter((_, k) => k !== i);
+                            const next = rest[Math.min(i, rest.length - 1)];
+                            focusNext.current = next ? `${next.key}:remove` : 'add';
+                            setNote(n => ({
+                              text: `${i + 1}번째 담당자를 뺐습니다`,
+                              seq: n.seq + 1,
+                            }));
                             list.removeValue(i);
                           }}
                         >
@@ -338,8 +383,12 @@ export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancel
                   </FieldSet>
                 ))}
                 <FieldError errors={list.state.meta.errors} />
+                <p aria-live="polite" className="sr-only">
+                  <span key={note.seq}>{note.text}</span>
+                </p>
                 {list.state.value.length < MAX_DEPARTMENT_STAFF && (
                   <Button
+                    id="dept-staff-add"
                     type="button"
                     variant="outline"
                     className="self-start"
@@ -366,9 +415,6 @@ export const DepartmentForm = ({ userId, slug, updatedAt, initial, roles, cancel
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>사진</CardTitle>
-        </CardHeader>
         <CardContent>
           <form.Field name="photos">
             {field => (

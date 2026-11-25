@@ -13,6 +13,9 @@ const m = vi.hoisted(() => ({
   sendMail: vi.fn(),
   attemptError: null as null | { message: string },
   removed: vi.fn(),
+  /** 알림 직전에 본 «최근 10분 안의 다른 접수» 건수 */
+  othersRecent: 0,
+  othersQuery: vi.fn(),
 }));
 
 vi.mock('@/shared/api/mail.server', () => ({ sendMail: m.sendMail }));
@@ -47,7 +50,26 @@ vi.mock('@/shared/api/supabase/adminClient.server', () => ({
                   eq: async (_c: string, id: number) => (m.removed(id), { error: null }),
                 }),
               };
-            return { insert: async (row: unknown) => m.newcomers(row) };
+            return {
+              insert: (row: unknown) => ({
+                select: () => ({
+                  single: async () => {
+                    const r = await m.newcomers(row);
+                    return { data: r.error ? null : { id: 'n1' }, error: r.error };
+                  },
+                }),
+              }),
+              select: () => {
+                const c = {
+                  lt: (col: string, v: string) => (m.othersQuery('lt', col, v), c),
+                  gte: async (col: string, v: string) => (
+                    m.othersQuery('gte', col, v),
+                    { count: m.othersRecent, error: null }
+                  ),
+                };
+                return c;
+              },
+            };
           },
           rpc: async () => ({ data: m.emails, error: null }),
         }
@@ -81,6 +103,7 @@ beforeEach(() => {
   m.newcomers.mockResolvedValue({ error: null });
   m.sendMail.mockResolvedValue({ sent: true });
   m.attemptError = null;
+  m.othersRecent = 0;
 });
 afterEach(() => {
   vi.clearAllMocks();
@@ -178,6 +201,20 @@ describe('submitNewcomer', () => {
     m.newcomers.mockResolvedValue({ error: { message: 'x' } });
     expect(await submitNewcomer({ ...input, website: '' }, ctx)).toMatchObject({ ok: false });
     expect(m.removed).toHaveBeenCalledWith(77);
+  });
+
+  it('10분 안에 다른 접수가 있었으면 알림을 또 보내지 않는다(몰려 와도 메일은 한 통)', async () => {
+    m.othersRecent = 2;
+    expect(await submitNewcomer({ ...input, website: '' }, ctx)).toMatchObject({ ok: true });
+    await deferred;
+    expect(m.sendMail).not.toHaveBeenCalled();
+    // 나보다 먼저 들어온 것만 센다(id 는 시각 순) — 동시에 온 두 건이 서로를 보고 둘 다 건너뛰지 않게
+    expect(m.othersQuery).toHaveBeenCalledWith('lt', 'id', 'n1');
+    expect(m.othersQuery).toHaveBeenCalledWith(
+      'gte',
+      'created_at',
+      new Date(NOW - 10 * 60_000).toISOString()
+    );
   });
 
   it('메일이 실패해도 접수는 성공', async () => {

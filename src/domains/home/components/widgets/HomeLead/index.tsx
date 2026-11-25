@@ -19,7 +19,7 @@ import { Photo } from '@/shared/components/features/Photo';
 import { Fragment, useEffect, useRef } from 'react';
 
 import type { HomeHeroData } from '@/domains/home/api/homeHero';
-import { useHeroVideoEnabled } from '@/domains/home/components/widgets/HomeHero/HeroVideo';
+import { useHeroVideoShowing } from '@/domains/home/components/widgets/HomeHero/HeroVideo';
 import { heroImageSizes } from '@/domains/home/components/widgets/HomeHero/imageConfig';
 
 import { FLOW_PHOTOS, THIRD_PHOTOS } from './flowPhotos';
@@ -62,13 +62,16 @@ const MASK = `linear-gradient(to right, transparent, #000 ${EDGE}%, #000 ${100 -
  * 사진으로 바뀐다(시안 B). 사진이거나 영상이 꺼진 화면이면 줄어들기 시작할 무렵 바뀐다(변형은 진행도 0.05~0.8).
  */
 export const HomeLead = ({ hero }: { hero: HomeHeroData }) => {
-  // 영상이 실제로 돌 수 있을 때만 늦게 바꾼다 — 대표 사진만 보일 때(좁은 화면 · 동작 줄이기 등)는 사진처럼 일찍(같은 사진이
-  // 다른 구도로 오래 겹쳐 보이지 않게, 전경 레이어는 MorphFrame 이 대표 사진 구도에 맞춘다)
-  const videoOn = useHeroVideoEnabled() && hero.kind === 'youtube';
+  // 영상이 실제로 보이는 동안만 늦게 바꾼다 — 대표 사진만 보일 때(좁은 화면 · 동작 줄이기 · 재생 전 · 멈춤 · 재생 실패)는
+  // 사진처럼 일찍(같은 사진이 다른 구도로 오래 겹쳐 보이지 않게, 전경 레이어는 MorphFrame 이 대표 사진 구도에 맞춘다)
+  const videoOn = useHeroVideoShowing() && hero.kind === 'youtube';
   const photoFadeAt: readonly [number, number] = videoOn ? [0.62, 0.8] : [0.05, 0.3];
+  // 바뀐 시점은 두 구간의 결과가 같은 자리(첫 화면 · 내려앉은 뒤)에서만 받는다 — 스크롤 도중에 재생이 시작되거나 멈춰도
+  // 사진 레이어가 한 프레임에 튀지 않게
+  const wantedFadeAt = useRef(photoFadeAt);
   const fadeAt = useRef(photoFadeAt);
   useEffect(() => {
-    fadeAt.current = photoFadeAt;
+    wantedFadeAt.current = photoFadeAt;
   });
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -133,6 +136,7 @@ export const HomeLead = ({ hero }: { hero: HomeHeroData }) => {
       }
       const target = { w: slotW, h: slotH, cx, cy: slotTop + slotH / 2 };
       const landed = q >= 1;
+      if (p <= 0.05 || p >= 0.8) fadeAt.current = wantedFadeAt.current;
       frame.current?.update({
         rect: mixRect(fullRect(vw, vh), target, q),
         q,

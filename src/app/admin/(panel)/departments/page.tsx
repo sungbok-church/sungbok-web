@@ -21,7 +21,7 @@ import { redirect } from 'next/navigation';
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
 export const instant = false;
 
-// 다음세대 부서(설계 6.13) — 8곳 고정. 줄을 누르면 그 부서 고치기(조회만 있으면 공개 페이지). 담당 부서가 정해진 사람은 그 부서로 바로.
+// 다음세대 부서(설계 6.13) — 8곳 고정. 부서 이름을 누르면 그 부서 고치기(조회만 있으면 공개 페이지). 담당 부서가 정해진 사람은 그 부서로 바로.
 export default async function AdminDepartmentsPage() {
   const supabase = await createSupabaseServerClient();
   const [ctx, limit, list] = await Promise.all([

@@ -42,7 +42,12 @@ export const departmentSaveSchema = z.object({
   ),
   staff: z
     .array(departmentStaffSchema)
-    .max(MAX_DEPARTMENT_STAFF, `담당자는 ${MAX_DEPARTMENT_STAFF}명까지입니다.`),
+    .max(MAX_DEPARTMENT_STAFF, `담당자는 ${MAX_DEPARTMENT_STAFF}명까지입니다.`)
+    .refine(
+      staff =>
+        new Set(staff.flatMap(x => (x.id ? [x.id] : []))).size === staff.filter(x => x.id).length,
+      '담당자 목록을 다시 불러와 주세요.'
+    ),
 });
 
 export type DepartmentSaveInput = z.input<typeof departmentSaveSchema>;

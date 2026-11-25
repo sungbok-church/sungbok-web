@@ -97,6 +97,19 @@ export const useFileUploads = ({
   const seq = useRef(0);
   // 바꿔 올리기(replace)마다 늘린다 — 그 전에 차례를 기다리던 · 올리던 파일의 결과는 버린다
   const gen = useRef(0);
+  // 올리기가 끝날 때는 «지금의» onChange 로 붙인다 — 고를 때의 onChange 를 잡아 두면, 그사이 칸 이름이 바뀐 경우
+  // (부서 담당자의 순서 바꾸기 등) 옛 칸에 쓴다
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+  // 칸이 사라지면(담당자 빼기) 올리던 · 기다리던 결과를 버린다
+  useEffect(
+    () => () => {
+      gen.current += 1;
+    },
+    []
+  );
 
   const patch = useCallback(
     (key: string, next: Partial<PendingUpload> | null) =>
@@ -172,7 +185,7 @@ export const useFileUploads = ({
             type: mime as 'image/webp' | 'image/jpeg',
           })
           .catch(() => {
-            throw new UploadError(MESSAGES.unreadable);
+            throw new UploadError(MESSAGES.failed);
           });
         ladder = [];
         for (const [i, v] of made.entries()) {
@@ -195,10 +208,10 @@ export const useFileUploads = ({
           ...(ladder ? { variants: ladder } : {}),
         },
       ];
-      onChange(items.current);
+      onChangeRef.current(items.current);
       return resized;
     },
-    [deps, ensureList, menuKey, onChange, patch, variants]
+    [deps, ensureList, menuKey, patch, variants]
   );
 
   /** 정한 파일들을 차례 뒤에 잇는다 — 다 끝나면 줄인 것이 있었는지 한 번 알린다 */

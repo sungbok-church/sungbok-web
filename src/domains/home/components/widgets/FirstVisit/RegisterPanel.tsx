@@ -435,8 +435,9 @@ function MiniForm({ intent, onSubmit }: { intent: IntentKey; onSubmit: () => voi
       )}
       <button
         type="submit"
-        disabled={pending}
-        className="bg-b1-accent text-label mt-1 min-h-11 rounded-xl py-3 font-bold text-white disabled:opacity-60"
+        // 보내는 동안에도 포커스를 잃지 않게 disabled 대신 aria-disabled(두 번 보내기는 send 가 막는다)
+        aria-disabled={pending || undefined}
+        className="bg-b1-accent text-label mt-1 min-h-11 rounded-xl py-3 font-bold text-white aria-disabled:opacity-60"
       >
         {pending ? '보내는 중…' : '보내기'}
       </button>
@@ -445,13 +446,22 @@ function MiniForm({ intent, onSubmit }: { intent: IntentKey; onSubmit: () => voi
 }
 
 function DonePanel({ onClose }: { onClose: () => void }) {
+  // 폼이 사라지면 포커스가 갈 곳이 없다 — 완료 제목으로 옮겨 낭독기가 접수됐음을 읽게 한다
+  const headingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => headingRef.current?.focus(), []);
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 py-10 text-center">
       <div className="bg-b1-accent-soft text-b1-accent flex h-14 w-14 items-center justify-center rounded-full">
         <Check size={26} strokeWidth={2.4} />
       </div>
       <div>
-        <div className="text-b1-text text-[18px] font-bold">{DONE.heading}</div>
+        <div
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-b1-text text-[18px] font-bold outline-none"
+        >
+          {DONE.heading}
+        </div>
         <p className="text-b1-sub text-caption mt-1.5 leading-[1.6]">{DONE.text}</p>
       </div>
       <button

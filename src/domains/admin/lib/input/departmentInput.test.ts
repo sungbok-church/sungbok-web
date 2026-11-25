@@ -60,4 +60,9 @@ describe('departmentSaveSchema', () => {
   it('모르는 부서는 안 된다', () => {
     expect(departmentSaveSchema.safeParse({ ...valid, slug: 'adult' }).success).toBe(false);
   });
+  it('같은 담당자 id 가 두 번 오면 안 된다(순서가 비지 않게)', () => {
+    const STAFF = '0190a0b0-0000-7000-8000-0000000000d1';
+    const one = { ...valid.staff[0], id: STAFF };
+    expect(departmentSaveSchema.safeParse({ ...valid, staff: [one, one] }).success).toBe(false);
+  });
 });

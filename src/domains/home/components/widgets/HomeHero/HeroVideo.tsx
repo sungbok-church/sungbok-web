@@ -21,8 +21,27 @@ const canPlay = () =>
   !window.matchMedia(REDUCED).matches &&
   !(navigator as { connection?: { saveData?: boolean } }).connection?.saveData;
 
-/** 이 화면에서 히어로 영상이 재생되는가(조건만 — 실제 재생 여부는 아님). 변형 무대가 사진 전환 시점을 정하는 데 쓴다 */
+/** 이 화면에서 히어로 영상을 틀어도 되는가(조건만) */
 export const useHeroVideoEnabled = () => useSyncExternalStore(subscribe, canPlay, () => false);
+
+// 영상이 지금 실제로 보이는가(재생이 시작돼 드러났고 멈추지 않았다) — 변형 무대가 사진 전환 시점을 정하는 데 쓴다.
+// 히어로는 홈에 하나뿐이라 모듈 하나에 둔다
+let showing = false;
+const showingListeners = new Set<() => void>();
+const setShowing = (next: boolean) => {
+  if (showing === next) return;
+  showing = next;
+  showingListeners.forEach(l => l());
+};
+export const useHeroVideoShowing = () =>
+  useSyncExternalStore(
+    l => {
+      showingListeners.add(l);
+      return () => showingListeners.delete(l);
+    },
+    () => showing,
+    () => false
+  );
 
 /** 첫 화면이 다 그려진 뒤(load + 한가할 때) — 플레이어(수백 KB)가 대표 사진(첫 화면의 가장 큰 그림)과 회선을 다투지 않게 */
 const afterFirstPaint = (run: () => void) => {
@@ -146,6 +165,11 @@ export const HeroVideo = ({
     };
   }, [videoId, revealDelayMs, enabled]);
 
+  useEffect(() => {
+    setShowing(playing && !paused);
+    return () => setShowing(false);
+  }, [playing, paused]);
+
   const toggle = () => {
     const next = !paused;
     pausedRef.current = next;
@@ -195,7 +219,7 @@ export const HeroVideo = ({
           // 이름은 고정하고 상태는 aria-pressed 로(누름 = 멈춤). 자리는 오른쪽 위 — 오른쪽 아래는 «등록 · 문의» 버튼 자리
           aria-pressed={paused}
           aria-label="배경 영상 멈춤"
-          className={`bg-b1-surface/85 text-b1-text focus-visible:ring-b1-accent absolute top-24 right-6 z-20 grid size-11 place-items-center rounded-full shadow-sm backdrop-blur-sm focus-visible:ring-2 focus-visible:outline-none ${controlsClassName ?? ''}`}
+          className={`bg-b1-surface/85 text-b1-text focus-visible:ring-b1-accent animate-in fade-in-0 absolute top-24 right-6 z-20 grid size-11 place-items-center rounded-full shadow-sm backdrop-blur-sm duration-700 focus-visible:ring-2 focus-visible:outline-none motion-reduce:animate-none ${controlsClassName ?? ''}`}
         >
           {paused ? <Play aria-hidden size={18} /> : <Pause aria-hidden size={18} />}
         </button>

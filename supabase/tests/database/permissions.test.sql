@@ -412,14 +412,35 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-000000000001","role":"authenticated"}', true);
 select is((select count(*)::int from public.albums), 0, '새가족 담당: 앨범은 보이지 않는다');
 select is((select count(*)::int from public.newcomers), 1, '새가족 담당: 접수가 보인다');
-update public.newcomers set name = '홍길순', status = 'CONTACTED' where id = '00000000-0000-7000-8000-0000000ae001';
+select throws_ok(
+  $$update public.newcomers set name = '홍길순' where id = '00000000-0000-7000-8000-0000000ae001'$$,
+  '42501', null, '새가족 담당: 접수 내용(이름)은 고치지 못한다 — 처리 칸만'
+);
+update public.newcomers set status = 'CONTACTED', note = '통화함' where id = '00000000-0000-7000-8000-0000000ae001';
+select is(
+  (select status::text from public.newcomers where id = '00000000-0000-7000-8000-0000000ae001'),
+  'CONTACTED',
+  '새가족 담당: 상태 · 메모는 고친다'
+);
+reset role;
+-- 이름이 바뀌는 이력(postgres 로 — 화면에서는 못 고친다)
+update public.newcomers set name = '홍길순' where id = '00000000-0000-7000-8000-0000000ae001';
 select is(
   (select changes from public.audit_log
     where table_name = 'newcomers' and action = 'UPDATE' and row_id = '00000000-0000-7000-8000-0000000ae001'
     order by id desc limit 1),
-  '{"name": null, "status": ["NEW", "CONTACTED"]}'::jsonb,
-  '새가족 이력: 이름은 «바뀌었다» 만, 상태는 값까지'
+  '{"name": null}'::jsonb,
+  '새가족 이력: 이름은 «바뀌었다» 만'
 );
+select ok(
+  (select changes -> 'status' = '["NEW", "CONTACTED"]'::jsonb
+     from public.audit_log
+    where table_name = 'newcomers' and action = 'UPDATE' and row_id = '00000000-0000-7000-8000-0000000ae001'
+      and changes ? 'status'),
+  '새가족 이력: 상태는 값까지'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-000000000001","role":"authenticated"}', true);
 select ok(
   (select changes ->> 'name' is null and changes ? 'name' and changes ->> 'phone' is null
      from public.audit_log

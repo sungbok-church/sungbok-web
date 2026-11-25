@@ -10,7 +10,8 @@ import { CONSENT_VERSION, newcomerInputSchema, rateLimitKey, rateLimitWait } fro
 
 // 새가족 접수(설계 6.11) — 방문자에게는 DB 권한을 전혀 주지 않는다(공개 키로 넣기를 열면 이 검사를 건너뛸 수 있다).
 // 여기서 검증 · 횟수 제한을 지난 것만 서버 전용 키로 넣는다. 공개 쪽에서 만능 키를 쓰는 파일은 이것 하나다(lint 예외).
-// 접수되면 «새가족» 조회 권한이 있는 사람에게 «새 접수 1건» 과 관리자 링크만 보낸다(개인정보는 싣지 않는다). 메일이 실패해도 접수는 성공.
+// 접수되면 «새가족» 조회 권한이 있는 사람에게 «새 접수» 와 관리자 링크만 보낸다(개인정보는 싣지 않는다). 메일이 실패해도 접수는 성공.
+// 앞선 10분 안에 다른 접수가 있었으면 또 보내지 않는다 — 여러 곳에서 몰려 와도(IP 별 한도를 넘어서) 담당자 메일함이 넘치지 않게.
 
 type Context = {
   /** 접속 IP — 그대로 두지 않고 해시만 남긴다 */
@@ -21,6 +22,9 @@ type Context = {
   /** 응답 뒤에 할 일(알림 메일) — 기본은 next/server 의 after. 메일이 늦어도 접수 응답이 기다리지 않게 */
   defer?: (task: () => Promise<void>) => void;
 };
+
+/** 알림 메일 사이의 조용한 시간 */
+const MAIL_QUIET_MS = 10 * 60_000;
 
 /** 접속(IPv6 은 /64 대역)의 해시 — 비밀 값을 섞어(HMAC) IP 를 거꾸로 찾지 못하게 */
 const ipHash = (ip: string | null) =>
@@ -79,28 +83,39 @@ export const submitNewcomer = async (raw: unknown, ctx: Context): Promise<Result
     return fail('RATE_LIMITED', { metadata: { retryAfterSec: wait } });
   }
 
-  const { error } = await db.from('newcomers').insert({
-    intent: input.intent === 'register' ? 'REGISTER' : 'INQUIRY',
-    name: input.name,
-    phone: input.phone,
-    visit_date: input.visit || null,
-    message: input.message || null,
-    consent_at: new Date(now).toISOString(),
-    consent_version: CONSENT_VERSION,
-  });
-  if (error) {
-    console.error('[newcomer]', error.message);
+  const { data: created, error } = await db
+    .from('newcomers')
+    .insert({
+      intent: input.intent === 'register' ? 'REGISTER' : 'INQUIRY',
+      name: input.name,
+      phone: input.phone,
+      visit_date: input.visit || null,
+      message: input.message || null,
+      consent_at: new Date(now).toISOString(),
+      consent_version: CONSENT_VERSION,
+    })
+    .select('id')
+    .single();
+  if (error || !created) {
+    console.error('[newcomer]', error?.message);
     await release();
     return fail('INTERNAL');
   }
 
   (ctx.defer ?? after)(async () => {
     try {
+      const { count } = await db
+        .from('newcomers')
+        .select('id', { count: 'exact', head: true })
+        // 나보다 먼저 들어온 것만(id 는 시각 순) — 동시에 온 두 건이 서로를 보고 둘 다 건너뛰지 않게
+        .lt('id', created.id)
+        .gte('created_at', new Date(now - MAIL_QUIET_MS).toISOString());
+      if (count) return;
       const { data: emails } = await db.rpc('newcomer_notify_emails');
       await sendMail({
         to: (emails ?? []) as string[],
-        subject: '[성복교회] 새가족 접수 1건',
-        text: `새가족 등록 · 문의가 1건 접수되었습니다.\n\n관리자 화면에서 확인해 주세요: ${ctx.origin}/admin/newcomers`,
+        subject: '[성복교회] 새가족 접수',
+        text: `새가족 등록 · 문의가 접수되었습니다.\n\n관리자 화면에서 확인해 주세요: ${ctx.origin}/admin/newcomers`,
       });
     } catch (e) {
       console.error('[newcomer mail]', e);

@@ -123,7 +123,6 @@ export const HomeHero = ({
     {hero.kind === 'photo' && (
       // 전경 — 우측 74%, 좌측 경계는 메시로 페이드
       <div
-        aria-hidden
         className="absolute top-0 right-0 bottom-0 w-[74%]"
         style={{ WebkitMaskImage: PHOTO_MASK, maskImage: PHOTO_MASK }}
       >

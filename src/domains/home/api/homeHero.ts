@@ -39,7 +39,7 @@ export const rowToHomeHero = (baseUrl: string, row: HomeHeroRow): HomeHeroData |
   return {
     kind: youtube ? 'youtube' : 'photo',
     photo,
-    alt: file.alt || '성복교회',
+    alt: file.alt || '성복교회 전경',
     videoId: youtube ? row.youtube_video_id : null,
   };
 };

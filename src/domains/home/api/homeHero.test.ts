@@ -33,7 +33,7 @@ describe('rowToHomeHero — DB 의 홈 히어로 → 화면 값', () => {
       youtube_video_id: 'K-_StsRioZE',
       photo: { files: [{ ...file, alt: null }] },
     });
-    expect(hero).toMatchObject({ kind: 'youtube', videoId: 'K-_StsRioZE', alt: '성복교회' });
+    expect(hero).toMatchObject({ kind: 'youtube', videoId: 'K-_StsRioZE', alt: '성복교회 전경' });
   });
   it('대표 사진이 없으면(읽을 수 없는 행) null — 화면은 레포의 장애 대비 사진', () => {
     expect(

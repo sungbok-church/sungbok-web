@@ -261,3 +261,60 @@ describe('useFileUploads — 폭별 파일', () => {
     expect(result.current.value[0].variants).toBeUndefined();
   });
 });
+
+describe('useFileUploads — 올리는 중에 칸이 바뀌면', () => {
+  it('끝날 때는 지금의 onChange 로 붙인다(담당자 순서를 바꿔 칸 이름이 바뀌어도 옛 칸에 쓰지 않는다)', async () => {
+    let release: () => void = () => {};
+    const putFile = vi.fn(
+      (_r: unknown, p: (n: number) => void) =>
+        new Promise<void>(r => {
+          release = () => {
+            p(1);
+            r();
+          };
+        })
+    );
+    const deps = makeDeps({ putFile });
+    const first = vi.fn();
+    const second = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ onChange }) =>
+        useFileUploads({ menuKey: 'bulletin', kinds: ['IMAGE'], value: [], onChange, deps }),
+      { initialProps: { onChange: first } }
+    );
+    act(() => {
+      result.current.add([img('1.jpg')]);
+    });
+    await waitFor(() => expect(putFile).toHaveBeenCalled());
+    rerender({ onChange: second });
+    await act(async () => release());
+    await waitFor(() => expect(second).toHaveBeenCalled());
+    expect(first).not.toHaveBeenCalled();
+  });
+
+  it('칸이 사라지면(담당자 빼기) 끝난 결과를 버린다', async () => {
+    let release: () => void = () => {};
+    const putFile = vi.fn(
+      (_r: unknown, p: (n: number) => void) =>
+        new Promise<void>(r => {
+          release = () => {
+            p(1);
+            r();
+          };
+        })
+    );
+    const deps = makeDeps({ putFile });
+    const onChange = vi.fn();
+    const { result, unmount } = renderHook(() =>
+      useFileUploads({ menuKey: 'bulletin', kinds: ['IMAGE'], value: [], onChange, deps })
+    );
+    act(() => {
+      result.current.add([img('1.jpg')]);
+    });
+    await waitFor(() => expect(putFile).toHaveBeenCalled());
+    unmount();
+    await act(async () => release());
+    await new Promise(r => setTimeout(r, 0));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

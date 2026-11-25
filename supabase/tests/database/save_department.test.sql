@@ -182,6 +182,26 @@ select is(
 );
 
 -- ----------------------------------------------------------------------------
+-- «전체 관리» 는 부서가 정해져 있어도 모든 부서(화면의 부서 범위와 같은 기준)
+-- ----------------------------------------------------------------------------
+select set_config('request.jwt.claims', '', true);
+insert into auth.users (id, email) values ('00000000-0000-7000-8000-00000000d004', 'da@test.local');
+update public.profiles set department = 'INFANT' where id = '00000000-0000-7000-8000-00000000d004';
+insert into public.user_groups (user_id, group_id)
+select '00000000-0000-7000-8000-00000000d004', id from public.groups where key = 'admin';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-00000000d004","role":"authenticated"}', true);
+select isnt(
+  public.save_department(
+    'MIDDLE', (select updated_at from public.departments where slug = 'MIDDLE'), '중1~3학년', '한 줄', '소개 2', null,
+    '00000000-0000-7000-8000-0000000df002', '[]'::jsonb
+  ),
+  null,
+  '«전체 관리» 는 부서가 정해져 있어도 다른 부서를 저장한다'
+);
+reset role;
+
+-- ----------------------------------------------------------------------------
 -- 폭별 파일(files.variants 안의 경로)도 «주인 있음» — 예약 작업이 지우지 않는다
 -- ----------------------------------------------------------------------------
 insert into storage.objects (bucket_id, name, created_at) values

@@ -1,3 +1,4 @@
+import { statusLabel } from '@/domains/admin/lib/newcomer';
 import { Badge } from '@/shared/components/ui/badge';
 
 /** 목록 거르기의 «상태» 고르기 — 주소에는 1 · 0 으로 남는다(사용자 · 그룹 목록) */
@@ -42,9 +43,9 @@ export const ContentStatusBadge = ({
 /** 새가족 처리 상태 — 접수(아직 연락 전, 눈에 띄게) · 연락함 · 완료 */
 export const NewcomerStatusBadge = ({ status }: { status: string }) =>
   status === 'NEW' ? (
-    <Badge variant="warning">접수</Badge>
+    <Badge variant="warning">{statusLabel(status)}</Badge>
   ) : status === 'CONTACTED' ? (
-    <Badge variant="accent">연락함</Badge>
+    <Badge variant="accent">{statusLabel(status)}</Badge>
   ) : (
-    <Badge variant="success">완료</Badge>
+    <Badge variant="success">{statusLabel(status)}</Badge>
   );

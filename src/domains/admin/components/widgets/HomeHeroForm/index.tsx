@@ -3,6 +3,7 @@
 import { saveHomeHero } from '@/domains/admin/api/actions/homeHeroActions';
 import {
   applyServerErrors,
+  DraftNotice,
   FormActions,
   RequiredMark,
   serverFieldError,
@@ -97,6 +98,19 @@ export const HomeHeroForm = ({
         saveAsIs();
       }}
     >
+      {draft.available && (
+        <DraftNotice
+          onDiscard={draft.discard}
+          onRestore={() =>
+            draft.restore(saved => {
+              if (saved.kind === 'PHOTO' || saved.kind === 'YOUTUBE')
+                form.setFieldValue('kind', saved.kind);
+              if (saved.photo) form.setFieldValue('photo', saved.photo);
+              if (typeof saved.video === 'string') form.setFieldValue('video', saved.video);
+            })
+          }
+        />
+      )}
       <Card>
         <CardContent>
           <FieldGroup>
