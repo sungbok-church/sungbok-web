@@ -59,7 +59,7 @@
          목록 페이지는 뒤에서 다시 그려 방문자가 기다리지 않는다. 서버 캐시가 비어 요청 안에서 채울 때(빌드 때 안 만든 설교의
          첫 방문 · /api · 자료실 링크)는 받는 시간을 기다릴 수 있다. preview 배포 · 빌드 중에는 받지 않는다(운영 DB 를 같이
          봐서 · 빌드는 fetch 를 몰래 캐시해서) — 읽기만 한다
-   동시에 한 번만(claim_youtube_sync), 재생목록 전체로 한 트랜잭션에 바꾼다(replace_youtube_videos — 빠진 영상은 지운다)
+   동시에 한 번만(claim_youtube_sync), 재생목록 전체로 한 트랜잭션에 바꾼다(replace_youtube_videos — 빠진 영상은 지운다 — 0편이면 바꾸지 않는다)
 DB 의 줄 → 제목 · 설명 읽기(videoRows · sermonParse) → Sermon[] (최신순) + 설명 본문(Map)   ← worshipVideo.server.ts
    서버 캐시('use cache', 10분마다 확인 · 만료 없음 · 실패는 값으로 1분 — ADR 0024). 유튜브를 못 받아도 DB 의 마지막 목록을 쓴다
         │
@@ -67,6 +67,7 @@ DB 의 줄 → 제목 · 설명 읽기(videoRows · sermonParse) → Sermon[] (�
         ├─ 설교 한 편    : widgets/SermonWatch   → loadForPage → SermonWatchPage(sermons, description)
         │      빌드 때는 최신 한 편만 만들고(oneBuildParam) 나머지는 처음 열릴 때 만든다.
         │      목록에 없는 영상 id 는 404(`[videoId]/not-found.tsx` → VideoNotFound). 처음 여는 없는 주소는 200 + noindex.
+        │      목록을 못 받아도 던지지 않는다 — 처음 열리는 설교는 «직전 페이지» 가 없어 던지면 오류 화면이 된다.
         │      서버가 못 받았을 때만 화면이 브라우저에 붙은 뒤 /api 로 받는다(react-query)
         └─ Route Handler: /api/worship-video/library?page=   (서버가 못 실었을 때 화면이 받음)
                           /api/worship-video/description?page=&v=   (그 영상의 설명 — 목록에 있는 영상만)

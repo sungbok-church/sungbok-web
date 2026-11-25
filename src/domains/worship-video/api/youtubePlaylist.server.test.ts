@@ -116,12 +116,11 @@ describe('fetchPlaylistRows — 재생목록 전체를 DB 에 넣을 줄로', ()
     expect(schema.safeParse({ items: {} }).success).toBe(false);
   });
 
-  it('토큰이 끝없이 이어져도 MAX_PLAYLIST_PAGES 쪽에서 멈춘다(쿼터 보호)', async () => {
+  it('토큰이 끝없이 이어지면 MAX_PLAYLIST_PAGES 쪽에서 멈추고 던진다(쿼터 보호 — 잘린 목록으로 나머지를 지우지 않게)', async () => {
     let n = 0;
     get.mockImplementation(async () => ({ items: [item(`v${n++}`)], nextPageToken: 'again' }));
-    const rows = await fetchPlaylistRows(['PL-SUN']);
+    await expect(fetchPlaylistRows(['PL-SUN'])).rejects.toThrow('재생목록이 너무 깁니다');
     expect(get).toHaveBeenCalledTimes(MAX_PLAYLIST_PAGES);
-    expect(rows).toHaveLength(MAX_PLAYLIST_PAGES);
   });
 
   it('유튜브 실패는 그대로 던진다 — 반쪽 목록을 돌려주지 않는다(받은 만큼으로 DB 를 바꾸면 나머지가 지워진다)', async () => {

@@ -101,8 +101,6 @@ for (const fn of [
   'my_permissions',
   'purge_expired',
   'orphan_storage_objects',
-  'claim_youtube_sync',
-  'replace_youtube_videos',
 ]) {
   const r = await req(`/rest/v1/rpc/${fn}`, { method: 'POST', body: {} });
   check(`방문자: rpc ${fn} 막힘`, r.status >= 400, `HTTP ${r.status}`);
@@ -113,6 +111,18 @@ for (const fn of [
     body: { p_menu: 'users', p_action: 'READ' },
   });
   check('방문자: private 함수는 API 에 없음', r.status >= 400, `HTTP ${r.status}`);
+}
+// 유튜브 동기화 함수 — 실제 인자로 불러야 «함수 없음(404)» 이 아니라 권한으로 막혔는지 본다
+for (const [fn, body] of [
+  ['claim_youtube_sync', { p_page: 't-probe', p_every: '0' }],
+  ['replace_youtube_videos', { p_page: 't-probe', p_rows: [] }],
+]) {
+  const r = await req(`/rest/v1/rpc/${fn}`, { method: 'POST', body });
+  check(
+    `방문자: rpc ${fn} 권한으로 막힘`,
+    r.status === 401 || r.status === 403,
+    `HTTP ${r.status}`
+  );
 }
 {
   const r = await req(`/rest/v1/youtube_videos`, {

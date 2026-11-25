@@ -114,7 +114,7 @@ const eslintConfig = defineConfig([
       'src/proxy.test.ts',
       // 명령 팔레트 부품은 cmdk 를 쓴다 — 부품 파일 자체는 풀고, 공개 코드가 이 부품을 가져오는 것은 아래에서 막는다
       'src/shared/components/ui/command.tsx',
-      // 새가족 접수 · 예약 작업 — 아래 블록(만능 키만 푼다)
+      // 새가족 접수 · 예약 작업 · 유튜브 받기 — 아래 블록(만능 키만 푼다)
       NEWCOMER_SUBMIT,
       DAILY_CRON,
       YOUTUBE_SYNC,
@@ -128,7 +128,7 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // 새가족 접수(설계 6.11) — 방문자에게 DB 권한을 열지 않고 서버가 검증한 뒤 만능 키로 넣는다. 이 파일만 만능 키를 쓴다
+  // 새가족 접수(설계 6.11 — 서버가 검증한 뒤 만능 키로 넣는다) · 예약 작업(6.9) · 유튜브 받기(묶음 E) — 이 파일들만 만능 키를 쓴다
   // (서버 전용 — server-only). 나머지 공개 쪽 금지는 그대로.
   {
     files: [NEWCOMER_SUBMIT, DAILY_CRON, YOUTUBE_SYNC],

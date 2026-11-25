@@ -5,7 +5,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { connection } from 'next/server';
 
 // 하루 한 번 예약 작업(설계 6.9) — vercel.json 의 crons 가 매일 03:00(한국)에 부른다. Vercel 이 환경변수 CRON_SECRET 을
-// `Authorization: Bearer …` 로 붙여 부르므로 그 값이 맞을 때만 돈다(값이 없으면 아무도 못 부른다). 만능 키는 여기서만 쓴다
+// `Authorization: Bearer …` 로 붙여 부르므로 그 값이 맞을 때만 돈다(값이 없으면 아무도 못 부른다). 만능 키를 쓰는 공개 쪽 파일 중 하나다
 // (lint 예외). 정리 뒤 유튜브 재생목록도 받아 둔다(묶음 E). 결과는 함수 로그에 남는다.
 
 const authorized = (header: string | null) => {

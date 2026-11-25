@@ -14,7 +14,7 @@ import {
 
 import type { VideoRow } from './videoRows';
 
-// 50개 × 100쪽 = 5000개까지 모은다(주 1회 설교 기준 수십 년). 무한 토큰에서 쿼터를 지키는 안전장치일 뿐이다.
+// 50개 × 100쪽 = 5000개까지 모은다(주 1회 설교 기준 수십 년). 무한 토큰에서 쿼터를 지키는 안전장치 — 넘으면 던진다.
 export const MAX_PLAYLIST_PAGES = 100;
 
 // 응답 스키마 — 아래 코드가 빠진 값을 이미 걸러 내므로(id · 썸네일 없음 → 제외) 전부 optional.
@@ -100,6 +100,9 @@ export const fetchPlaylistRows = async (playlistIds: readonly string[]): Promise
       pageToken = r.nextPageToken;
       if (!pageToken) break;
     }
+    // 한도까지 받았는데 아직 남았으면 던진다 — 잘린 목록으로 바꾸면 나머지가 지워진다
+    if (pageToken)
+      throw new Error(`재생목록이 너무 깁니다(${playlistId} — ${MAX_PLAYLIST_PAGES}쪽 넘음)`);
   }
   return rows;
 };

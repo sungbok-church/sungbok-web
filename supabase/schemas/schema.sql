@@ -1665,9 +1665,10 @@ end
 $$;
 
 -- 유튜브 동기화(묶음 E) — 이 페이지를 지금 받아도 되는가. p_every 안에 받았거나 다른 곳이 받는 중(2분)이면 false.
--- 참이면 «받는 중» 을 남긴다 — 받다가 실패하면 2분 뒤 다시 받을 수 있다. 서버 전용 키만.
+-- 참이면 «받는 중» 을 남긴다 — 받다가 실패하면 2분 뒤 다시 받을 수 있다. 서버 전용 키만(부르는 쪽의 권한으로 돈다 —
+-- 권한이 잘못 열려도 표 권한이 없는 사람은 쓰지 못한다).
 create function public.claim_youtube_sync(p_page text, p_every interval) returns boolean
-language plpgsql security definer
+language plpgsql security invoker
 set search_path = ''
 as $$
 begin
@@ -1683,14 +1684,22 @@ $$;
 
 -- 유튜브 동기화 — 받은 재생목록 전체로 그 페이지의 줄을 바꾼다(한 트랜잭션). 재생목록에서 빠진(삭제 · 비공개 · 다른 목록으로
 -- 옮긴) 영상은 지운다. p_rows = [{video_id, position, title, description, published_at, added_at, thumbnail, poster}, …].
--- 반쪽 목록으로 부르지 않는다 — 받다가 실패하면 부르지 않는 것은 앱(youtubeSync.server)이 지킨다. 바꾼 줄 수를 돌려준다.
+-- 반쪽 목록으로 부르지 않는다 — 받다가 실패하면 부르지 않는 것은 앱(youtubeSync.server)이 지킨다. 빈 목록 · null 은 거절한다
+-- (재생목록을 실수로 비웠거나 유튜브 응답이 이상할 때 사이트 목록이 통째로 지워지지 않게 — 한두 편 빠짐은 반영한다).
+-- 받은 때(synced_at)는 차례를 잡은 때로 남긴다 — 받는 데 걸린 시간만큼 다음 받기가 밀리지 않게. 바꾼 줄 수를 돌려준다.
 create function public.replace_youtube_videos(p_page text, p_rows jsonb) returns integer
-language plpgsql security definer
+language plpgsql security invoker
 set search_path = ''
 as $$
 declare
   n integer;
+  at timestamptz;
 begin
+  if p_rows is null or jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 then
+    raise exception '받은 영상이 없어 바꾸지 않습니다(%)', p_page;
+  end if;
+  select coalesce(s.claimed_at, now()) into at from public.youtube_sync s where s.page = p_page;
+  at := coalesce(at, now());
   delete from public.youtube_videos v
    where v.page = p_page
      and not exists (select 1 from jsonb_array_elements(p_rows) r where r ->> 'video_id' = v.video_id);
@@ -1709,8 +1718,8 @@ begin
     poster       = excluded.poster,
     synced_at    = excluded.synced_at;
   get diagnostics n = row_count;
-  insert into public.youtube_sync (page, synced_at) values (p_page, now())
-  on conflict (page) do update set synced_at = now(), claimed_at = null;
+  insert into public.youtube_sync (page, synced_at) values (p_page, at)
+  on conflict (page) do update set synced_at = at, claimed_at = null;
   return n;
 end
 $$;
@@ -2181,7 +2190,7 @@ grant select on public.menus, public.category_groups, public.categories, public.
                 public.bulletins, public.news_videos, public.albums, public.resources, public.resource_videos,
                 public.home_hero, public.departments, public.department_staff, public.youtube_videos
   to anon;
--- 유튜브 영상은 로그인한 사람도 같은 공개 사본을 읽는다(자료실 영상 고르기 등)
+-- 유튜브 영상은 로그인한 사람도 같은 공개 사본을 읽는다(관리자 미리보기 · 로그인한 채 보는 공개 화면)
 grant select on public.youtube_videos to authenticated;
 
 -- 로그인 사용자: 표마다 필요한 동작만(행은 RLS 가 다시 거른다)

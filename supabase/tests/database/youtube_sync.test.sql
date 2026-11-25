@@ -56,6 +56,22 @@ select is(
 );
 
 select throws_ok(
+  $$select public.replace_youtube_videos('t-page', '[]'::jsonb)$$,
+  'P0001', null, '빈 목록으로는 바꾸지 않는다(재생목록을 실수로 비웠거나 응답이 이상할 때 사이트 목록이 지워지지 않게)'
+);
+select throws_ok(
+  $$select public.replace_youtube_videos('t-page', null)$$,
+  'P0001', null, '목록이 없으면(null) 바꾸지 않는다'
+);
+select is((select count(*)::int from public.youtube_videos where page = 't-page'), 1, '거절된 바꾸기는 줄을 건드리지 않는다');
+
+-- 받다가 죽은 경우 — 받는 중 표시가 2분 지나면 다시 잡힌다
+update public.youtube_sync set synced_at = now() - interval '1 hour', claimed_at = now() - interval '1 minute' where page = 't-page';
+select ok(not public.claim_youtube_sync('t-page', interval '10 minutes'), '받는 중 표시가 2분 안이면 잡지 않는다');
+update public.youtube_sync set claimed_at = now() - interval '3 minutes' where page = 't-page';
+select ok(public.claim_youtube_sync('t-page', interval '10 minutes'), '2분이 지나면(받다가 죽음) 다시 잡는다');
+
+select throws_ok(
   $$select public.replace_youtube_videos('t-page', '[{"video_id": "짧음", "position": 0, "title": "x", "thumbnail": "t", "poster": "p"}]'::jsonb)$$,
   '23514', null, '영상 id 모양이 아니면 넣지 않는다'
 );

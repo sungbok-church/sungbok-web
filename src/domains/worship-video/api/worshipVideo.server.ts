@@ -36,15 +36,16 @@ const readRows = async (page: WorshipPage): Promise<VideoRow[]> => {
 };
 
 // 예배 페이지 — 받을 때가 됐으면 받아 두고, DB 를 읽는다. 유튜브를 못 받아도 DB 의 마지막 목록을 그대로 쓴다.
-// DB 가 비었는데 지금 받지 않았으면(첫 배포에 다른 서버가 받는 중 · 받기 실패 · 설정 없음) 빈 목록이 아니라 실패로 —
+// DB 가 비었으면(첫 배포에 다른 서버가 받는 중 · 받기 실패 · 설정 없음) 빈 목록이 아니라 실패로 —
 // 빈 목록을 10분 캐시하지 않게(운영에서는 직전 페이지 유지, 빌드 때는 화면이 브라우저에서 받는다 — loadForPage).
 const collect = async (page: WorshipPage): Promise<VideoLibrary> => {
   const sync = await syncVideoPageIfDue(page);
   const rows = await readRows(page);
-  if (rows.length === 0 && sync.status !== 'synced') {
+  // 받기는 0편이면 바꾸지 않으므로(youtubeSync.server) 비었다면 아직 한 번도 받지 못한 것이다.
+  if (rows.length === 0) {
     // 받기 실패는 이미 로그에 남았다(syncVideoPageIfDue) — 같은 오류를 다시 남기지 않게 짧게
-    // 다른 서버가 받는 중(첫 배포 · 새 페이지 — 몇 초면 풀린다)이면 «잠시 뒤 풀릴» 실패로: 실패 캐시 5초 · 화면이 다시 시도(503)
-    if (sync.status === 'skipped') throw new YoutubeNetworkError('youtube_videos', undefined);
+    // 받지 않았으면(다른 서버가 받는 중 — 첫 배포 · 새 페이지, 몇 초면 풀린다) «잠시 뒤 풀릴» 실패로: 실패 캐시 5초 · 화면이 다시 시도(503)
+    if (sync.status !== 'failed') throw new YoutubeNetworkError('youtube_videos', undefined);
     throw new Error(`받아 둔 영상이 없고 유튜브에서도 받지 못했습니다(${page})`);
   }
   return rowsToLibrary(rows);

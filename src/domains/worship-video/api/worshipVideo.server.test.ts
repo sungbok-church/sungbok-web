@@ -98,11 +98,6 @@ describe('fetchSermonLibrary — 예배 페이지는 받아 둔 사본(DB)에서
     expect(vi.mocked(cacheLife)).toHaveBeenCalledWith({ stale: 30, revalidate: 5 });
   });
 
-  it('방금 받았는데 재생목록이 정말 비었으면 빈 목록', async () => {
-    sync.ifDue.mockResolvedValue({ status: 'synced', count: 0 });
-    await expect(fetchSermonLibrary('sunday')).resolves.toEqual([]);
-  });
-
   it('DB 를 못 읽으면 실패', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     db.error = { message: 'down' };

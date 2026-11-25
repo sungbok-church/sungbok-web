@@ -57,7 +57,7 @@
 - `vercel link`·`vercel env pull` 은 쓰지 않는다(`.vercel/` 없음).
 - **관리자(`/admin`)는 로컬 Supabase 로 개발한다.** `pnpm db:start` 가 podman(또는 Docker)으로 DB·로그인·REST 만 띄운다(스튜디오·Storage 등은 뺐다 — `package.json` 의 `db:start`). `pnpm supabase status -o env` 의 `API_URL` · `PUBLISHABLE_KEY` 를 `.env.local` 의 `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 에 넣는다(로컬 전용 값). 로그인 계정은 `node scripts/dev-admin-user.mjs <비밀번호>` 로 만든다(`admin@local.test`, «전체 관리» 그룹). 끝나면 `pnpm db:stop`.
 - 운영 프로젝트의 값을 `.env.local` 에 넣지 않는다 — 개발 중에 운영 DB 를 건드리게 된다. 운영에 붙여 확인해야 할 때만 `.env.production.local` 에 넣고 `pnpm build && pnpm start` 로 본다.
-- 두 값이 없어도 공개 사이트는 빌드되고 열린다. `/admin` 은 로그인 화면에 «설정되지 않았습니다» 를 보여 준다.
+- 두 값이 없어도 공개 사이트는 빌드되고 열린다. `/admin` 은 로그인 화면에 «설정되지 않았습니다» 를 보여 준다. 다만 DB 를 읽는 화면(설교 영상 · 주보 등)은 비거나 «불러오지 못함» 이 된다. 로컬에서 설교 목록을 보려면 로컬 DB + 만능 키(`SUPABASE_SECRET_KEY`) + `YOUTUBE_API_KEY` 가 다 있어야 재생목록을 받아 둔다(받기는 운영 배포와 로컬 DB 에서만 — preview · 운영 키로 띄운 로컬 서버는 읽기만, 묶음 E).
 
 ## 5. 규칙
 

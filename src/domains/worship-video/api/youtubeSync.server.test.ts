@@ -63,6 +63,15 @@ describe('syncVideoPage', () => {
     });
   });
 
+  it('재생목록이 0편으로 오면 바꾸지 않고 실패로(실수로 비웠거나 응답이 이상할 때 사이트 목록이 지워지지 않게)', async () => {
+    const db = fakeDb();
+    m.rows.mockResolvedValue([]);
+    expect(await syncVideoPage(db as never, 'sunday', '10 minutes')).toMatchObject({
+      status: 'failed',
+    });
+    expect(db.rpc).toHaveBeenCalledTimes(1);
+  });
+
   it('10분 안에 받았거나 다른 곳이 받는 중이면 유튜브를 부르지 않는다', async () => {
     const db = fakeDb(false);
     expect(await syncVideoPage(db as never, 'sunday', '10 minutes')).toEqual({ status: 'skipped' });
@@ -83,6 +92,10 @@ describe('syncVideoPage', () => {
 });
 
 describe('syncVideoPageIfDue — 영상 페이지가 다시 그려질 때', () => {
+  beforeEach(() => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+  });
+
   it('10분 간격으로, 서버 전용 키로', async () => {
     const db = fakeDb();
     m.client = db;
@@ -107,6 +120,22 @@ describe('syncVideoPageIfDue — 영상 페이지가 다시 그려질 때', () =
     expect(await syncVideoPageIfDue('sunday')).toEqual({ status: 'skipped' });
     expect((m.client as ReturnType<typeof fakeDb>).rpc).not.toHaveBeenCalled();
     expect(m.rows).not.toHaveBeenCalled();
+  });
+
+  it('운영 배포 밖(로컬에서 운영 키로 띄운 서버 · 시스템 변수가 없는 배포)은 받지 않는다 — 허용 목록', async () => {
+    m.client = fakeDb();
+    vi.stubEnv('VERCEL_ENV', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://abcdefghijklmnopqrst.supabase.co');
+    expect(await syncVideoPageIfDue('sunday')).toEqual({ status: 'skipped' });
+    expect(m.rows).not.toHaveBeenCalled();
+  });
+
+  it('로컬 개발(로컬 DB)은 받는다', async () => {
+    const db = fakeDb();
+    m.client = db;
+    vi.stubEnv('VERCEL_ENV', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321');
+    expect(await syncVideoPageIfDue('sunday')).toMatchObject({ status: 'synced' });
   });
 
   it('서버 설정(만능 키)이 없으면 받지 않는다 — 개발 서버 · 시험', async () => {

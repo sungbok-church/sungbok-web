@@ -38,7 +38,6 @@ CREATE OR REPLACE FUNCTION public.claim_youtube_sync (
 )
   RETURNS boolean
   LANGUAGE plpgsql
-  SECURITY DEFINER
   SET search_path TO ''
   AS $function$
 begin
@@ -60,12 +59,17 @@ CREATE OR REPLACE FUNCTION public.replace_youtube_videos (
 )
   RETURNS integer
   LANGUAGE plpgsql
-  SECURITY DEFINER
   SET search_path TO ''
   AS $function$
 declare
   n integer;
+  at timestamptz;
 begin
+  if p_rows is null or jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 then
+    raise exception '받은 영상이 없어 바꾸지 않습니다(%)', p_page;
+  end if;
+  select coalesce(s.claimed_at, now()) into at from public.youtube_sync s where s.page = p_page;
+  at := coalesce(at, now());
   delete from public.youtube_videos v
    where v.page = p_page
      and not exists (select 1 from jsonb_array_elements(p_rows) r where r ->> 'video_id' = v.video_id);
@@ -84,8 +88,8 @@ begin
     poster       = excluded.poster,
     synced_at    = excluded.synced_at;
   get diagnostics n = row_count;
-  insert into public.youtube_sync (page, synced_at) values (p_page, now())
-  on conflict (page) do update set synced_at = now(), claimed_at = null;
+  insert into public.youtube_sync (page, synced_at) values (p_page, at)
+  on conflict (page) do update set synced_at = at, claimed_at = null;
   return n;
 end
 $function$;
