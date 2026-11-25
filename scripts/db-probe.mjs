@@ -86,6 +86,7 @@ for (const t of [
   'user_groups',
   'group_permissions',
   'submission_attempts',
+  'youtube_sync',
   'groups',
 ]) {
   const r = await req(`/rest/v1/${t}?select=*`);
@@ -100,6 +101,8 @@ for (const fn of [
   'my_permissions',
   'purge_expired',
   'orphan_storage_objects',
+  'claim_youtube_sync',
+  'replace_youtube_videos',
 ]) {
   const r = await req(`/rest/v1/rpc/${fn}`, { method: 'POST', body: {} });
   check(`방문자: rpc ${fn} 막힘`, r.status >= 400, `HTTP ${r.status}`);
@@ -110,6 +113,20 @@ for (const fn of [
     body: { p_menu: 'users', p_action: 'READ' },
   });
   check('방문자: private 함수는 API 에 없음', r.status >= 400, `HTTP ${r.status}`);
+}
+{
+  const r = await req(`/rest/v1/youtube_videos`, {
+    method: 'POST',
+    body: {
+      page: 'sunday',
+      video_id: 'aaaaaaaaaaa',
+      position: 0,
+      title: 'x',
+      thumbnail: 'x',
+      poster: 'x',
+    },
+  });
+  check('방문자: 유튜브 영상 직접 넣기 막힘', r.status >= 400, `HTTP ${r.status}`);
 }
 {
   const r = await req(`/rest/v1/newcomers`, {

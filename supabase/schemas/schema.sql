@@ -496,6 +496,35 @@ create table public.submission_attempts (
 create index submission_attempts_key_at_idx on public.submission_attempts (key_hash, at desc);
 create index submission_attempts_at_idx on public.submission_attempts (at);
 
+-- 유튜브 재생목록에서 받아 둔 영상(묶음 E — .md/specs/2026-11-25-videos-from-youtube-plan.md). 영상은 유튜브만 관리한다 —
+-- 이 표는 사이트가 빨리 읽고 쿼터 · 유튜브 장애가 화면에 닿지 않게 받아 둔 사본이다. 유튜브 값만 담고(제목 · 설명 원문),
+-- 시리즈 · 회차 · 설교일 같은 것은 읽을 때 뽑는다. page = 영상 페이지 이름(sunday 등 — config/worshipPages). 같은 영상이
+-- 두 페이지에 있으면 두 줄. 누구나 읽고, 쓰기는 서버 전용 키(replace_youtube_videos)만.
+create table public.youtube_videos (
+  page         text not null check (page ~ '^[a-z][a-z0-9-]*$'),
+  video_id     text not null check (video_id ~ '^[A-Za-z0-9_-]{11}$'),
+  -- 재생목록 안의 순서(0 부터)
+  position     integer not null,
+  title        text not null,
+  description  text not null default '',
+  -- 영상을 올린(공개한) 시각 · 재생목록에 넣은 시각(올린 시각이 없을 때만 쓴다)
+  published_at timestamptz,
+  added_at     timestamptz,
+  -- 목록용 · 플레이어 포스터용 썸네일 주소
+  thumbnail    text not null,
+  poster       text not null,
+  synced_at    timestamptz not null default now(),
+  primary key (page, video_id)
+);
+create index youtube_videos_page_position_idx on public.youtube_videos (page, position);
+
+-- 페이지마다 마지막으로 받은 때 · 받는 중인 때 — 여러 서버가 동시에 받지 않게(claim_youtube_sync). 서버 전용 키만.
+create table public.youtube_sync (
+  page       text primary key check (page ~ '^[a-z][a-z0-9-]*$'),
+  synced_at  timestamptz,
+  claimed_at timestamptz
+);
+
 -- 변경 이력 — 추가만 한다(수정 · 삭제 권한을 아무에게도 주지 않는다).
 -- changes: 등록 = 새 값, 삭제 = 지워진 값, 수정 = 바뀐 칸만 {칸: [이전, 이후]}.
 -- 개인정보 칸은 값 대신 null(어느 칸이 바뀌었는지만). 딸린 행은 parent_* 로 부모 글에 묶는다.
@@ -1635,6 +1664,57 @@ begin
 end
 $$;
 
+-- 유튜브 동기화(묶음 E) — 이 페이지를 지금 받아도 되는가. p_every 안에 받았거나 다른 곳이 받는 중(2분)이면 false.
+-- 참이면 «받는 중» 을 남긴다 — 받다가 실패하면 2분 뒤 다시 받을 수 있다. 서버 전용 키만.
+create function public.claim_youtube_sync(p_page text, p_every interval) returns boolean
+language plpgsql security definer
+set search_path = ''
+as $$
+begin
+  insert into public.youtube_sync (page) values (p_page) on conflict (page) do nothing;
+  update public.youtube_sync
+     set claimed_at = now()
+   where page = p_page
+     and (synced_at is null or synced_at <= now() - p_every)
+     and (claimed_at is null or claimed_at < now() - interval '2 minutes');
+  return found;
+end
+$$;
+
+-- 유튜브 동기화 — 받은 재생목록 전체로 그 페이지의 줄을 바꾼다(한 트랜잭션). 재생목록에서 빠진(삭제 · 비공개 · 다른 목록으로
+-- 옮긴) 영상은 지운다. p_rows = [{video_id, position, title, description, published_at, added_at, thumbnail, poster}, …].
+-- 반쪽 목록으로 부르지 않는다 — 받다가 실패하면 부르지 않는 것은 앱(youtubeSync.server)이 지킨다. 바꾼 줄 수를 돌려준다.
+create function public.replace_youtube_videos(p_page text, p_rows jsonb) returns integer
+language plpgsql security definer
+set search_path = ''
+as $$
+declare
+  n integer;
+begin
+  delete from public.youtube_videos v
+   where v.page = p_page
+     and not exists (select 1 from jsonb_array_elements(p_rows) r where r ->> 'video_id' = v.video_id);
+  insert into public.youtube_videos
+    (page, video_id, position, title, description, published_at, added_at, thumbnail, poster, synced_at)
+  select p_page, r ->> 'video_id', (r ->> 'position')::integer, r ->> 'title', coalesce(r ->> 'description', ''),
+         (r ->> 'published_at')::timestamptz, (r ->> 'added_at')::timestamptz, r ->> 'thumbnail', r ->> 'poster', now()
+    from jsonb_array_elements(p_rows) r
+  on conflict (page, video_id) do update set
+    position     = excluded.position,
+    title        = excluded.title,
+    description  = excluded.description,
+    published_at = excluded.published_at,
+    added_at     = excluded.added_at,
+    thumbnail    = excluded.thumbnail,
+    poster       = excluded.poster,
+    synced_at    = excluded.synced_at;
+  get diagnostics n = row_count;
+  insert into public.youtube_sync (page, synced_at) values (p_page, now())
+  on conflict (page) do update set synced_at = now(), claimed_at = null;
+  return n;
+end
+$$;
+
 -- 예약 작업 2단계: 어느 files 행도 가리키지 않는 Storage 파일(올린 지 8일 지난 것 — 올리는 중이거나 임시 보관한 글의 파일은
 -- 건드리지 않는다).
 -- 앱이 이 목록을 Storage API 로 지운다. purge_expired 뒤에 부른다.
@@ -1793,6 +1873,8 @@ alter table public.departments         enable row level security;
 alter table public.department_staff    enable row level security;
 alter table public.newcomers           enable row level security;
 alter table public.submission_attempts enable row level security;
+alter table public.youtube_videos      enable row level security;
+alter table public.youtube_sync        enable row level security;
 alter table public.audit_log           enable row level security;
 
 -- 사용자 · 그룹 · 권한
@@ -2022,6 +2104,8 @@ create policy newcomers_delete on public.newcomers for delete to authenticated
   using ((select private.has_permission('newcomers', 'PURGE')));
 
 -- submission_attempts — 규칙 없음(서버 전용 키만).
+-- 유튜브 영상 — 누구나 읽기(공개 영상 화면). 쓰기 규칙 없음(서버 전용 키만). youtube_sync 는 규칙 없음(서버 전용 키만).
+create policy youtube_videos_select on public.youtube_videos for select to anon, authenticated using (true);
 
 -- 변경 이력 — 읽기는 «변경 이력» 메뉴 또는 그 글의 «이력조회». 쓰기는 엑셀 다운로드 기록만(나머지는 트리거).
 -- 다운로드 기록은 table_name · action · changes 만 보낼 수 있다(칸 단위 GRANT) — 누가 · 언제는 기본값.
@@ -2088,13 +2172,17 @@ grant execute on function public.reorder_rows(text, uuid[]) to authenticated;
 grant execute on function public.purge_expired() to service_role;
 grant execute on function public.orphan_storage_objects(integer) to service_role;
 grant execute on function public.newcomer_notify_emails() to service_role;
+grant execute on function public.claim_youtube_sync(text, interval) to service_role;
+grant execute on function public.replace_youtube_videos(text, jsonb) to service_role;
 
 -- 방문자: 공개 화면이 읽는 표만 읽기
 grant select on public.menus, public.category_groups, public.categories, public.code_groups, public.codes,
                 public.file_lists, public.files,
                 public.bulletins, public.news_videos, public.albums, public.resources, public.resource_videos,
-                public.home_hero, public.departments, public.department_staff
+                public.home_hero, public.departments, public.department_staff, public.youtube_videos
   to anon;
+-- 유튜브 영상은 로그인한 사람도 같은 공개 사본을 읽는다(자료실 영상 고르기 등)
+grant select on public.youtube_videos to authenticated;
 
 -- 로그인 사용자: 표마다 필요한 동작만(행은 RLS 가 다시 거른다)
 grant select, update on public.profiles to authenticated;

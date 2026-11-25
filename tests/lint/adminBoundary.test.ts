@@ -79,12 +79,13 @@ describe('공개 쪽 ↔ 관리자 경계', () => {
 describe('만능 키는 관리자 코드 · 새가족 접수 파일 · 예약 작업만', () => {
   const code =
     "import { createSupabaseAdminClient } from '@/shared/api/supabase/adminClient.server';";
-  it.each(['src/domains/home/api/newcomerSubmit.server.ts', 'src/app/api/cron/daily/route.ts'])(
-    '%s 는 된다',
-    async file => {
-      expect(await ruleIds(code, file)).not.toContain('no-restricted-imports');
-    }
-  );
+  it.each([
+    'src/domains/home/api/newcomerSubmit.server.ts',
+    'src/app/api/cron/daily/route.ts',
+    'src/domains/worship-video/api/youtubeSync.server.ts',
+  ])('%s 는 된다', async file => {
+    expect(await ruleIds(code, file)).not.toContain('no-restricted-imports');
+  });
   it.each([
     'src/domains/home/api/newcomerActions.ts',
     'src/domains/home/components/widgets/FirstVisit/RegisterPanel.tsx',

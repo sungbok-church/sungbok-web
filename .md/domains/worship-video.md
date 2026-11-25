@@ -43,7 +43,7 @@
 - 네 칸을 다 채우면 마지막 칸은 직분과 상관없이 설교자로 읽는다(초청 설교자 「홍길동 집사」, 「성복교회 이요셉 목사」).
 - 시리즈 안의 순서(회차 목록·이전/다음 편)는 날짜가 아니라 **회차 번호**로 정한다. 단편 설교는 단편끼리 날짜 순.
 - 설정에 없는 재생목록(예배 찬양, 장별 마태복음 등)은 어디에도 나오지 않는다.
-- 반영 시점: 유튜브 응답 1시간 캐시 + 영상 목록 서버 캐시 10분 확인(`'use cache'`, [ADR 0024](../decisions/0024-cache-components.md)) → 올린 뒤 **최대 약 1시간 10분**.
+- 반영 시점: 재생목록을 DB 에 받아 두는 간격 10분(방문이 있을 때) + 영상 목록 서버 캐시 10분 확인(`'use cache'`, [ADR 0024](../decisions/0024-cache-components.md)) → 올린 뒤 **대개 20분 안**. 방문이 없던 날도 새벽 예약 작업이 한 번 받는다. 유튜브에서 지우거나 비공개로 돌리거나 재생목록에서 뺀 영상은 다음 받기 때 사이트에서도 빠진다([묶음 E 계획](../specs/2026-11-25-videos-from-youtube-plan.md)).
 
 ## 페이지·앱 복귀
 
@@ -54,19 +54,23 @@
 ## 구조
 
 ```
-유튜브 playlistItems(snippet,contentDetails) ──1시간 Data Cache──▶ worshipVideo.server.ts
-   제목·설명 읽기(sermonParse) → Sermon[] (최신순) + 설명 본문(Map)
-   서버 캐시('use cache', 10분마다 확인 · 만료 없음 · 실패는 값으로 1분 — ADR 0024)
+유튜브 playlistItems(snippet,contentDetails) ──받기(youtubeSync.server · youtubePlaylist.server)──▶ DB youtube_videos(받아 둔 사본)
+   언제: 영상 목록 서버 캐시가 다시 그려질 때 10분이 지났으면 · 하루 한 번 예약 작업(/api/cron/daily)
+         목록 페이지는 뒤에서 다시 그려 방문자가 기다리지 않는다. 서버 캐시가 비어 요청 안에서 채울 때(빌드 때 안 만든 설교의
+         첫 방문 · /api · 자료실 링크)는 받는 시간을 기다릴 수 있다. preview 배포 · 빌드 중에는 받지 않는다(운영 DB 를 같이
+         봐서 · 빌드는 fetch 를 몰래 캐시해서) — 읽기만 한다
+   동시에 한 번만(claim_youtube_sync), 재생목록 전체로 한 트랜잭션에 바꾼다(replace_youtube_videos — 빠진 영상은 지운다)
+DB 의 줄 → 제목 · 설명 읽기(videoRows · sermonParse) → Sermon[] (최신순) + 설명 본문(Map)   ← worshipVideo.server.ts
+   서버 캐시('use cache', 10분마다 확인 · 만료 없음 · 실패는 값으로 1분 — ADR 0024). 유튜브를 못 받아도 DB 의 마지막 목록을 쓴다
         │
         ├─ 목록 페이지   : widgets/SermonLibrary → loadForPage → SermonListPage(sermons) — 목록 전체를 HTML 에
         ├─ 설교 한 편    : widgets/SermonWatch   → loadForPage → SermonWatchPage(sermons, description)
         │      빌드 때는 최신 한 편만 만들고(oneBuildParam) 나머지는 처음 열릴 때 만든다.
         │      목록에 없는 영상 id 는 404(`[videoId]/not-found.tsx` → VideoNotFound). 처음 여는 없는 주소는 200 + noindex.
-        │      유튜브를 못 받아도 던지지 않는다 — 처음 열리는 설교는 «직전 페이지» 가 없어 던지면 오류 화면이 된다.
         │      서버가 못 받았을 때만 화면이 브라우저에 붙은 뒤 /api 로 받는다(react-query)
         └─ Route Handler: /api/worship-video/library?page=   (서버가 못 실었을 때 화면이 받음)
                           /api/worship-video/description?page=&v=   (그 영상의 설명 — 목록에 있는 영상만)
-화면: 검색·시리즈·정렬·더보기·이전/다음은 받은 목록으로 화면에서(sermonList) — 유튜브를 다시 부르지 않는다
+화면: 검색·시리즈·정렬·더보기·이전/다음은 받은 목록으로 화면에서(sermonList) — 유튜브 · DB 를 다시 부르지 않는다
 ```
 
 | 파일 | 맡은 일 |
@@ -74,7 +78,9 @@
 | `config/worshipPages.ts` | 예배 페이지 ↔ 재생목록 id, 주소 만들기(`sermonPath`). 다른 예배 페이지를 열 때 한 줄 추가 |
 | `api/sermonParse.ts` | 제목·설명 → 시리즈·회차·본문·설교자·설교일(순수) |
 | `api/sermonList.ts` | 정렬·검색(「12장」 → `12:`)·시리즈 묶기·이전/다음 편·목록 줄(`listRows`)·표시 문구(순수) |
-| `api/worshipVideo.server.ts` | 유튜브에서 모으기(서버 전용). 업로드 시각 → 한국 날짜는 여기서(Temporal, [ADR 0012](../decisions/0012-date-temporal-and-admin-libraries.md)) |
+| `api/worshipVideo.server.ts` | 영상 페이지의 목록 · 설명(서버 전용) — 예배 페이지는 받을 때가 됐으면 받고 DB 를 읽는다 |
+| `api/youtubeSync.server.ts` · `api/youtubePlaylist.server.ts` | 재생목록 → DB 받기(서버 전용 키 — lint 예외) · 재생목록 전체를 줄로(삭제 · 비공개 빼기, 반쪽이면 던짐) |
+| `api/videoRows.ts` | DB 줄 → 설교(순수). 올린 시각 → 한국 날짜는 여기서(Intl · Asia/Seoul, [ADR 0012](../decisions/0012-date-temporal-and-admin-libraries.md)) |
 | `api/useSermonLibrary.ts` | 화면 훅(목록·설명) — 서버가 못 받았을 때만, 브라우저에 붙은 뒤에 쓴다 |
 | `api/sermonListState.ts` | 목록 페이지의 검색어·시리즈·정렬·보인 편수를 화면 밖(모듈)에 둔다 — 설교를 보고 돌아와도 그대로. 「목록」으로 돌아올 스크롤 자리도 여기 |
 | `api/playIntent.ts` | 설교 링크를 누를 때 다음 화면에 남기는 표시 — 「들어오자마자 재생」(설교 페이지가 읽고 지운다: 뒤로·앞으로 가기로 다시 들어오면 재생하지 않는다)과 「이전·다음 중 어느 쪽을 눌렀나」(새 화면이 같은 쪽 링크에 포커스를 되돌린다). 새 탭으로 여는 클릭(Cmd·Ctrl 등)은 남기지 않는다 |

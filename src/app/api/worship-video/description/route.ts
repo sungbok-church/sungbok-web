@@ -6,7 +6,7 @@ import { errorResponse, okResponse } from '@/shared/api/result';
 import { upstreamErrorResponse } from '@/shared/api/upstreamStatus.server';
 
 // 설교 한 편의 유튜브 설명 글 — 고른 영상 것만 받는다(목록에 다 실으면 페이지가 수백 KB 무거워진다).
-// 목록과 같은 Data Cache(1시간)에서 꺼내므로 유튜브를 더 부르지 않고, 그 페이지 목록에 없는 영상은 404.
+// 목록과 같은 서버 캐시(받아 둔 DB 사본)에서 꺼내므로 유튜브를 더 부르지 않고, 그 페이지 목록에 없는 영상은 404.
 export async function GET(req: NextRequest) {
   const page = req.nextUrl.searchParams.get('page');
   const videoId = req.nextUrl.searchParams.get('v');

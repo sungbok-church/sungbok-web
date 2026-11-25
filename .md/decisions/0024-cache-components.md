@@ -43,3 +43,7 @@
 - `vitest.setup.ts` 가 `next/cache` 의 `cacheLife` · `cacheTag` 를 테스트에서 아무 일도 하지 않게 한다(Next 서버 밖에서 부르면 던진다).
 - 관리자에서 영상 글(교회소식)을 등록하게 되면, 저장하는 Server Action 에서 `updateTag('video-page-announcements')` 등을 불러 바로 보이게 한다.
 - Vercel 에서 그냥 `'use cache'` 는 서버마다 메모리가 따로다 — 미리 그린 페이지와 유튜브 fetch 캐시는 공유 · 영속이라 이번 설계는 영향이 없지만, 실제 배포(Preview)에서 한 번 더 확인한다.
+
+## 보충(2026-11-25, 묶음 E)
+
+예배 설교 영상은 더 이상 공개 화면이 유튜브를 부르지 않는다 — 재생목록을 DB(`youtube_videos`)에 받아 두고 DB 를 읽는다([계획](../specs/2026-11-25-videos-from-youtube-plan.md)). 받기는 Data Cache 없이(새 영상이 늦지 않게) 페이지마다 10분에 한 번까지라, 위 «유튜브 fetch Data Cache 는 그대로 둔다» 는 홈 영상 피드(라이브 · 1분)에만 남는다. 영상 페이지의 서버 캐시 규칙(10분 확인 · 실패는 값으로 1분)은 그대로다.

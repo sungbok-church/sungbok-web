@@ -446,6 +446,34 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"youtube_sync": {
+                  Row: {
+                    "claimed_at": string | null,"page": string,"synced_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "claimed_at"?: string | null,"page": string,"synced_at"?: string | null
+                  }
+                  Update: {
+                    "claimed_at"?: string | null,"page"?: string,"synced_at"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"youtube_videos": {
+                  Row: {
+                    "added_at": string | null,"description": string,"page": string,"position": number,"poster": string,"published_at": string | null,"synced_at": string,"thumbnail": string,"title": string,"video_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "added_at"?: string | null,"description"?: string,"page": string,"position": number,"poster": string,"published_at"?: string | null,"synced_at"?: string,"thumbnail": string,"title": string,"video_id": string
+                  }
+                  Update: {
+                    "added_at"?: string | null,"description"?: string,"page"?: string,"position"?: number,"poster"?: string,"published_at"?: string | null,"synced_at"?: string,"thumbnail"?: string,"title"?: string,"video_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {
@@ -459,6 +487,9 @@ isOneToOne: false
                            },
 "can_manage_user":
 { Args: { "p_target": string }; Returns: boolean
+                           },
+"claim_youtube_sync":
+{ Args: { "p_every": string,"p_page": string }; Returns: boolean
                            },
 "create_group":
 { Args: { "p_description": string,"p_name": string,"p_permissions": (string)[] }; Returns: string
@@ -482,6 +513,9 @@ isOneToOne: false
                            },
 "reorder_rows":
 { Args: { "p_ids": (string)[],"p_table": string }; Returns: undefined
+                           },
+"replace_youtube_videos":
+{ Args: { "p_page": string,"p_rows": Json }; Returns: number
                            },
 "save_department":
 { Args: { "p_ages": string,"p_extra": string,"p_intro": string,"p_photos_list_id": string,"p_slug": Database["public"]['Enums']["department_slug"],"p_staff": Json,"p_tagline": string,"p_updated_at": string }; Returns: string
