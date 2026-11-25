@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { dayRange, formatAdminTime, formatShortTime, periodStart } from './adminTime';
+import { cleanupDay, dayRange, formatAdminTime, formatShortTime, periodStart } from './adminTime';
 
 describe('formatAdminTime', () => {
   it('UTC 로 받은 시각을 서울 시각으로(YYYY-MM-DD HH:mm)', () => {
@@ -52,5 +52,22 @@ describe('dayRange', () => {
   it('한쪽만 있으면 그쪽만, 달 · 해를 넘긴다', () => {
     expect(dayRange('', '2026-12-31')).toEqual({ gte: null, lt: '2027-01-01T00:00:00+09:00' });
     expect(dayRange('2026-02-28', '')).toEqual({ gte: '2026-02-28T00:00:00+09:00', lt: null });
+  });
+});
+
+describe('cleanupDay — 예약 작업(매일 03:00 서울)이 지울 날', () => {
+  it('휴지통 30일 — 그 시각이 03:00 뒤면 다음 날 새벽에 지운다', () => {
+    // 2026-11-25 15:00 서울에 휴지통으로 → 12-25 15:00 에 30일 → 12-26 03:00 에 지운다
+    expect(cleanupDay('2026-11-25T06:00:00Z', { days: 30 })).toBe('2026-12-26');
+  });
+  it('03:00 전이면 그날 새벽', () => {
+    // 2026-11-25 02:00 서울 → 12-25 02:00 → 12-25 03:00
+    expect(cleanupDay('2026-11-24T17:00:00Z', { days: 30 })).toBe('2026-12-25');
+  });
+  it('새가족 1년(달력으로 1년)', () => {
+    expect(cleanupDay('2026-11-25T06:00:00Z', { years: 1 })).toBe('2027-11-26');
+  });
+  it('읽지 못하는 값은 빈 글자', () => {
+    expect(cleanupDay('x', { days: 30 })).toBe('');
   });
 });

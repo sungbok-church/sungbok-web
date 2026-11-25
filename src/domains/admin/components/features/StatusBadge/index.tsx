@@ -1,3 +1,4 @@
+import { cleanupDay } from '@/domains/admin/lib/adminTime';
 import { statusLabel } from '@/domains/admin/lib/newcomer';
 import { Badge } from '@/shared/components/ui/badge';
 
@@ -28,12 +29,17 @@ export const CONTENT_STATUS_OPTIONS = [
 export const ContentStatusBadge = ({
   status,
   trashed,
+  deletedAt,
 }: {
   status: 'DRAFT' | 'PUBLISHED';
   trashed?: boolean;
+  /** 휴지통에 넣은 시각 — 주면 예약 작업이 완전히 지울 날을 함께 보인다(«휴지통 · 12-26 완전 삭제») */
+  deletedAt?: string | null;
 }) =>
-  trashed ? (
-    <Badge variant="danger">휴지통</Badge>
+  trashed || deletedAt ? (
+    <Badge variant="danger">
+      {deletedAt ? `휴지통 · ${cleanupDay(deletedAt, { days: 30 }).slice(5)} 완전 삭제` : '휴지통'}
+    </Badge>
   ) : status === 'PUBLISHED' ? (
     <Badge variant="success">공개</Badge>
   ) : (

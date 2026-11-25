@@ -96,7 +96,7 @@ export const NewsVideoListScreen = async ({
   const rows: TableRowData[] = (data ?? []).map(v => {
     const href = `${cfg.adminPath}/${v.id}`;
     const label = (v.categories as { label: string } | null)?.label ?? '';
-    const status = <ContentStatusBadge status={v.status} trashed={v.deleted_at !== null} />;
+    const status = <ContentStatusBadge status={v.status} deletedAt={v.deleted_at} />;
     const updated = `${formatShortTime(v.updated_at, now)}${v.updated_by && names[v.updated_by] ? ` · ${names[v.updated_by]}` : ''}`;
     return {
       id: v.id,

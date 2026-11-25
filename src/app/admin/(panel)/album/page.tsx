@@ -73,7 +73,7 @@ export default async function AdminAlbumPage({
     const href = `${PATH}/${a.id}`;
     const label = (a.categories as { label: string } | null)?.label ?? '';
     const images = (a.file_lists as { files: { count: number }[] } | null)?.files?.[0]?.count ?? 0;
-    const status = <ContentStatusBadge status={a.status} trashed={a.deleted_at !== null} />;
+    const status = <ContentStatusBadge status={a.status} deletedAt={a.deleted_at} />;
     const updated = `${formatShortTime(a.updated_at, now)}${a.updated_by && names[a.updated_by] ? ` · ${names[a.updated_by]}` : ''}`;
     return {
       id: a.id,

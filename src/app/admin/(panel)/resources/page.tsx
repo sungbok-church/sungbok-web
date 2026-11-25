@@ -77,7 +77,7 @@ export default async function AdminResourcesPage({
     const series = (r.categories as { label: string } | null)?.label ?? '';
     const group = `${series}${r.episode ? ` ${r.episode}회` : ''}`;
     const when = r.date ?? (r.year ? `${r.year}년` : '—');
-    const status = <ContentStatusBadge status={r.status} trashed={r.deleted_at !== null} />;
+    const status = <ContentStatusBadge status={r.status} deletedAt={r.deleted_at} />;
     const updated = `${formatShortTime(r.updated_at, now)}${r.updated_by && names[r.updated_by] ? ` · ${names[r.updated_by]}` : ''}`;
     return {
       id: r.id,
