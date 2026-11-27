@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isInAppClick,
+  isPlainClick,
   leadsElsewhere,
   leadsToOtherScreen,
   NAVIGATION_START,
@@ -64,6 +65,17 @@ describe('signalNavigationStart — 갈 곳을 실어 알린다', () => {
       `${window.location.origin}/admin/groups`,
       `${window.location.origin}/admin/users`,
     ]);
+  });
+});
+
+describe('isPlainClick — 화면 안에서 처리할 보통 클릭인가', () => {
+  it('보조 키 없는 왼쪽 단추만 그렇다', () => {
+    expect(isPlainClick(click)).toBe(true);
+    expect(isPlainClick({ ...click, metaKey: true })).toBe(false);
+    expect(isPlainClick({ ...click, ctrlKey: true })).toBe(false);
+    expect(isPlainClick({ ...click, shiftKey: true })).toBe(false);
+    expect(isPlainClick({ ...click, altKey: true })).toBe(false);
+    expect(isPlainClick({ ...click, button: 1 })).toBe(false);
   });
 });
 

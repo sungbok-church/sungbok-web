@@ -3,7 +3,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { can, screenLabel } from '@/domains/admin/lib/adminNav';
-import { GroupNav } from '@/domains/admin/components/features/GroupNav';
 import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { SortableRows } from '@/domains/admin/components/widgets/SortableRows';
@@ -20,6 +19,7 @@ import {
 import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { LockIcon } from 'lucide-react';
 
+import { GroupPanels } from './GroupPanels';
 import { ItemCreateForm } from './ItemCreateForm';
 import { ITEM_KINDS, type ItemKind } from './itemKinds';
 
@@ -45,37 +45,34 @@ const readGroups = async (supabase: Client, kind: ItemKind): Promise<Group[]> =>
   return (data ?? []).map(g => ({ ...g, description: null, locked: false }));
 };
 
-/** 오른쪽 표 — 그 묶음의 줄. 둘째 칸(detail)은 영문 값(분류: slug · 코드: code) */
-const readItems = async (supabase: Client, kind: ItemKind, groupKey: string): Promise<Item[]> => {
-  const toItem = (r: {
-    id: string;
-    label: string;
-    is_active: boolean;
-    updated_at: string;
-    detail: string;
-  }) => ({
-    id: r.id,
-    label: r.label,
-    detail: r.detail,
-    isActive: r.is_active,
-    updatedAt: r.updated_at,
-  });
-  if (kind === 'codes') {
-    const { data } = await supabase
-      .from('codes')
-      .select('id, detail:code, label, is_active, updated_at')
-      .eq('group_key', groupKey)
-      .order('sort')
-      .order('created_at');
-    return (data ?? []).map(toItem);
+/** 모든 묶음의 줄을 한 번에(묶음마다 순서대로) — 줄이 몇십 개라 묶음을 누를 때마다 서버에 묻지 않게 처음에 다 받는다.
+ *  둘째 칸(detail)은 영문 값(분류: slug · 코드: code) */
+const readItems = async (supabase: Client, kind: ItemKind): Promise<Map<string, Item[]>> => {
+  const { data } =
+    kind === 'codes'
+      ? await supabase
+          .from('codes')
+          .select('id, group_key, detail:code, label, is_active, updated_at')
+          .order('sort')
+          .order('created_at')
+      : await supabase
+          .from('categories')
+          .select('id, group_key, detail:slug, label, is_active, updated_at')
+          .order('sort')
+          .order('created_at');
+  const byGroup = new Map<string, Item[]>();
+  for (const r of data ?? []) {
+    const list = byGroup.get(r.group_key) ?? [];
+    list.push({
+      id: r.id,
+      label: r.label,
+      detail: r.detail,
+      isActive: r.is_active,
+      updatedAt: r.updated_at,
+    });
+    byGroup.set(r.group_key, list);
   }
-  const { data } = await supabase
-    .from('categories')
-    .select('id, detail:slug, label, is_active, updated_at')
-    .eq('group_key', groupKey)
-    .order('sort')
-    .order('created_at');
-  return (data ?? []).map(toItem);
+  return byGroup;
 };
 
 /**
@@ -84,58 +81,32 @@ const readItems = async (supabase: Client, kind: ItemKind, groupKey: string): Pr
  * 더하고 · 이름을 바꾸고 · 순서를 바꾸고 · 끈다. 영문 값(분류 slug · 코드 값)은 공개 주소 · 프로그램이 쓰므로 바꾸지 않는다.
  * 잠긴 코드 묶음은 프로그램이 쓰는 값(enum)이라 더하거나 끌 수 없고 이름 · 순서만 바꾼다. 다른 점은 ITEM_KINDS.
  */
-export const ItemGroupsScreen = async ({
-  kind,
-  searchParams,
-}: {
-  kind: ItemKind;
-  searchParams: Promise<{ group?: string | string[] }>;
-}) => {
+export const ItemGroupsScreen = async ({ kind }: { kind: ItemKind }) => {
   const k = ITEM_KINDS[kind];
   const supabase = await createSupabaseServerClient();
-  // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
-  const [ctx, groups, { data: all }] = await Promise.all([
+  // 권한 확인과 함께 읽는다(DB 왕복 한 번) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
+  const [ctx, groups, itemsByGroup] = await Promise.all([
     requirePermission(kind, 'READ'),
     readGroups(supabase, kind),
-    supabase.from(kind).select('group_key'),
+    readItems(supabase, kind),
   ]);
-  const counts = new Map<string, number>();
-  for (const c of all ?? []) counts.set(c.group_key, (counts.get(c.group_key) ?? 0) + 1);
-  const list = groups.map(g => ({ ...g, count: counts.get(g.key) ?? 0 }));
-  const asked = (await searchParams).group;
-  const current = list.find(g => g.key === asked) ?? list[0];
-
-  const items = current ? await readItems(supabase, kind, current.key) : [];
   const title = screenLabel(ctx.nav, kind, k.title);
+  const canCreate = can(ctx.permissions, kind, 'CREATE');
+  const editable = can(ctx.permissions, kind, 'UPDATE');
 
-  return (
-    <>
-      <PageHeader
-        title={title}
-        actions={
-          can(ctx.permissions, kind, 'HISTORY') && <HistorySheet table={kind} subject={title} />
-        }
-      />
-      <div className="grid items-start gap-6 lg:grid-cols-[16rem_1fr]">
-        <Card size="sm">
+  // 묶음마다 오른쪽 표를 미리 그린다 — 화면은 고른 묶음의 것만 보인다(GroupPanels)
+  const panels = Object.fromEntries(
+    groups.map(group => {
+      const items = itemsByGroup.get(group.key) ?? [];
+      return [
+        group.key,
+        // key 가 묶음마다 달라 묶음을 바꾸면 카드를 새로 그린다 — 더하기 칸에 쓰던 글 · 줄 상태가 다른 묶음으로 넘어가지 않게(지우지 말 것)
+        <Card key={group.key}>
           <CardHeader>
-            <CardTitle>{k.groupsTitle}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GroupNav
-              label={k.groupsLabel}
-              groups={list}
-              current={current?.key ?? ''}
-              basePath={`/admin/${kind}`}
-            />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{current?.name ?? k.noun}</CardTitle>
+            <CardTitle>{group.name}</CardTitle>
             {/* 코드 묶음의 설명(DB 의 값)만 — 화면 설명 문장은 달지 않는다 */}
-            {current?.description && <CardDescription>{current.description}</CardDescription>}
-            {current?.locked && (
+            {group.description && <CardDescription>{group.description}</CardDescription>}
+            {group.locked && (
               <CardAction>
                 <Badge variant="neutral">
                   <LockIcon aria-hidden />
@@ -146,9 +117,7 @@ export const ItemGroupsScreen = async ({
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
             {/* 잠긴 묶음은 머리의 «이름 · 순서만 바꿈» 표가 알린다 — 더하기 칸을 그리지 않는다 */}
-            {current && !current.locked && can(ctx.permissions, kind, 'CREATE') && (
-              <ItemCreateForm key={current.key} kind={kind} groupKey={current.key} />
-            )}
+            {!group.locked && canCreate && <ItemCreateForm kind={kind} groupKey={group.key} />}
             {items.length === 0 ? (
               <Empty className="border">
                 <EmptyHeader>
@@ -158,11 +127,11 @@ export const ItemGroupsScreen = async ({
             ) : (
               <SortableRows
                 kind={kind}
-                caption={`${current?.name ?? ''} ${k.noun}`}
+                caption={`${group.name} ${k.noun}`}
                 detailHeader={k.fieldLabel}
-                editable={can(ctx.permissions, kind, 'UPDATE')}
+                editable={editable}
                 rows={items.map(item =>
-                  current?.locked
+                  group.locked
                     ? {
                         ...item,
                         locked: true,
@@ -173,8 +142,39 @@ export const ItemGroupsScreen = async ({
               />
             )}
           </CardContent>
-        </Card>
-      </div>
+        </Card>,
+      ];
+    })
+  );
+
+  return (
+    <>
+      <PageHeader
+        title={title}
+        actions={
+          can(ctx.permissions, kind, 'HISTORY') && <HistorySheet table={kind} subject={title} />
+        }
+      />
+      {groups.length === 0 ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>아직 묶음이 없습니다</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <GroupPanels
+          title={k.groupsTitle}
+          label={k.groupsLabel}
+          groups={groups.map(g => ({
+            key: g.key,
+            name: g.name,
+            locked: g.locked,
+            count: itemsByGroup.get(g.key)?.length ?? 0,
+          }))}
+          basePath={`/admin/${kind}`}
+          panels={panels}
+        />
+      )}
     </>
   );
 };

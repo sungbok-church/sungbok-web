@@ -25,13 +25,13 @@ type ClickLike = {
 };
 type AnchorLike = { href: string; target: string; download: boolean };
 
+/** 보조 키 없는 왼쪽 버튼 클릭인가 — 아니면(새 탭 · 새 창 · 가운데 버튼) 브라우저에 맡긴다. */
+export const isPlainClick = (e: ClickLike): boolean =>
+  e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+
 /** 이 링크 클릭이 이 탭 안에서 앱 안의 주소로 옮기는 것인가(새 탭 · 새 창 · 내려받기 · 바깥 주소면 아니다). 지금 화면이어도 그렇다. */
 export const isInAppClick = (e: ClickLike, a: AnchorLike, currentHref: string): boolean =>
-  e.button === 0 &&
-  !e.metaKey &&
-  !e.ctrlKey &&
-  !e.shiftKey &&
-  !e.altKey &&
+  isPlainClick(e) &&
   (a.target === '' || a.target === '_self') &&
   !a.download &&
   new URL(a.href, currentHref).origin === new URL(currentHref).origin;

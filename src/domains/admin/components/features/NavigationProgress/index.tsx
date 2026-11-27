@@ -63,6 +63,8 @@ export const NavigationProgress = () => {
       const a = e.target instanceof Element ? e.target.closest('a[href]') : null;
       if (
         a instanceof HTMLAnchorElement &&
+        // 화면 안에서 바로 바꾸는 링크(GroupNav 의 묶음 — 서버에 묻지 않는다)는 이동이 아니다
+        !a.hasAttribute('data-in-place') &&
         isInAppClick(
           e,
           { href: a.href, target: a.target, download: a.hasAttribute('download') },
