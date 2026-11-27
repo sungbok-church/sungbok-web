@@ -5,6 +5,10 @@ import { Toaster } from '@/shared/components/ui/toast';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+// 처음 열 때(주소줄 · 새로 고침)는 이 틀이 로그인 정보를 읽는 동안 기다려도 된다. 틀은 화면을 옮겨도 다시 그리지 않으므로
+// 관리자 안에서 옮겨 다니는 것은 각 화면의 미리 만든 틀로 즉시 보인다(Next 안내 «Disabling instant» 의 tabs 예 — ADR 0027).
+export const instant = false;
+
 // 로그인해야 보이는 관리자 화면의 틀. proxy 가 먼저 걸러 내지만 여기서 한 번 더 확인한다.
 // 왼쪽 메뉴는 DB 메뉴 중 권한이 있는 것만(adminContext.server). 페이지는 각자 requirePermission 으로 다시 확인한다.
 export default async function AdminPanelLayout({

@@ -18,18 +18,10 @@ export type ProxySession = {
  * - 서버 컴포넌트는 쿠키를 쓸 수 없어서, 만료가 가까운 토큰의 갱신은 여기서 응답 쿠키에 싣는다.
  * - 로그인 여부는 `getClaims()` 로만 본다(토큰 서명을 검증한다). `getSession()` 은 쿠키를 그대로 믿으므로 쓰지 않는다.
  * - 환경변수가 없거나 Supabase 가 응답하지 않아도 요청을 죽이지 않는다 — 로그인 안 한 것으로 본다.
- * - extraHeaders: 다음 단계(페이지)로 넘길 요청 헤더(CSP nonce — Next 가 요청 헤더의 CSP 에서 nonce 를 읽는다).
  */
-export const updateSession = async (
-  request: NextRequest,
-  extraHeaders: Record<string, string> = {}
-): Promise<ProxySession> => {
+export const updateSession = async (request: NextRequest): Promise<ProxySession> => {
   // 쿠키를 갱신하면 request.cookies 가 바뀌므로 그때마다 헤더를 새로 만든다
-  const forward = () => {
-    const headers = new Headers(request.headers);
-    Object.entries(extraHeaders).forEach(([key, value]) => headers.set(key, value));
-    return NextResponse.next({ request: { headers } });
-  };
+  const forward = () => NextResponse.next({ request: { headers: new Headers(request.headers) } });
   let response = forward();
   const noSession = { response, signedIn: false, signOut: async () => response };
 

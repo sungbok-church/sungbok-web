@@ -70,6 +70,11 @@ interface Props {
   seriesBySection: Record<ResourceSectionKey, Option[]>;
   canAddSeries: boolean;
   editing?: { id: string; updatedAt: string; status: Status };
+  /**
+   * 데이터(권한 · 묶음 목록)를 기다리는 동안 보이는 같은 모양의 폼 — 미리 만든 틀에 들어가 누르는 즉시 보인다(ADR 0027).
+   * 손댈 수 없고(inert), 임시 저장 · 저장 단축키도 쓰지 않는다. 데이터가 오면 진짜 폼으로 바뀐다
+   */
+  pending?: boolean;
 }
 
 const LIST = '/admin/resources';
@@ -89,6 +94,7 @@ export const ResourceForm = ({
   seriesBySection,
   canAddSeries,
   editing,
+  pending = false,
 }: Props) => {
   const navigate = useAdminNavigate();
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -171,14 +177,14 @@ export const ResourceForm = ({
     formKey: `resources:${editing?.id ?? 'new'}`,
     values,
     dirty,
-    enabled: true,
+    enabled: !pending,
   });
   useUnsavedGuard(dirty || busy);
   const canSave = !busy && (current !== 'PUBLISHED' || dirty);
   const saveAsIs = () => {
     if (canSave && !form.state.isSubmitting && !done.current) void form.handleSubmit();
   };
-  useSaveShortcut(saveAsIs);
+  useSaveShortcut(pending ? () => {} : saveAsIs);
 
   const seriesOptions = seriesBySection[values.section] ?? [];
   const seriesLabel = seriesOptions.find(o => o.value === values.seriesId)?.label ?? '';
@@ -194,6 +200,8 @@ export const ResourceForm = ({
   return (
     <form
       noValidate
+      inert={pending}
+      aria-busy={pending || undefined}
       className="flex flex-col gap-6"
       onSubmit={e => {
         e.preventDefault();

@@ -71,14 +71,14 @@ describe('proxy', () => {
     expect(res.headers.get('location')).toBe('http://localhost/admin');
   });
 
-  it('모든 응답에 CSP 를 싣고, 같은 nonce 를 요청 헤더로 넘긴다', async () => {
+  it('모든 응답에 CSP 를 싣는다 — 요청마다 같은 값(nonce 없음, 미리 만든 틀과 함께 쓴다 — ADR 0027)', async () => {
     mockSession({ signedIn: true });
     const res = await proxy(new NextRequest('http://localhost/admin'));
     const csp = res.headers.get('content-security-policy') ?? '';
-    expect(csp).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
-    const [, extra] = vi.mocked(updateSession).mock.calls[0];
-    expect(csp).toContain(`'nonce-${extra?.['x-nonce']}'`);
-    expect(extra?.['content-security-policy']).toBe(csp);
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    expect(csp).not.toContain('nonce-');
+    const again = await proxy(new NextRequest('http://localhost/admin'));
+    expect(again.headers.get('content-security-policy')).toBe(csp);
   });
 
   it('콘텐츠 미리보기 틀만 이 사이트의 iframe 안에 들어갈 수 있다', async () => {

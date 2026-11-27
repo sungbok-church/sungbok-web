@@ -1,6 +1,6 @@
 # ADR 0024: 캐시를 Cache Components(`'use cache'`) 한 방식으로 — 서버가 받아 HTML 에 그리고, 관리자는 요청마다
 
-**상태**: 채택
+**상태**: 채택 — 8번(관리자는 요청마다 · nonce CSP)은 [ADR 0027](0027-admin-instant-navigation.md) 이 대체(2026-11-28)
 **날짜**: 2026-11-20
 
 ## 배경

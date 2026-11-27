@@ -67,7 +67,8 @@
     ├── 0023-codes-read-without-cache.md
     ├── 0024-cache-components.md
     ├── 0025-admin-drag-reorder-dnd-kit.md
-    └── 0026-site-menu-db-overrides.md
+    ├── 0026-site-menu-db-overrides.md
+    └── 0027-admin-instant-navigation.md
 ```
 
 향후 추가될 카테고리(빈 폴더는 미리 만들지 않음):
@@ -156,6 +157,7 @@
 - [0024-cache-components.md](decisions/0024-cache-components.md) — 2026-11-20 — 캐시를 Cache Components(`cacheComponents` · `partialPrefetching`, `'use cache'` + `cacheLife`) 한 방식으로. 페이지 `revalidate` 를 없애고 데이터 쪽에서(영상 10분 · 홈 60초, 만료 없음). 서버가 받아 props 로 넘겨 HTML 에 그린다(react-query 는 브라우저에 붙은 뒤에만). 캐시 안의 실패는 값으로(`settle` · `unwrap`, 1분) — 던지면 빌드가 멈춘다. 실패 규칙은 `loadForPage`. 상세는 빌드 때 한 주소만(`oneBuildParam`). 관리자는 요청마다 그려 nonce CSP 유지. 없는 영상은 `VideoNotFound` 한 부품(첫 방문 200 + noindex)
 - [0025-admin-drag-reorder-dnd-kit.md](decisions/0025-admin-drag-reorder-dnd-kit.md) — 2026-11-23 — 메뉴 · 분류 · 코드의 순서는 ↑/↓ 대신 끌어서 놓기(`@dnd-kit/core` · `sortable` · `utilities`, 판 고정 — 손잡이 · 키보드 · 한글 낭독 · 터치), 놓은 순서는 DB 함수 `reorder_rows` 한 번(security invoker, 한 무리 전부인지 확인 · 잠금 · 한 트랜잭션). `@dnd-kit/react`(1.0 전) · motion Reorder · HTML5 끌기 탈락. ADR 0012 의 «끌어서 순서 바꾸기는 다시 본다» 를 정함
 - [0026-site-menu-db-overrides.md](decisions/0026-site-menu-db-overrides.md) — 2026-11-25 — 홈페이지 메뉴: 코드 `siteNav` 는 «어떤 페이지», DB `menus(area = SITE)` 는 «덮어쓸 값»(이름 · 순서 · 사용 여부) — `mergeSiteNav` · `loadSiteNav`(태그 `site-menus`) · `SiteNavProvider`. 끈 메뉴는 폴더 레이아웃(`siteMenuRoute`)이 404 · 제목, 상위 주소는 켜진 첫 하위로 접속 때 넘김(ADR 0004 의 빌드 때 넘김을 바꿈). 홈 고정 링크는 잠김
+- [0027-admin-instant-navigation.md](decisions/0027-admin-instant-navigation.md) — 2026-11-28 — 관리자를 Next 권장 «즉시 이동»(미리 만든 틀 + Suspense)으로. 관리자 CSP 는 nonce 없이(`script-src 'self' 'unsafe-inline'`, 나머지 그대로, `react/no-danger` lint) — nonce 는 PPR 과 함께 못 쓴다. 관리자 틀은 처음 열 때만 기다리고(`instant = false`) 화면은 틀을 미리 만든다. 단계: 시험(새 시트지) → 등록 → 목록 → 상세 · 수정 → 임시 장치 정리. ADR 0024 8번 대체
 
 ## 컨벤션
 

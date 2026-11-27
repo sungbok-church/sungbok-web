@@ -83,15 +83,13 @@ describe('updateSession', () => {
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
-  it('함께 넘긴 요청 헤더(CSP nonce)를 다음 단계로 넘긴다', async () => {
-    const { response } = await updateSession(request(), { 'x-nonce': 'n1' });
-    expect(response.headers.get('x-middleware-request-x-nonce')).toBe('n1');
-  });
-
   it('signOut 은 이 세션만 끊고(scope local), 쿠키를 지우는 응답을 돌려준다', async () => {
     auth.signOut.mockImplementation(async () => {
       const opts = vi.mocked(createServerClient).mock.calls[0][2];
-      await opts.cookies.setAll?.([{ name: 'sb-x-auth-token', value: '', options: { maxAge: 0 } }], {});
+      await opts.cookies.setAll?.(
+        [{ name: 'sb-x-auth-token', value: '', options: { maxAge: 0 } }],
+        {}
+      );
       return { error: null };
     });
     const { signOut } = await updateSession(request());

@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 /**
  * 관리자(`/admin/*`) 요청에서만 돈다:
  *   · 로그인 세션 쿠키를 갱신하고, 로그인하지 않았으면 로그인 화면으로 보낸다.
- *   · 보안 헤더(CSP)를 싣는다 — 요청마다 새 nonce(설계 6.10 «보안 헤더», adminCsp).
+ *   · 보안 헤더(CSP)를 싣는다 — 요청마다 같은 값(nonce 없음 — 미리 만든 틀과 함께 쓴다, ADR 0027 · adminCsp).
  *   · 마지막 요청 뒤 8시간이 지났으면 그 세션을 끊고 로그인 화면으로 보낸다(idleSession). 공개 페이지가 부른 서버 깨우기
  *     (shared/lib/adminWarmup) · 관리자 화면의 배포마다 미리 받기(ScreenPrefill)는 그 시각을 남기지도 지우지도 않는다.
  * (Next 16 에서 middleware 가 proxy 로 이름이 바뀌었다 — 파일은 src/proxy.ts, 함수 이름은 proxy.)
@@ -18,9 +18,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const isDev = process.env.NODE_ENV === 'development';
-  const nonce = btoa(crypto.randomUUID());
   const csp = buildAdminCsp({
-    nonce,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     isDev,
     // 콘텐츠 미리보기 틀만 관리자 화면이 iframe 으로 연다(설계 6.10)
@@ -28,10 +26,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   });
   const now = Date.now();
 
-  const session = await updateSession(request, {
-    'x-nonce': nonce,
-    'content-security-policy': csp,
-  });
+  const session = await updateSession(request);
 
   let result: NextResponse;
   if (session.signedIn && isIdle(request.cookies.get(IDLE_COOKIE)?.value, now)) {

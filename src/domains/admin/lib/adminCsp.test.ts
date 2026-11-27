@@ -4,14 +4,15 @@ import { buildAdminCsp } from './adminCsp';
 
 describe('buildAdminCsp', () => {
   const csp = buildAdminCsp({
-    nonce: 'abc123',
     supabaseUrl: 'https://x.supabase.co',
     isDev: false,
   });
   const directive = (name: string) => csp.split('; ').find(d => d.startsWith(`${name} `));
 
-  it('스크립트는 이 사이트와 nonce 를 단 것만(인라인 · eval 없음)', () => {
-    expect(directive('script-src')).toBe("script-src 'self' 'nonce-abc123' 'strict-dynamic'");
+  it('스크립트 파일은 이 사이트 것만, 인라인은 허용(Next 가 화면 데이터를 싣는다 — nonce 없이, ADR 0027), eval 없음', () => {
+    expect(directive('script-src')).toBe("script-src 'self' 'unsafe-inline'");
+    expect(csp).not.toContain('nonce-');
+    expect(csp).not.toContain('strict-dynamic');
   });
 
   it('연결은 이 사이트와 Supabase 만, 그림은 거기에 유튜브 썸네일만 더', () => {
@@ -22,19 +23,18 @@ describe('buildAdminCsp', () => {
   });
 
   it('미리보기 틀(/admin/preview)만 이 사이트가 틀 안에 넣을 수 있다 — 다른 관리자 화면은 아무도', () => {
-    expect(
-      buildAdminCsp({ nonce: 'n', supabaseUrl: undefined, isDev: false, framable: true })
-    ).toContain("frame-ancestors 'self'");
-    expect(
-      buildAdminCsp({ nonce: 'n', supabaseUrl: undefined, isDev: false, framable: false })
-    ).toContain("frame-ancestors 'none'");
+    expect(buildAdminCsp({ supabaseUrl: undefined, isDev: false, framable: true })).toContain(
+      "frame-ancestors 'self'"
+    );
+    expect(buildAdminCsp({ supabaseUrl: undefined, isDev: false, framable: false })).toContain(
+      "frame-ancestors 'none'"
+    );
   });
 
   it('유튜브 썸네일(i.ytimg.com)은 어느 관리자 화면에서나, 유튜브 플레이어 틀은 미리보기 틀에서만', () => {
     expect(directive('img-src')).toContain('https://i.ytimg.com');
     expect(directive('frame-src')).toBe("frame-src 'self'");
     const preview = buildAdminCsp({
-      nonce: 'n',
       supabaseUrl: undefined,
       isDev: false,
       framable: true,
@@ -60,14 +60,14 @@ describe('buildAdminCsp', () => {
   });
 
   it('개발 중에만 unsafe-eval(React 디버깅)', () => {
-    expect(
-      buildAdminCsp({ nonce: 'n', supabaseUrl: 'http://127.0.0.1:54321', isDev: true })
-    ).toContain("'unsafe-eval'");
+    expect(buildAdminCsp({ supabaseUrl: 'http://127.0.0.1:54321', isDev: true })).toContain(
+      "'unsafe-eval'"
+    );
     expect(csp).not.toContain('unsafe-eval');
   });
 
   it('Supabase 주소가 없으면 이 사이트만', () => {
-    const none = buildAdminCsp({ nonce: 'n', supabaseUrl: undefined, isDev: false });
+    const none = buildAdminCsp({ supabaseUrl: undefined, isDev: false });
     expect(none).toContain("connect-src 'self';");
   });
 });
