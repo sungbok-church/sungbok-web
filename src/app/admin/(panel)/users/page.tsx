@@ -125,7 +125,7 @@ export default async function AdminUsersPage({
         title={screenLabel(ctx.nav, 'users', '사용자')}
         actions={
           canCreate && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
               <PlusIcon data-icon="inline-start" />새 사용자
             </Button>
           )

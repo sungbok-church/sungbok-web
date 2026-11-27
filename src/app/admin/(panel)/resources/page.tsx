@@ -116,7 +116,7 @@ export default async function AdminResourcesPage({
         title={screenLabel(ctx.nav, 'resources', '설교 시트지')}
         actions={
           canCreate && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
               <PlusIcon data-icon="inline-start" />새 시트지
             </Button>
           )

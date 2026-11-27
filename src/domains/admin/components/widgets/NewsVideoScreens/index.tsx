@@ -140,7 +140,7 @@ export const NewsVideoListScreen = async ({
         title={screenLabel(ctx.nav, cfg.menuKey, cfg.label)}
         actions={
           canCreate && (
-            <Button nativeButton={false} render={<Link href={`${cfg.adminPath}/new`} />}>
+            <Button nativeButton={false} render={<Link href={`${cfg.adminPath}/new`} eager />}>
               <PlusIcon data-icon="inline-start" />새 {cfg.label}
             </Button>
           )

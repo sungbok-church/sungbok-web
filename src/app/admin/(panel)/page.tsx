@@ -161,6 +161,8 @@ export default async function AdminHomePage() {
               {stat.href ? (
                 <Link
                   href={stat.href}
+                  // 등록 화면으로 가는 할 일(이번 주 주보 등)은 보이면 틀을 받아 둔다 — 누르는 즉시 쓴다(IntentLink)
+                  eager={stat.href.includes('/new')}
                   className="focus-visible:ring-ring/50 block h-full rounded-xl outline-none focus-visible:ring-[3px]"
                 >
                   <StatCard stat={stat} className="hover:bg-muted/40 h-full transition-colors" />

@@ -111,7 +111,7 @@ export default async function AdminBulletinPage({
         title={screenLabel(ctx.nav, 'bulletin', '주보')}
         actions={
           canCreate && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
               <PlusIcon data-icon="inline-start" />새 주보
             </Button>
           )

@@ -103,7 +103,7 @@ export default async function AdminGroupsPage({
         title={screenLabel(ctx.nav, 'groups', '그룹 · 권한')}
         actions={
           fullAdmin && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
               <PlusIcon data-icon="inline-start" />새 그룹
             </Button>
           )

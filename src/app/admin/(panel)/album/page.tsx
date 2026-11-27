@@ -111,7 +111,7 @@ export default async function AdminAlbumPage({
         title={screenLabel(ctx.nav, 'album', '교회앨범')}
         actions={
           canCreate && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} />}>
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
               <PlusIcon data-icon="inline-start" />새 앨범
             </Button>
           )
