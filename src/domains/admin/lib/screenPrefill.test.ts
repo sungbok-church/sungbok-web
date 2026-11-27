@@ -3,7 +3,14 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { AdminNavGroup, Permission } from './adminNav';
-import { CREATE_SCREENS, prefillPaths, shouldPrefill } from './screenPrefill';
+import {
+  CREATE_SCREENS,
+  DETAIL_SCREENS,
+  EDIT_SCREENS,
+  PREFILL_PLACEHOLDER,
+  prefillPaths,
+  shouldPrefill,
+} from './screenPrefill';
 
 const PANEL = join(process.cwd(), 'src/app/admin/(panel)');
 const perms = (...pairs: [string, Permission['action']][]): Permission[] =>
@@ -36,6 +43,7 @@ describe('prefillPaths — 미리 받아 둘 화면(왼쪽 메뉴의 주소)', (
       '/admin/bulletin',
       '/admin/categories',
       '/admin/codes',
+      `/admin/bulletin/${PREFILL_PLACEHOLDER}`,
     ]);
   });
 
@@ -70,8 +78,11 @@ describe('prefillPaths — 등록 화면', () => {
 
   it('만들기 권한이 있는 메뉴의 등록 화면을 메뉴 화면들 다음에 넣는다', () => {
     expect(
-      prefillPaths(withBulletin, perms(['bulletin', 'CREATE'], ['resources', 'READ']))
+      prefillPaths(withBulletin, perms(['bulletin', 'CREATE'], ['resources', 'READ'])).slice(0, 4)
     ).toEqual(['/admin/bulletin', '/admin/resources', '/admin/categories', '/admin/bulletin/new']);
+    expect(
+      prefillPaths(withBulletin, perms(['bulletin', 'CREATE'], ['resources', 'READ']))
+    ).not.toContain('/admin/resources/new');
   });
 
   it('등록 화면이 없는 메뉴는 만들기 권한이 있어도 넣지 않는다', () => {
@@ -83,6 +94,61 @@ describe('prefillPaths — 등록 화면', () => {
   it('CREATE_SCREENS 는 실제 등록 화면(<메뉴>/new/page.tsx)과 같다', () => {
     const actual = readdirSync(PANEL).filter(dir => existsSync(join(PANEL, dir, 'new/page.tsx')));
     expect([...CREATE_SCREENS].sort()).toEqual(actual.sort());
+  });
+});
+
+describe('prefillPaths — 상세 · 수정 화면(글마다 주소가 달라도 화면 종류마다 한 번이면 된다)', () => {
+  const withAlbum: AdminNavGroup[] = [
+    {
+      key: 'content',
+      label: '콘텐츠',
+      items: [
+        { key: 'album', href: '/admin/album', label: '교회앨범' },
+        { key: 'newcomers', href: '/admin/newcomers', label: '새가족' },
+        { key: 'codes', href: '/admin/codes', label: '코드 관리' },
+      ],
+    },
+  ];
+  const X = PREFILL_PLACEHOLDER;
+
+  it('상세는 보이는 메뉴면, 수정은 고치기 권한이 있으면 — 없는 글의 주소 하나로, 등록 화면 다음에', () => {
+    expect(
+      prefillPaths(
+        withAlbum,
+        perms(['album', 'CREATE'], ['album', 'UPDATE'], ['newcomers', 'UPDATE'])
+      )
+    ).toEqual([
+      '/admin/album',
+      '/admin/newcomers',
+      '/admin/codes',
+      '/admin/album/new',
+      `/admin/album/${X}`,
+      `/admin/newcomers/${X}`,
+      `/admin/album/${X}/edit`,
+    ]);
+  });
+
+  it('고치기 권한이 없으면 수정 화면은 넣지 않는다', () => {
+    expect(prefillPaths(withAlbum, perms(['album', 'READ']))).not.toContain(
+      `/admin/album/${X}/edit`
+    );
+  });
+
+  it('DETAIL_SCREENS · EDIT_SCREENS 는 실제 화면(<메뉴>/[id]/page.tsx · [id]/edit/page.tsx)과 같다', () => {
+    const dirs = readdirSync(PANEL, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name);
+    const detail = dirs.filter(dir =>
+      readdirSync(join(PANEL, dir), { withFileTypes: true }).some(
+        e =>
+          e.isDirectory() &&
+          /^\[[a-z]+\]$/.test(e.name) &&
+          existsSync(join(PANEL, dir, e.name, 'page.tsx'))
+      )
+    );
+    const edit = dirs.filter(dir => existsSync(join(PANEL, dir, '[id]/edit/page.tsx')));
+    expect([...DETAIL_SCREENS].sort()).toEqual(detail.sort());
+    expect([...EDIT_SCREENS].sort()).toEqual(edit.sort());
   });
 });
 

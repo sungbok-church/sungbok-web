@@ -28,18 +28,58 @@ export const CREATE_SCREENS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * 미리 받아 둘 주소 — 왼쪽 메뉴(권한이 있는 화면만) 순서대로, 이어서 만들기 권한이 있는 메뉴의 등록 화면. 같은 주소는 한 번.
- * 상세 · 수정은 글마다 주소가 달라 넣지 않는다.
+ * 상세 화면(<메뉴 주소>/[id] — 부서는 [slug])이 있는 메뉴 key. 상세 · 수정은 글마다 주소가 달라도 Vercel 이 가져오는 정보는
+ * 화면 종류마다 하나라(운영 실측: 주보 상세 처음 0.63초 → 다른 주보 0.22초), 없는 글의 주소 하나로 받아 두면 된다
+ * (없는 글이면 화면은 «없음» 으로 그려지지만 정보는 채워진다 — 앨범 상세 · 수정으로 확인). 화면을 더하면 여기에도
+ * (빠뜨리면 screenPrefill.test 가 실패한다).
+ */
+export const DETAIL_SCREENS: ReadonlySet<string> = new Set([
+  'album',
+  'announcements',
+  'bulletin',
+  'departments',
+  'garden',
+  'groups',
+  'newcomers',
+  'resources',
+  'users',
+]);
+
+/** 수정 화면(<메뉴 주소>/[id]/edit)이 있는 메뉴 key — 화면을 더하면 여기에도(빠뜨리면 screenPrefill.test 가 실패한다) */
+export const EDIT_SCREENS: ReadonlySet<string> = new Set([
+  'album',
+  'announcements',
+  'bulletin',
+  'garden',
+  'groups',
+  'resources',
+  'users',
+]);
+
+/** 상세 · 수정을 받을 때 쓰는 없는 글의 주소(어느 글도 이 id 를 갖지 않는다 — uuid v7 은 시각으로 시작한다) */
+export const PREFILL_PLACEHOLDER = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * 미리 받아 둘 주소 — 자주 여는 것부터: 왼쪽 메뉴(권한이 있는 화면만) 순서대로, 이어서 등록 화면(만들기 권한),
+ * 상세 화면(보이는 메뉴), 수정 화면(고치기 권한). 같은 주소는 한 번.
  */
 export const prefillPaths = (
   nav: readonly AdminNavGroup[],
   permissions: readonly Permission[]
 ): string[] => {
   const items = flattenNav(nav).filter(item => ADMIN_PATH.test(item.href));
-  const creates = items
-    .filter(item => CREATE_SCREENS.has(item.key) && can(permissions, item.key, 'CREATE'))
-    .map(item => `${item.href}/new`);
-  return [...new Set([...items.map(item => item.href), ...creates])];
+  const sub = (screens: ReadonlySet<string>, suffix: string, action?: Permission['action']) =>
+    items
+      .filter(item => screens.has(item.key) && (!action || can(permissions, item.key, action)))
+      .map(item => `${item.href}/${suffix}`);
+  return [
+    ...new Set([
+      ...items.map(item => item.href),
+      ...sub(CREATE_SCREENS, 'new', 'CREATE'),
+      ...sub(DETAIL_SCREENS, PREFILL_PLACEHOLDER),
+      ...sub(EDIT_SCREENS, `${PREFILL_PLACEHOLDER}/edit`, 'UPDATE'),
+    ]),
+  ];
 };
 
 /** 이 배포(deployId)에서 이 브라우저가 아직 미리 받지 않았는가 — 배포 표시가 없으면(로컬 개발) 받지 않는다 */
