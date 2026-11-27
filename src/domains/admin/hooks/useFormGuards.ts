@@ -33,25 +33,41 @@ type DraftOptions<T> = {
   formKey: string;
   values: T;
   dirty: boolean;
-  /** false 면 읽지도 쓰지도 않는다(사용자 등록 · 새가족 폼) */
+  /** 한 번도 켜지지 않으면 읽지도 쓰지도 않는다(사용자 등록 · 새가족 폼). 한 번 켜지면 그 칸은 계속 보관한다 */
   enabled: boolean;
 };
 
 export const useFormDraft = <T>({ userId, formKey, values, dirty, enabled }: DraftOptions<T>) => {
   const key = draftKey(userId, formKey);
-  const [saved, setSaved] = useState<{ values: T; savedAt: number } | null>(() =>
+  const read = () =>
     enabled && typeof window !== 'undefined'
       ? readDraftEntry<T>(window.localStorage, key, Date.now())
-      : null
-  );
+      : null;
+  const [saved, setSaved] = useState<{ values: T; savedAt: number } | null>(read);
+  const serialized = JSON.stringify(values);
+  // 사용자를 나중에 받는 폼(새 글 — 폼을 미리 만든 틀에 그리고 사용자는 오는 대로, ADR 0027): 보관 칸이 정해지면 그때 읽는다.
+  // 서버 값(날짜 · 하나뿐인 분류)을 프로그램이 채우는 폼은 다 채운 뒤에 enabled 를 켠다 — 채우는 값이 «고친 것» 이 되지 않게.
+  // enabled 는 «준비됨» 신호로 한 번만 받는다 — 한 번 켜진 칸(readFor)은 enabled 가 다시 꺼져도(날짜를 비움 등) 그대로 보관한다
+  // (다시 읽으면 방금 쓴 글이 «보관된 글» 로 뜬다). 그리는 중에 맞춘다 — 보관 쓰기(아래 효과)보다 먼저.
+  // 읽을 때 이미 쓰고 있던 글은 알림을 보기 전에 쓴 것이라, 그 뒤에 고치기 전까지는 옛 보관을 덮어쓰지 않는다(알림을 보고 고르게)
+  const [readFor, setReadFor] = useState(enabled ? key : null);
+  const [heldAt, setHeldAt] = useState<string | null>(null);
+  if (enabled && key !== readFor) {
+    setReadFor(key);
+    const found = read();
+    setSaved(found);
+    setHeldAt(found ? serialized : null);
+  }
+  // 한 번 고쳐 벗어나면 보류를 푼다(알림 때의 글로 되돌려도 다시 걸지 않는다) — 위에서 방금 읽은 렌더는 건너뛴다
+  else if (heldAt !== null && heldAt !== serialized) setHeldAt(null);
+  const holding = heldAt !== null;
   // 이 글을 처음 보관한 때 — 7일은 여기서부터 센다(formDraft.writeDraft). 불러오면 그 보관의 시각을 이어받고,
   // 버리거나 저장하면 끊는다. 알림을 두고 새로 쓰면 새 흐름이다
   const origin = useRef<number | null>(null);
 
   // 바뀐 내용을 잠시 뒤 보관한다(입력할 때마다 쓰지 않게). 처음 보관한 지 7일이 지난 흐름은 더 보관하지 않는다
-  const serialized = JSON.stringify(values);
   useEffect(() => {
-    if (!enabled || !dirty) return;
+    if (readFor !== key || !dirty || holding) return;
     const timer = window.setTimeout(() => {
       const now = Date.now();
       origin.current ??= now;
@@ -60,11 +76,12 @@ export const useFormDraft = <T>({ userId, formKey, values, dirty, enabled }: Dra
       writeDraft(window.localStorage, key, JSON.parse(serialized), origin.current);
     }, SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [enabled, dirty, key, serialized]);
+  }, [readFor, dirty, holding, key, serialized]);
 
   const drop = useCallback(() => {
     removeDraft(window.localStorage, key);
     setSaved(null);
+    setHeldAt(null);
   }, [key]);
 
   const discard = useCallback(() => {

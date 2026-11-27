@@ -1,7 +1,7 @@
 import { NewsVideoNewScreen } from '@/domains/admin/components/widgets/NewsVideoScreens';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 미리 만든 틀로 누르는 즉시 보이고 바로 쓴다(ADR 0027 — NewsVideoNewScreen)
+export const instant = true;
 
 // 새 주일광고
 export default function Page({

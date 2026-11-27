@@ -1,4 +1,4 @@
-import { loadAdminContext } from '@/domains/admin/api/server/adminContext.server';
+import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { loadSeriesBySection } from '@/domains/admin/api/server/resourceSeries.server';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { PermissionGate } from '@/domains/admin/components/features/PermissionGate';
@@ -13,9 +13,12 @@ import { Suspense } from 'react';
 // 채우고, 권한 확인은 Suspense 안의 PermissionGate 가 한다(없으면 «없음»)
 export const instant = true;
 
-/** 사용자 · 묶음 목록 · 묶음 더하기 권한 — 기다리지 않고 약속으로 넘긴다 */
+/** 사용자 · 묶음 목록 · 묶음 더하기 권한 — 기다리지 않고 약속으로 넘긴다. 권한을 확인한 뒤에만 내보낸다(없으면 «없음») */
 const loadNewResource = async (): Promise<ResourceNewData> => {
-  const [ctx, seriesBySection] = await Promise.all([loadAdminContext(), loadSeriesBySection()]);
+  const [ctx, seriesBySection] = await Promise.all([
+    requirePermission('resources', 'CREATE'),
+    loadSeriesBySection(),
+  ]);
   return {
     userId: ctx.user.id,
     seriesBySection,

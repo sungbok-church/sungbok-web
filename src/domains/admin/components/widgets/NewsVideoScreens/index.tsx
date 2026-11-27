@@ -12,12 +12,17 @@ import { ListNav } from '@/domains/admin/components/features/Detail/ListNav';
 import { RecordMeta } from '@/domains/admin/components/features/Detail/RecordMeta';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { PermissionGate } from '@/domains/admin/components/features/PermissionGate';
 import {
   CONTENT_STATUS_OPTIONS,
   ContentStatusBadge,
 } from '@/domains/admin/components/features/StatusBadge';
 import { ContentDetailActions } from '@/domains/admin/components/widgets/ContentDetailActions';
 import { NewsVideoForm } from '@/domains/admin/components/widgets/NewsVideoForm';
+import {
+  type NewsVideoNewData,
+  NewsVideoNewForm,
+} from '@/domains/admin/components/widgets/NewsVideoForm/NewsVideoNewForm';
 import { can, screenLabel } from '@/domains/admin/lib/adminNav';
 import { formatShortTime } from '@/domains/admin/lib/adminTime';
 import { isCalendarDate, seoulToday } from '@/domains/admin/lib/content';
@@ -30,6 +35,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { ExternalLinkIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { z } from 'zod';
 
 // 주일광고 · 성복의 뜰 화면(패키지 B2) — 두 메뉴가 같은 부품을 쓰고, 페이지(app/admin/(panel)/<메뉴>/…)는 메뉴만 넘긴다.
@@ -176,44 +182,48 @@ export const NewsVideoListScreen = async ({
   );
 };
 
-/** 새 글 — 날짜는 주일광고 이번 주일 · 성복의 뜰 오늘로 채운다(?date= 로 넘길 수 있다 — 첫 화면 카드) */
-export const NewsVideoNewScreen = async ({
+/** 새 글에 서버가 채우는 것 — 사용자 · 분류 · 분류 더하기 권한 · 날짜(?date= · 없으면 주일광고 이번 주일 · 성복의 뜰 오늘) */
+const loadNewsVideoNew = async (
+  feed: NewsFeedKey,
+  searchParams: SearchParams
+): Promise<NewsVideoNewData> => {
+  const cfg = NEWS_FEEDS[feed];
+  const [ctx, sp, book] = await Promise.all([
+    // 권한을 확인한 뒤에만 내보낸다(없으면 «없음»)
+    requirePermission(cfg.menuKey, 'CREATE'),
+    searchParams,
+    getCategoryBook(),
+  ]);
+  const asked = typeof sp.date === 'string' && isCalendarDate(sp.date) ? sp.date : null;
+  return {
+    userId: ctx.user.id,
+    categories: categoryOptions(book, cfg.categoryGroup),
+    canAddCategory: can(ctx.permissions, 'categories', 'CREATE'),
+    // 요청마다 지금 시각 기준(로그인 쿠키를 읽은 뒤)
+    date: asked ?? defaultNewsDate(feed, seoulToday(new Date().getTime())),
+  };
+};
+
+/**
+ * 새 글 — 미리 만든 틀로 누르는 즉시 보이고 바로 쓴다(ADR 0027). 제목 · 폼은 틀에, 서버에서 받을 것은 약속으로 넘겨 오는 대로
+ * 채우고(분류가 하나뿐이면 골라 둔다), 권한 확인은 Suspense 안의 PermissionGate 가 한다(없으면 «없음»).
+ * 화면(page)은 동기 함수여야 틀에 들어간다 — 이 부품을 기다리지 않고 그대로 돌려준다.
+ */
+export const NewsVideoNewScreen = ({
   feed,
   searchParams,
 }: {
   feed: NewsFeedKey;
   searchParams: SearchParams;
-}) => {
-  const cfg = NEWS_FEEDS[feed];
-  const [ctx, sp, book] = await Promise.all([
-    requirePermission(cfg.menuKey, 'CREATE'),
-    searchParams,
-    getCategoryBook(),
-  ]);
-  const categories = categoryOptions(book, cfg.categoryGroup);
-  const asked = typeof sp.date === 'string' && isCalendarDate(sp.date) ? sp.date : null;
-  // 요청마다 지금 시각 기준(권한 확인이 로그인 쿠키를 읽은 뒤)
-  const date = asked ?? defaultNewsDate(feed, seoulToday(new Date().getTime()));
-  return (
-    <>
-      <PageHeader title={`새 ${cfg.label}`} />
-      <NewsVideoForm
-        feed={feed}
-        userId={ctx.user.id}
-        categories={categories}
-        canAddCategory={can(ctx.permissions, 'categories', 'CREATE')}
-        initial={{
-          title: '',
-          // 분류가 하나뿐이면(주일광고) 골라 둔다
-          categoryId: categories.length === 1 ? categories[0].value : '',
-          date,
-          video: '',
-          description: '',
-        }}
-      />
-    </>
-  );
-};
+}) => (
+  <>
+    <PageHeader title={`새 ${NEWS_FEEDS[feed].label}`} />
+    <Suspense fallback={null}>
+      <PermissionGate menuKey={NEWS_FEEDS[feed].menuKey} action="CREATE" />
+    </Suspense>
+    <NewsVideoNewForm feed={feed} data={loadNewsVideoNew(feed, searchParams)} />
+  </>
+);
 
 const idOrNotFound = async (params: Promise<{ id: string }>) => {
   const { id } = await params;

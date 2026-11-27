@@ -1,25 +1,38 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
-import { BulletinForm } from '@/domains/admin/components/widgets/BulletinForm';
+import { PermissionGate } from '@/domains/admin/components/features/PermissionGate';
+import {
+  type BulletinNewData,
+  BulletinNewForm,
+} from '@/domains/admin/components/widgets/BulletinForm/BulletinNewForm';
 import { isCalendarDate, seoulToday, upcomingSunday } from '@/domains/admin/lib/content';
+import { Suspense } from 'react';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 미리 만든 틀로 누르는 즉시 보이고 바로 쓴다(ADR 0027) — 제목 · 폼은 틀에, 날짜 · 사용자는 약속으로 넘겨 오는 대로 채우고,
+// 권한 확인은 Suspense 안의 PermissionGate 가 한다(없으면 «없음»)
+export const instant = true;
 
-// 새 주보 — 날짜는 이번 주일로 채워 둔다(칸에서 바꿀 수 있다). 첫 화면 «이번 주 주보» 카드는 ?date= 로 날짜를 넘긴다.
-export default async function AdminBulletinNewPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const [{ user }, sp] = await Promise.all([requirePermission('bulletin', 'CREATE'), searchParams]);
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/** 사용자 · 날짜(주소의 ?date= — 첫 화면 «이번 주 할 일» 이 단다, 없으면 이번 주일 · 요청 때의 서버 시각) */
+const loadNewBulletin = async (searchParams: SearchParams): Promise<BulletinNewData> => {
+  const [ctx, sp] = await Promise.all([requirePermission('bulletin', 'CREATE'), searchParams]);
   const asked = typeof sp.date === 'string' && isCalendarDate(sp.date) ? sp.date : null;
-  // 요청마다 지금 시각 기준(서버 컴포넌트)
-  const date = asked ?? upcomingSunday(seoulToday(new Date().getTime()));
+  return {
+    userId: ctx.user.id,
+    date: asked ?? upcomingSunday(seoulToday(new Date().getTime())),
+  };
+};
+
+// 새 주보
+export default function AdminBulletinNewPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       <PageHeader title="새 주보" />
-      <BulletinForm userId={user.id} initial={{ date, pages: [] }} />
+      <Suspense fallback={null}>
+        <PermissionGate menuKey="bulletin" action="CREATE" />
+      </Suspense>
+      <BulletinNewForm data={loadNewBulletin(searchParams)} />
     </>
   );
 }

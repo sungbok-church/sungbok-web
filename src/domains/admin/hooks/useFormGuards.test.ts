@@ -156,4 +156,59 @@ describe('useFormDraft', () => {
     expect(result.current.available).toBe(false);
     expect(window.localStorage.getItem(key)).toContain('"x"');
   });
+
+  it('사용자를 나중에 받으면(새 글 폼 — ADR 0027) 그때 보관을 읽어 알려 주고, 받기 전에 쓴 글자로 덮어쓰지 않는다', () => {
+    vi.useFakeTimers();
+    writeDraft(window.localStorage, key, { name: '쓰던 이름' }, Date.now());
+    const { result, rerender } = renderHook(
+      ({ userId, enabled, values, dirty }) =>
+        useFormDraft({ userId, formKey: 'groups:new', values, dirty, enabled }),
+      { initialProps: { userId: '', enabled: false, values: { name: '' }, dirty: false } }
+    );
+    expect(result.current.available).toBe(false);
+    // 받기 전에 한 글자 쳤다
+    rerender({ userId: '', enabled: false, values: { name: '새' }, dirty: true });
+    // 사용자가 왔다 — 바로 보관을 읽어 알린다
+    rerender({ userId: 'u1', enabled: true, values: { name: '새' }, dirty: true });
+    expect(result.current.available).toBe(true);
+    // 알림을 두고 있는 동안은 지금 글로 옛 보관을 덮어쓰지 않는다
+    act(() => vi.advanceTimersByTime(600));
+    expect(window.localStorage.getItem(key)).toContain('쓰던 이름');
+    const restore = vi.fn();
+    act(() => result.current.restore(restore));
+    expect(restore).toHaveBeenCalledWith({ name: '쓰던 이름' });
+  });
+
+  it('한 번 켜진 뒤 다시 꺼져도(날짜를 비움 등) 보관을 다시 읽지 않고 계속 보관한다 — 내가 쓴 글이 «보관된 글» 로 뜨지 않게', () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ enabled, values }) =>
+        useFormDraft({ userId: 'u1', formKey: 'groups:new', values, dirty: true, enabled }),
+      { initialProps: { enabled: true, values: { name: '하나' } } }
+    );
+    act(() => vi.advanceTimersByTime(600));
+    expect(window.localStorage.getItem(key)).toContain('하나');
+    rerender({ enabled: false, values: { name: '' } });
+    rerender({ enabled: true, values: { name: '둘' } });
+    expect(result.current.available).toBe(false);
+    act(() => vi.advanceTimersByTime(600));
+    expect(window.localStorage.getItem(key)).toContain('둘');
+  });
+
+  it('보류 중 고쳤다가 알림 때의 글로 되돌려도 보류를 다시 걸지 않는다(보관이 화면과 어긋나지 않게)', () => {
+    vi.useFakeTimers();
+    writeDraft(window.localStorage, key, { name: '옛 글' }, Date.now());
+    const { rerender } = renderHook(
+      ({ userId, enabled, values }) =>
+        useFormDraft({ userId, formKey: 'groups:new', values, dirty: true, enabled }),
+      { initialProps: { userId: '', enabled: false, values: { name: 'a' } } }
+    );
+    rerender({ userId: 'u1', enabled: true, values: { name: 'a' } });
+    rerender({ userId: 'u1', enabled: true, values: { name: 'ab' } });
+    act(() => vi.advanceTimersByTime(600));
+    expect(window.localStorage.getItem(key)).toContain('"ab"');
+    rerender({ userId: 'u1', enabled: true, values: { name: 'a' } });
+    act(() => vi.advanceTimersByTime(600));
+    expect(window.localStorage.getItem(key)).toContain('"a"');
+  });
 });

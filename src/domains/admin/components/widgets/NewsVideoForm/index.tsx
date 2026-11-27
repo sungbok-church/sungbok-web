@@ -25,7 +25,7 @@ import { parseYoutubeVideoId } from '@/domains/resources/api/resourceInput';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { FieldGroup } from '@/shared/components/ui/field';
 import { useForm, useStore } from '@tanstack/react-form';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 type Status = 'DRAFT' | 'PUBLISHED';
 type Values = {
@@ -46,6 +46,10 @@ interface Props {
   /** 분류 관리의 등록 권한 — 있으면 분류 칸 옆에서 새 분류를 더한다 */
   canAddCategory: boolean;
   editing?: { id: string; updatedAt: string; status: Status };
+  /** 사용자 · 분류 목록을 아직 받지 못했다 — 폼은 바로 쓰고 분류 칸만 비어 있다가 채워진다, 임시 저장은 받은 뒤부터(ADR 0027) */
+  pending?: boolean;
+  /** 새 글: 서버가 정한 날짜(?date= · 없으면 주일광고 이번 주일 · 성복의 뜰 오늘) — 오면 아직 손대지 않은 날짜 칸에 넣는다 */
+  arrivedDate?: string;
 }
 
 /**
@@ -61,6 +65,8 @@ export const NewsVideoForm = ({
   categories,
   canAddCategory,
   editing,
+  pending = false,
+  arrivedDate,
 }: Props) => {
   const navigate = useAdminNavigate();
   const list = NEWS_FEEDS[feed].adminPath;
@@ -104,14 +110,27 @@ export const NewsVideoForm = ({
 
   const values = useStore(form.store, s => s.values);
   const dirty = useStore(form.store, s => s.isDirty);
+  // 분류가 하나뿐이면(주일광고) 골라 둔다(아래 효과)
+  const onlyCategory = !editing && categories.length === 1 ? categories[0].value : '';
   const draft = useFormDraft<Values>({
     userId,
     formKey: `${feed}:${editing?.id ?? 'new'}`,
     values,
     dirty,
-    enabled: true,
+    // 서버 값(날짜 · 하나뿐인 분류)을 채운 뒤에 켠다 — 그 전에 켜면 채우는 값이 «고친 것» 이 되어 옛 보관을 덮어쓴다
+    enabled: !pending && values.date !== '' && (!onlyCategory || values.categoryId !== ''),
   });
   useUnsavedGuard(dirty);
+
+  // 새 글: 서버에서 온 값을 아직 손대지 않은 칸에 넣는다 — 사람이 고친 것으로 치지 않는다(나갈 때 경고가 뜨지 않게).
+  useEffect(() => {
+    if (onlyCategory && !form.state.values.categoryId)
+      form.setFieldValue('categoryId', onlyCategory, { dontUpdateMeta: true });
+  }, [onlyCategory, form]);
+  useEffect(() => {
+    if (arrivedDate && !form.getFieldMeta('date')?.isDirty)
+      form.setFieldValue('date', arrivedDate, { dontUpdateMeta: true });
+  }, [arrivedDate, form]);
   // 단추 밖의 저장(Enter · Ctrl/⌘+S)도 단추와 같은 조건 — 공개된 글은 바뀐 것이 있을 때만
   const canSave = current !== 'PUBLISHED' || dirty;
   const saveAsIs = () => {

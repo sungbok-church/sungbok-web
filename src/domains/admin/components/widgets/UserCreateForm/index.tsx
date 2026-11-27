@@ -51,6 +51,7 @@ import {
   FieldSet,
   FieldTitle,
 } from '@/shared/components/ui/field';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm, useStore } from '@tanstack/react-form';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
@@ -70,6 +71,8 @@ interface Props {
   menus: MatrixMenu[];
   /** 그룹마다 주는 권한 — 읽을 수 없으면(«그룹 · 권한» 조회 권한이 없음) null: 카드에 그룹 설명을 보이고 권한 요약은 뺀다 */
   grants: Record<string, Permission[]> | null;
+  /** 그룹 · 부서 범위 · 권한을 아직 받지 못했다 — 1단계(기본 정보)는 바로 쓰고, 2단계는 오면 보인다(ADR 0027) */
+  pending?: boolean;
 }
 
 const LIST = '/admin/users';
@@ -91,6 +94,7 @@ export const UserCreateForm = ({
   departmentLimit,
   menus,
   grants,
+  pending = false,
 }: Props) => {
   const navigate = useAdminNavigate();
   const empty: Values = { name: '', email: '', groupIds: [], department: departmentLimit ?? '' };
@@ -164,6 +168,8 @@ export const UserCreateForm = ({
   };
   // 열린 단계의 주 버튼(다음 · 계정 만들기) — Enter · Ctrl/⌘+S 도 이것. 낼 때는 지난번 서버 오류를 지우고 다시 본다
   const primary = () => {
+    // 역할(그룹 · 부서)을 받기 전에는 기본 정보 다음으로 가지 않는다 — 보지도 못한 채 그룹 · 부서 없이 만들어진다
+    if (pending && steps.open > 0) return;
     if (!isLastStep(steps)) {
       leaveTo(nextStep);
       return;
@@ -181,7 +187,7 @@ export const UserCreateForm = ({
     </Button>
   );
   const next = (
-    <Button type="button" onClick={primary}>
+    <Button type="button" onClick={primary} disabled={pending && steps.open > 0}>
       다음
     </Button>
   );
@@ -252,68 +258,76 @@ export const UserCreateForm = ({
             </>
           }
         >
-          <FieldGroup>
-            <form.Field name="groupIds">
-              {field => (
-                <FieldSet>
-                  <FieldLegend variant="label" className="sr-only">
-                    그룹
-                  </FieldLegend>
-                  {groups.length === 0 ? (
-                    <Empty className="border">
-                      <EmptyHeader>
-                        <EmptyTitle>넣을 수 있는 그룹이 없습니다</EmptyTitle>
-                      </EmptyHeader>
-                    </Empty>
-                  ) : (
-                    <FieldGroup data-slot="checkbox-group">
-                      {groups.map(g => (
-                        <FieldLabel key={g.id} htmlFor={`group-${g.id}`}>
-                          <Field orientation="horizontal">
-                            <Checkbox
-                              id={`group-${g.id}`}
-                              checked={field.state.value.includes(g.id)}
-                              onCheckedChange={on =>
-                                field.handleChange(
-                                  on
-                                    ? [...field.state.value, g.id]
-                                    : field.state.value.filter(id => id !== g.id)
-                                )
-                              }
-                            />
-                            <FieldContent>
-                              <FieldTitle>{g.name}</FieldTitle>
-                              {digests.get(g.id) && (
-                                <FieldDescription>{digests.get(g.id)}</FieldDescription>
-                              )}
-                            </FieldContent>
-                          </Field>
-                        </FieldLabel>
-                      ))}
-                    </FieldGroup>
-                  )}
-                  <FieldError errors={field.state.meta.errors} />
-                </FieldSet>
+          {pending ? (
+            <div role="status" aria-label="불러오는 중" className="flex flex-col gap-2">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : (
+            <FieldGroup>
+              <form.Field name="groupIds">
+                {field => (
+                  <FieldSet>
+                    <FieldLegend variant="label" className="sr-only">
+                      그룹
+                    </FieldLegend>
+                    {groups.length === 0 ? (
+                      <Empty className="border">
+                        <EmptyHeader>
+                          <EmptyTitle>넣을 수 있는 그룹이 없습니다</EmptyTitle>
+                        </EmptyHeader>
+                      </Empty>
+                    ) : (
+                      <FieldGroup data-slot="checkbox-group">
+                        {groups.map(g => (
+                          <FieldLabel key={g.id} htmlFor={`group-${g.id}`}>
+                            <Field orientation="horizontal">
+                              <Checkbox
+                                id={`group-${g.id}`}
+                                checked={field.state.value.includes(g.id)}
+                                onCheckedChange={on =>
+                                  field.handleChange(
+                                    on
+                                      ? [...field.state.value, g.id]
+                                      : field.state.value.filter(id => id !== g.id)
+                                  )
+                                }
+                              />
+                              <FieldContent>
+                                <FieldTitle>{g.name}</FieldTitle>
+                                {digests.get(g.id) && (
+                                  <FieldDescription>{digests.get(g.id)}</FieldDescription>
+                                )}
+                              </FieldContent>
+                            </Field>
+                          </FieldLabel>
+                        ))}
+                      </FieldGroup>
+                    )}
+                    <FieldError errors={field.state.meta.errors} />
+                  </FieldSet>
+                )}
+              </form.Field>
+              <form.Field name="department">
+                {field => (
+                  <DepartmentField
+                    id="user-department"
+                    value={field.state.value}
+                    limit={departmentLimit}
+                    onChange={field.handleChange}
+                    errors={field.state.meta.errors}
+                  />
+                )}
+              </form.Field>
+              {grants && (
+                <Field>
+                  <FieldTitle>이 사람이 갖게 될 권한</FieldTitle>
+                  <GrantSummary lines={lines} picked={picked.length > 0} />
+                </Field>
               )}
-            </form.Field>
-            <form.Field name="department">
-              {field => (
-                <DepartmentField
-                  id="user-department"
-                  value={field.state.value}
-                  limit={departmentLimit}
-                  onChange={field.handleChange}
-                  errors={field.state.meta.errors}
-                />
-              )}
-            </form.Field>
-            {grants && (
-              <Field>
-                <FieldTitle>이 사람이 갖게 될 권한</FieldTitle>
-                <GrantSummary lines={lines} picked={picked.length > 0} />
-              </Field>
-            )}
-          </FieldGroup>
+            </FieldGroup>
+          )}
         </StepCard>
 
         <StepCard
@@ -324,7 +338,7 @@ export const UserCreateForm = ({
           actions={
             <>
               {cancel}
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" disabled={submitting || pending}>
                 {submitting && <Spinner data-icon="inline-start" />}
                 계정 만들기
               </Button>

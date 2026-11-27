@@ -37,6 +37,8 @@ interface Props {
   categories: { value: string; label: string }[];
   /** 분류 관리의 등록 권한 — 있으면 분류 칸 옆에서 새 분류를 더한다 */
   canAddCategory: boolean;
+  /** 사용자 · 분류 목록을 아직 받지 못했다 — 폼은 바로 쓰고 분류 칸만 비어 있다가 채워진다, 임시 저장은 받은 뒤부터(ADR 0027) */
+  pending?: boolean;
   editing?: { id: string; updatedAt: string; status: Status };
 }
 
@@ -47,7 +49,14 @@ const LIST = '/admin/album';
  * 저장 규칙은 주보와 같다 — 공개는 단추로만, Enter(제출 단추가 없고 한 줄 칸이 하나면 브라우저가 제출) · Ctrl/⌘+S 는 지금 상태 그대로,
  * 올리는 중 · 바뀐 것 없는 공개 글은 저장하지 않는다. 쓰던 내용은 임시 보관한다.
  */
-export const AlbumForm = ({ userId, initial, categories, canAddCategory, editing }: Props) => {
+export const AlbumForm = ({
+  userId,
+  initial,
+  categories,
+  canAddCategory,
+  editing,
+  pending = false,
+}: Props) => {
   const navigate = useAdminNavigate();
   const [uploading, setUploading] = useState(false);
   const current: Status = editing?.status ?? 'DRAFT';
@@ -90,7 +99,7 @@ export const AlbumForm = ({ userId, initial, categories, canAddCategory, editing
     formKey: `album:${editing?.id ?? 'new'}`,
     values,
     dirty,
-    enabled: true,
+    enabled: !pending,
   });
   useUnsavedGuard(dirty || uploading);
   const canSave = !uploading && (current !== 'PUBLISHED' || dirty);

@@ -2,7 +2,7 @@
 
 import type { ResourceSectionKey } from '@/domains/admin/lib/resourceSection';
 import { RESOURCE_SECTION_KEYS } from '@/domains/admin/lib/resourceSection';
-import { useEffect, useState } from 'react';
+import { useArrived } from '@/domains/admin/hooks/useArrived';
 
 import { ResourceForm } from './index';
 
@@ -29,24 +29,10 @@ const INITIAL = {
 
 /**
  * 새 시트지 폼 — 누르는 즉시 그려 바로 쓰게 하고(미리 만든 틀, ADR 0027), 서버에서 받을 것(data)은 오는 대로 같은 폼에 채운다.
- * Suspense 로 폼을 통째로 바꿔 끼우지 않는다 — React 는 자리 표시를 한 번 보이면 0.3초는 두고 바꿔 그동안 쓸 수 없었다(운영 실측).
- * 묶음을 더해 화면을 다시 읽으면(router.refresh) 새 data 가 온다 — 받기 전까지는 받아 둔 것을 쓴다.
+ * (useArrived — Suspense 로 바꿔 끼우지 않는 까닭도 거기에)
  */
 export const ResourceNewForm = ({ data }: { data: Promise<ResourceNewData> }) => {
-  const [loaded, setLoaded] = useState<ResourceNewData | null>(null);
-  useEffect(() => {
-    let live = true;
-    data.then(
-      d => {
-        if (live) setLoaded(d);
-      },
-      // 받지 못하면(권한 없음 등) 폼은 그대로 둔다 — «없음» 은 화면의 권한 확인(PermissionGate)이 보인다
-      () => {}
-    );
-    return () => {
-      live = false;
-    };
-  }, [data]);
+  const loaded = useArrived(data);
   return (
     <ResourceForm
       pending={!loaded}

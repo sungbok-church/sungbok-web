@@ -172,12 +172,15 @@ export const ResourceForm = ({
   const values = useStore(form.store, s => s.values);
   const dirty = useStore(form.store, s => s.isDirty);
   const submitting = useStore(form.store, s => s.isSubmitting);
+  const onlySeries =
+    !editing && seriesBySection.SUNDAY.length === 1 ? seriesBySection.SUNDAY[0].value : '';
   const draft = useFormDraft<Values>({
     userId,
     formKey: `resources:${editing?.id ?? 'new'}`,
     values,
     dirty,
-    enabled: !pending,
+    // 하나뿐인 묶음을 채운 뒤에 켠다 — 그 전에 켜면 채우는 값이 «고친 것» 이 되어 옛 보관을 덮어쓴다(useFormDraft 의 보류)
+    enabled: !pending && (!onlySeries || values.section !== 'SUNDAY' || values.seriesId !== ''),
   });
   useUnsavedGuard(dirty || busy);
   const canSave = !busy && (current !== 'PUBLISHED' || dirty);
@@ -187,8 +190,6 @@ export const ResourceForm = ({
   useSaveShortcut(saveAsIs);
 
   // 새 글: 묶음 목록이 도착했을 때 묶음이 하나뿐이면 골라 둔다 — 사람이 고친 것으로 치지 않는다(나갈 때 경고가 뜨지 않게)
-  const onlySeries =
-    !editing && seriesBySection.SUNDAY.length === 1 ? seriesBySection.SUNDAY[0].value : '';
   useEffect(() => {
     if (onlySeries && form.state.values.section === 'SUNDAY' && !form.state.values.seriesId)
       form.setFieldValue('seriesId', onlySeries, { dontUpdateMeta: true });

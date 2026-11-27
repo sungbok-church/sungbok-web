@@ -34,6 +34,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/shared/components/ui/card';
 import { FieldGroup } from '@/shared/components/ui/field';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm, useStore } from '@tanstack/react-form';
 import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react';
@@ -45,8 +46,11 @@ type GroupDraft = { fields?: Partial<Values>; perms?: SetChanges };
 
 interface Props {
   userId: string;
-  /** 체크 없는 권한 표(loadGroupMatrix) */
-  matrix: MatrixRow[];
+  /**
+   * 체크 없는 권한 표(loadGroupMatrix) — null 이면 아직 받지 못했다: 1단계(이름 · 설명)는 바로 쓰고, 2단계는 표가 오면 보인다.
+   * 임시 저장도 받은 뒤부터(사용자 · 표가 함께 온다, ADR 0027)
+   */
+  matrix: MatrixRow[] | null;
 }
 
 const LIST = '/admin/groups';
@@ -99,7 +103,7 @@ export const GroupCreateForm = ({ userId, matrix }: Props) => {
     formKey: 'groups:new',
     values: { fields: changedFields(EMPTY, values), perms: setChanges(NONE, keys) },
     dirty,
-    enabled: true,
+    enabled: matrix !== null,
   });
   useUnsavedGuard(dirty);
 
@@ -110,6 +114,8 @@ export const GroupCreateForm = ({ userId, matrix }: Props) => {
       if (checkFields(form, groupCreateSchema, BASIC_FIELDS)) setSteps(nextStep);
       return;
     }
+    // 권한 표가 오기 전에는 만들지 않는다 — 표를 보지도 못한 채 권한 없는 그룹이 생긴다
+    if (!matrix) return;
     clearSubmitErrors(form, BASIC_FIELDS);
     void form.handleSubmit();
   };
@@ -143,7 +149,12 @@ export const GroupCreateForm = ({ userId, matrix }: Props) => {
                       // 지금 표에 있는 칸만 — 없어진 메뉴 · 기능은 버린다
                       if (saved.perms)
                         setKeys(
-                          toggleCells(matrix, NONE, [...applySetChanges(NONE, saved.perms)], true)
+                          toggleCells(
+                            matrix ?? [],
+                            NONE,
+                            [...applySetChanges(NONE, saved.perms)],
+                            true
+                          )
                         );
                     })
                   }
@@ -173,12 +184,18 @@ export const GroupCreateForm = ({ userId, matrix }: Props) => {
                 )}
               </form.Field>
             </FieldGroup>
-          ) : (
+          ) : matrix ? (
             <PermissionMatrix
               rows={matrix}
               checked={keys}
               onToggle={(toggled, on) => setKeys(prev => toggleCells(matrix, prev, toggled, on))}
             />
+          ) : (
+            <div role="status" aria-label="불러오는 중" className="flex flex-col gap-2">
+              {Array.from({ length: 6 }, (_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
           )}
         </CardContent>
         <CardFooter className="flex justify-between gap-2">
@@ -198,7 +215,7 @@ export const GroupCreateForm = ({ userId, matrix }: Props) => {
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
           ) : (
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting || !matrix}>
               {submitting && <Spinner data-icon="inline-start" />}
               그룹 만들기
             </Button>
