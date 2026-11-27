@@ -45,7 +45,7 @@ import {
 } from '@/shared/components/ui/select';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useForm, useStore } from '@tanstack/react-form';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Status = 'DRAFT' | 'PUBLISHED';
 type Option = { value: string; label: string };
@@ -71,8 +71,8 @@ interface Props {
   canAddSeries: boolean;
   editing?: { id: string; updatedAt: string; status: Status };
   /**
-   * 데이터(권한 · 묶음 목록)를 기다리는 동안 보이는 같은 모양의 폼 — 미리 만든 틀에 들어가 누르는 즉시 보인다(ADR 0027).
-   * 손댈 수 없고(inert), 임시 저장 · 저장 단축키도 쓰지 않는다. 데이터가 오면 진짜 폼으로 바뀐다
+   * 사용자 · 묶음 목록을 아직 받지 못했다 — 폼은 미리 만든 틀에 들어가 누르는 즉시 보이고 바로 쓸 수 있다(ADR 0027).
+   * 묶음 칸만 비어 있다가 채워지고, 임시 저장은 받은 뒤부터(사용자마다 칸이 다르다)
    */
   pending?: boolean;
 }
@@ -184,7 +184,15 @@ export const ResourceForm = ({
   const saveAsIs = () => {
     if (canSave && !form.state.isSubmitting && !done.current) void form.handleSubmit();
   };
-  useSaveShortcut(pending ? () => {} : saveAsIs);
+  useSaveShortcut(saveAsIs);
+
+  // 새 글: 묶음 목록이 도착했을 때 묶음이 하나뿐이면 골라 둔다 — 사람이 고친 것으로 치지 않는다(나갈 때 경고가 뜨지 않게)
+  const onlySeries =
+    !editing && seriesBySection.SUNDAY.length === 1 ? seriesBySection.SUNDAY[0].value : '';
+  useEffect(() => {
+    if (onlySeries && form.state.values.section === 'SUNDAY' && !form.state.values.seriesId)
+      form.setFieldValue('seriesId', onlySeries, { dontUpdateMeta: true });
+  }, [onlySeries, form]);
 
   const seriesOptions = seriesBySection[values.section] ?? [];
   const seriesLabel = seriesOptions.find(o => o.value === values.seriesId)?.label ?? '';
@@ -200,8 +208,6 @@ export const ResourceForm = ({
   return (
     <form
       noValidate
-      inert={pending}
-      aria-busy={pending || undefined}
       className="flex flex-col gap-6"
       onSubmit={e => {
         e.preventDefault();
