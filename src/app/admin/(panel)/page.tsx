@@ -3,6 +3,7 @@ import { can } from '@/domains/admin/lib/adminNav';
 import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/screenDescriptions';
 import { seoulToday, upcomingSunday } from '@/domains/admin/lib/content';
 import { issueLongDate } from '@/domains/news/api/bulletinList';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
 import { MENU_ICONS } from '@/domains/admin/components/features/MenuIcon';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
@@ -14,14 +15,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { ContentStatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import { storageUsage } from '@/domains/admin/lib/storageUsage';
 import { CircleIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(인사)부터 사람마다 달라 화면 전체가 서버에서 오는 대로(Deferred — ADR 0027), 오기 전에는 같은 배치의 뼈대
+export const instant = true;
 
 /** 숫자 카드 — href 가 있으면 누르면 그 화면으로, note 는 값 아래 한 줄(저장 공간의 «1 GB 중 24%») */
 type Stat = { label: string; value: number | string; href?: string; note?: string };
@@ -45,10 +47,15 @@ const TODOS: Todo[] = [
 ];
 
 // 관리자 첫 화면(스타터의 overview 와 같은 배치) — 위: 숫자 카드, 가운데: 이번 주 할 일, 아래: 바로 가기.
-export default async function AdminHomePage() {
+export default function AdminHomePage() {
+  return <Deferred content={dashboard()} fallback={<DashboardSkeleton />} />;
+}
+
+/** 인사 · 숫자 카드 · 할 일 · 바로 가기 — 로그인 정보와 숫자를 읽어 그린다 */
+const dashboard = async () => {
+  // 로그인 쿠키를 먼저 읽고 나서 지금 시각을 읽는다(Cache Components — 요청 값을 읽기 전에 시각을 읽으면 미리 그리기 오류)
   const supabase = await createSupabaseServerClient();
-  // 요청마다 지금 시각 기준(서버 컴포넌트)
-  // eslint-disable-next-line react-hooks/purity
+  // 요청마다 지금 시각 기준
   const now = Date.now();
   const sunday = upcomingSunday(seoulToday(now));
   const count = async (query: PromiseLike<{ count: number | null }>) => (await query).count ?? 0;
@@ -262,7 +269,44 @@ export default async function AdminHomePage() {
       </section>
     </>
   );
-}
+};
+
+/** 첫 화면을 읽는 동안의 뼈대 — 인사 · 숫자 카드 · 할 일 · 바로 가기(위 배치와 같다). 본문의 간격을 그대로 쓰려고 contents */
+const DashboardSkeleton = () => (
+  <div role="status" aria-label="불러오는 중" className="contents">
+    <Skeleton className="h-8 w-56" />
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }, (_, i) => (
+        <Card key={i}>
+          <CardHeader>
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-7 w-16" />
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+    {[3, 6].map(length => (
+      <div key={length} className="flex flex-col gap-3">
+        <Skeleton className="h-5 w-24" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length }, (_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-9 shrink-0 rounded-lg" />
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const StatCard = ({ stat, className }: { stat: Stat; className?: string }) => (
   <Card className={className}>

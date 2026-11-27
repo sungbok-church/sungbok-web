@@ -1,6 +1,8 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { loadResource } from '@/domains/admin/api/server/resource.server';
 import { loadSeriesBySection } from '@/domains/admin/api/server/resourceSeries.server';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { FormScreenSkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { ResourceForm } from '@/domains/admin/components/widgets/ResourceForm';
 import { can } from '@/domains/admin/lib/adminNav';
@@ -8,15 +10,18 @@ import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.s
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 수정 폼은 원래 값이 있어야 그릴 수 있어 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 폼 뼈대(Deferred — ADR 0027)
+export const instant = true;
+
+type Params = Promise<{ id: string }>;
 
 // 시트지 수정 — 휴지통에 든 자료는 고치지 않는다(복구한 뒤에)
-export default async function AdminResourceEditPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function AdminResourceEditPage({ params }: { params: Params }) {
+  return <Deferred content={resourceEdit(params)} fallback={<FormScreenSkeleton />} />;
+}
+
+/** 화면 전체(머리 · 수정 폼) — 권한을 확인하고(없으면 «없음») 읽어 그린다 */
+const resourceEdit = async (params: Params) => {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
@@ -50,4 +55,4 @@ export default async function AdminResourceEditPage({
       />
     </>
   );
-}
+};

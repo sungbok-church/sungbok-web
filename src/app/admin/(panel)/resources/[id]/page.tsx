@@ -5,6 +5,8 @@ import { DetailList } from '@/domains/admin/components/features/Detail/DetailLis
 import { ListNav } from '@/domains/admin/components/features/Detail/ListNav';
 import { RecordMeta } from '@/domains/admin/components/features/Detail/RecordMeta';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { DetailScreenSkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { ContentStatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import { ContentDetailActions } from '@/domains/admin/components/widgets/ContentDetailActions';
@@ -21,18 +23,21 @@ import { ExternalLinkIcon, PencilIcon } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · 상태 · 단추)부터 항목마다 달라 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 상세 뼈대(Deferred — ADR 0027)
+export const instant = true;
+
+type Params = Promise<{ id: string }>;
 
 const PATH = '/admin/resources';
 
 // 설교 시트지 상세(설계 6.10 «콘텐츠 상세») — 머리: [목록] · 이전/다음 · [복제해서 새로 쓰기] · (공개면) [사이트에서 보기] · [수정] · «더 보기».
 // 본문: 분류 · 묶음 · 날짜 · 본문 · 원본 · 설교 영상, 쪽 그림.
-export default async function AdminResourceDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function AdminResourceDetailPage({ params }: { params: Params }) {
+  return <Deferred content={resourceDetail(params)} fallback={<DetailScreenSkeleton />} />;
+}
+
+/** 화면 전체(머리 · 상세) — 권한을 확인하고(없으면 «없음») 읽어 그린다 */
+const resourceDetail = async (params: Params) => {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
@@ -179,4 +184,4 @@ export default async function AdminResourceDetailPage({
       />
     </>
   );
-}
+};

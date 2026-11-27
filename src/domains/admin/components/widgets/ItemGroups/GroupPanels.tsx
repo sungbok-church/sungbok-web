@@ -22,7 +22,7 @@ export const GroupPanels = ({
   basePath: string;
   panels: Record<string, ReactNode>;
 }) => {
-  // Suspense 없이 읽어도 된다 — 관리자 틀(admin/layout · (panel)/layout)이 요청마다 그리므로 빌드 때 미리 그려지지 않는다
+  // Suspense 없이 읽어도 된다 — 이 부품은 서버에서 오는 몸통(Deferred) 안에서 브라우저에 붙은 뒤에만 그려진다(ADR 0027)
   const asked = useSearchParams().get('group');
   const current = groups.find(g => g.key === asked)?.key ?? groups[0]?.key ?? '';
   return (

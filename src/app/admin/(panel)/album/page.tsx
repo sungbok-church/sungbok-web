@@ -7,12 +7,14 @@ import {
 } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
-import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { IfCan, ScreenHeader } from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { ListBodySkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import {
   CONTENT_STATUS_OPTIONS,
   ContentStatusBadge,
 } from '@/domains/admin/components/features/StatusBadge';
-import { can, screenLabel } from '@/domains/admin/lib/adminNav';
+import { can } from '@/domains/admin/lib/adminNav';
 import { formatShortTime } from '@/domains/admin/lib/adminTime';
 import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
 import { categoryOptions } from '@/shared/api/codeBook';
@@ -22,17 +24,35 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { PlusIcon } from 'lucide-react';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · «새 앨범»)는 미리 만든 틀로 누르는 즉시, 검색 막대 · 줄은 서버에서 오는 대로(Deferred — ADR 0027)
+export const instant = true;
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const PATH = '/admin/album';
 
 // 교회앨범 목록(설계 6.10) — 최신 등록부터(공개 화면과 같은 순서). 조건: 분류 · 상태 · 삭제된 항목, 검색어는 제목.
-export default async function AdminAlbumPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default function AdminAlbumPage({ searchParams }: { searchParams: SearchParams }) {
+  return (
+    <>
+      <ScreenHeader
+        menuKey="album"
+        fallback="교회앨범"
+        actions={
+          <IfCan menuKey="album" action="CREATE">
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
+              <PlusIcon data-icon="inline-start" />새 앨범
+            </Button>
+          </IfCan>
+        }
+      />
+      <Deferred content={albumList(searchParams)} fallback={<ListBodySkeleton />} />
+    </>
+  );
+}
+
+/** 검색 막대 · 줄 — 권한을 확인하고(없으면 «없음») 조건대로 읽어 그린다 */
+const albumList = async (searchParams: SearchParams) => {
   // 로그인 쿠키를 먼저 읽고 나서 지금 시각을 읽는다(Cache Components)
   const supabase = await createSupabaseServerClient();
   const [sp, book] = await Promise.all([searchParams, getCategoryBook()]);
@@ -107,16 +127,6 @@ export default async function AdminAlbumPage({
 
   return (
     <>
-      <PageHeader
-        title={screenLabel(ctx.nav, 'album', '교회앨범')}
-        actions={
-          canCreate && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
-              <PlusIcon data-icon="inline-start" />새 앨범
-            </Button>
-          )
-        }
-      />
       <ListToolbar
         userId={ctx.user.id}
         query={query}
@@ -150,4 +160,4 @@ export default async function AdminAlbumPage({
       />
     </>
   );
-}
+};

@@ -1,17 +1,26 @@
 import { loadGroupMatrix } from '@/domains/admin/api/server/groupMatrix.server';
 import { requireFullAdmin } from '@/domains/admin/api/server/myGroups.server';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { FormScreenSkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { GroupForm } from '@/domains/admin/components/widgets/GroupForm';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 수정 폼은 원래 값이 있어야 그릴 수 있어 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 폼 뼈대(Deferred — ADR 0027)
+export const instant = true;
+
+type Params = Promise<{ id: string }>;
 
 // 그룹 수정 — 상세에서 [수정] 으로 들어온다. 이름 · 설명 · 권한을 한 번에 저장하고 상세로 돌아간다. «전체 관리» 만(설계 6.4).
 // 머리는 그룹 이름만(«수정» 은 위쪽 경로 표시가 알린다). «전체 관리» 그룹은 이름 · 설명만 고친다(권한 칸 없음).
-export default async function AdminGroupEditPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AdminGroupEditPage({ params }: { params: Params }) {
+  return <Deferred content={groupEdit(params)} fallback={<FormScreenSkeleton />} />;
+}
+
+/** 화면 전체(머리 · 수정 폼) — 권한을 확인하고(없으면 «없음») 읽어 그린다 */
+const groupEdit = async (params: Params) => {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
@@ -44,4 +53,4 @@ export default async function AdminGroupEditPage({ params }: { params: Promise<{
       />
     </>
   );
-}
+};

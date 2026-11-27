@@ -1,7 +1,9 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { loadAdminHomeHero } from '@/domains/admin/api/server/homeHero.server';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
 import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { FormScreenSkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import { HomeHeroForm } from '@/domains/admin/components/widgets/HomeHeroForm';
 import { can, screenLabel } from '@/domains/admin/lib/adminNav';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
@@ -9,11 +11,16 @@ import { Button } from '@/shared/components/ui/button';
 import { ExternalLinkIcon } from 'lucide-react';
 import { notFound, redirect } from 'next/navigation';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 변경 이력 단추가 그 줄(id)을 알아야 해 화면 전체가 서버에서 오는 대로(Deferred — ADR 0027), 오기 전에는 폼 뼈대
+export const instant = true;
 
 // 홈 히어로(설계 6.12) — 한 줄뿐인 설정을 바로 고친다(저장하면 바로 공개). 줄은 옮기기 스크립트가 만든다. 조회만이면 공개 홈.
-export default async function AdminHomeHeroPage() {
+export default function AdminHomeHeroPage() {
+  return <Deferred content={homeHeroScreen()} fallback={<FormScreenSkeleton />} />;
+}
+
+/** 머리 · 폼 — 권한을 확인하고(없으면 «없음», 조회만이면 공개 홈) 설정 한 줄을 읽어 그린다 */
+const homeHeroScreen = async () => {
   const supabase = await createSupabaseServerClient();
   const [ctx, hero] = await Promise.all([
     requirePermission('home-hero', 'READ'),
@@ -54,4 +61,4 @@ export default async function AdminHomeHeroPage() {
       />
     </>
   );
-}
+};

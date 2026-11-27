@@ -5,6 +5,8 @@ import { loadGroupMatrix } from '@/domains/admin/api/server/groupMatrix.server';
 import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
 import { ListNav } from '@/domains/admin/components/features/Detail/ListNav';
 import { RecordMeta } from '@/domains/admin/components/features/Detail/RecordMeta';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { DetailScreenSkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { StatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import { GroupDetailActions } from '@/domains/admin/components/widgets/GroupDetailActions';
@@ -18,8 +20,10 @@ import { IntentLink as Link } from '@/domains/admin/components/features/IntentLi
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · 상태 · 단추)부터 항목마다 달라 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 상세 뼈대(Deferred — ADR 0027)
+export const instant = true;
+
+type Params = Promise<{ id: string }>;
 
 const PATH = '/admin/groups';
 
@@ -27,11 +31,12 @@ const PATH = '/admin/groups';
 // 한 값은 한 번만 — 머리에 있는 이름 · 설명 · 상태를 본문에서 되풀이하지 않고, 개수는 칸 제목 옆에 둔다.
 // «전체 관리»(시스템 그룹)는 머리의 «모든 권한» 표 하나로 — 권한 칸을 그리지 않는다. 고치려면 [수정].
 // 그룹을 고치고 끄고 켜는 것은 «전체 관리» 만 한다(설계 6.4) — 그 밖의 사람에게는 [수정] · 끄기/켜기를 그리지 않는다.
-export default async function AdminGroupDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function AdminGroupDetailPage({ params }: { params: Params }) {
+  return <Deferred content={groupDetail(params)} fallback={<DetailScreenSkeleton />} />;
+}
+
+/** 화면 전체(머리 · 상세) — 권한을 확인하고(없으면 «없음») 읽어 그린다 */
+const groupDetail = async (params: Params) => {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
@@ -170,4 +175,4 @@ export default async function AdminGroupDetailPage({
       />
     </>
   );
-}
+};

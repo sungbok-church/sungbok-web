@@ -2,9 +2,13 @@ import type { Database } from '@/shared/api/supabase/database.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
-import { can, screenLabel } from '@/domains/admin/lib/adminNav';
-import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
-import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { can } from '@/domains/admin/lib/adminNav';
+import {
+  IfCan,
+  ScreenHeader,
+  ScreenHistory,
+} from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
 import { SortableRows } from '@/domains/admin/components/widgets/SortableRows';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 import { Badge } from '@/shared/components/ui/badge';
@@ -17,6 +21,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { LockIcon } from 'lucide-react';
 
 import { GroupPanels } from './GroupPanels';
@@ -81,7 +86,38 @@ const readItems = async (supabase: Client, kind: ItemKind): Promise<Map<string, 
  * 더하고 · 이름을 바꾸고 · 순서를 바꾸고 · 끈다. 영문 값(분류 slug · 코드 값)은 공개 주소 · 프로그램이 쓰므로 바꾸지 않는다.
  * 잠긴 코드 묶음은 프로그램이 쓰는 값(enum)이라 더하거나 끌 수 없고 이름 · 순서만 바꾼다. 다른 점은 ITEM_KINDS.
  */
-export const ItemGroupsScreen = async ({ kind }: { kind: ItemKind }) => {
+export const ItemGroupsScreen = ({ kind }: { kind: ItemKind }) => {
+  const k = ITEM_KINDS[kind];
+  return (
+    <>
+      <ScreenHeader
+        menuKey={kind}
+        fallback={k.title}
+        actions={
+          <IfCan menuKey={kind} action="HISTORY">
+            <ScreenHistory menuKey={kind} fallback={k.title} table={kind} />
+          </IfCan>
+        }
+      />
+      <Deferred content={itemGroups(kind)} fallback={<GroupsBodySkeleton />} />
+    </>
+  );
+};
+
+/** 몸통의 뼈대 — 왼쪽 묶음 목록 + 오른쪽 그 묶음(GroupPanels 와 같은 칸 나눔) */
+const GroupsBodySkeleton = () => (
+  <div
+    role="status"
+    aria-label="불러오는 중"
+    className="grid items-start gap-6 lg:grid-cols-[16rem_1fr]"
+  >
+    <Skeleton className="h-48 w-full" />
+    <Skeleton className="h-80 w-full" />
+  </div>
+);
+
+/** 왼쪽 묶음 · 오른쪽 표 — 권한을 확인하고(없으면 «없음») 모든 묶음의 줄을 읽어 그린다 */
+const itemGroups = async (kind: ItemKind) => {
   const k = ITEM_KINDS[kind];
   const supabase = await createSupabaseServerClient();
   // 권한 확인과 함께 읽는다(DB 왕복 한 번) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
@@ -90,7 +126,6 @@ export const ItemGroupsScreen = async ({ kind }: { kind: ItemKind }) => {
     readGroups(supabase, kind),
     readItems(supabase, kind),
   ]);
-  const title = screenLabel(ctx.nav, kind, k.title);
   const canCreate = can(ctx.permissions, kind, 'CREATE');
   const editable = can(ctx.permissions, kind, 'UPDATE');
 
@@ -149,12 +184,6 @@ export const ItemGroupsScreen = async ({ kind }: { kind: ItemKind }) => {
 
   return (
     <>
-      <PageHeader
-        title={title}
-        actions={
-          can(ctx.permissions, kind, 'HISTORY') && <HistorySheet table={kind} subject={title} />
-        }
-      />
       {groups.length === 0 ? (
         <Empty className="border">
           <EmptyHeader>

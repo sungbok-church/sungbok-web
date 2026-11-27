@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button';
 import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
+// 주소줄 · 넘겨 보내기로 여는 화면이라(관리자 틀 밖) 주소 값(next · reason)을 읽는 동안 기다려도 된다(ADR 0027)
 export const instant = false;
 
 const REASONS: readonly LoginReason[] = ['idle', 'inactive', 'reset_expired'];

@@ -7,12 +7,14 @@ import {
 } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
-import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { IfCan, ScreenHeader } from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { ListBodySkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import {
   CONTENT_STATUS_OPTIONS,
   ContentStatusBadge,
 } from '@/domains/admin/components/features/StatusBadge';
-import { can, screenLabel } from '@/domains/admin/lib/adminNav';
+import { can } from '@/domains/admin/lib/adminNav';
 import { formatShortTime } from '@/domains/admin/lib/adminTime';
 import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
 import { RESOURCE_SECTION_KEYS, SECTION_CONFIG } from '@/domains/admin/lib/resourceSection';
@@ -21,8 +23,10 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { PlusIcon } from 'lucide-react';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · «새 시트지»)는 미리 만든 틀로 누르는 즉시, 검색 막대 · 줄은 서버에서 오는 대로(Deferred — ADR 0027)
+export const instant = true;
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const PATH = '/admin/resources';
 const SECTION_OPTIONS = RESOURCE_SECTION_KEYS.map(k => ({
@@ -31,11 +35,27 @@ const SECTION_OPTIONS = RESOURCE_SECTION_KEYS.map(k => ({
 }));
 
 // 설교 시트지 목록(설계 6.10) — 최신 날짜부터(날짜 없는 자료는 뒤). 조건: 분류 · 상태 · 삭제된 항목, 검색어는 제목 · 본문.
-export default async function AdminResourcesPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default function AdminResourcesPage({ searchParams }: { searchParams: SearchParams }) {
+  return (
+    <>
+      <ScreenHeader
+        menuKey="resources"
+        fallback="설교 시트지"
+        actions={
+          <IfCan menuKey="resources" action="CREATE">
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
+              <PlusIcon data-icon="inline-start" />새 시트지
+            </Button>
+          </IfCan>
+        }
+      />
+      <Deferred content={resourceList(searchParams)} fallback={<ListBodySkeleton />} />
+    </>
+  );
+}
+
+/** 검색 막대 · 줄 — 권한을 확인하고(없으면 «없음») 조건대로 읽어 그린다 */
+const resourceList = async (searchParams: SearchParams) => {
   // 로그인 쿠키를 먼저 읽고 나서 지금 시각을 읽는다(Cache Components)
   const supabase = await createSupabaseServerClient();
   const sp = await searchParams;
@@ -112,16 +132,6 @@ export default async function AdminResourcesPage({
 
   return (
     <>
-      <PageHeader
-        title={screenLabel(ctx.nav, 'resources', '설교 시트지')}
-        actions={
-          canCreate && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
-              <PlusIcon data-icon="inline-start" />새 시트지
-            </Button>
-          )
-        }
-      />
       <ListToolbar
         userId={ctx.user.id}
         query={query}
@@ -156,4 +166,4 @@ export default async function AdminResourcesPage({
       />
     </>
   );
-}
+};

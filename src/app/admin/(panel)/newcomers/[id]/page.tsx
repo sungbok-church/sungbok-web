@@ -3,6 +3,8 @@ import { actorNameMap } from '@/domains/admin/api/server/auditRows.server';
 import { loadNewcomer } from '@/domains/admin/api/server/newcomer.server';
 import { DetailList } from '@/domains/admin/components/features/Detail/DetailList';
 import { ListNav } from '@/domains/admin/components/features/Detail/ListNav';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { DetailScreenSkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { NewcomerStatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import {
@@ -17,11 +19,18 @@ import { Card, CardContent } from '@/shared/components/ui/card';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · 상태 · 단추)부터 항목마다 달라 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 상세 뼈대(Deferred — ADR 0027)
+export const instant = true;
+
+type Params = Promise<{ id: string }>;
 
 // 새가족 접수 한 건(설계 6.11) — 접수 내용(사실 한 번씩) + 처리(상태 · 메모). 개인정보라 휴지통 없이 완전히 지운다.
-export default async function AdminNewcomerPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AdminNewcomerPage({ params }: { params: Params }) {
+  return <Deferred content={newcomerDetail(params)} fallback={<DetailScreenSkeleton />} />;
+}
+
+/** 화면 전체(머리 · 상세) — 권한을 확인하고(없으면 «없음») 읽어 그린다 */
+const newcomerDetail = async (params: Params) => {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const supabase = await createSupabaseServerClient();
@@ -112,4 +121,4 @@ export default async function AdminNewcomerPage({ params }: { params: Promise<{ 
       )}
     </>
   );
-}
+};

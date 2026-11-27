@@ -8,9 +8,10 @@ import {
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
-import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { IfCan, ScreenHeader } from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { ListBodySkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import { NewcomerStatusBadge } from '@/domains/admin/components/features/StatusBadge';
-import { can, screenLabel } from '@/domains/admin/lib/adminNav';
 import { formatShortTime } from '@/domains/admin/lib/adminTime';
 import { rangeOf, parseListQuery } from '@/domains/admin/lib/listQuery';
 import { intentLabel, NEWCOMER_INTENTS, NEWCOMER_STATUSES } from '@/domains/admin/lib/newcomer';
@@ -19,17 +20,67 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { DownloadIcon } from 'lucide-react';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · 변경 이력)는 미리 만든 틀로 누르는 즉시, «엑셀»(지금 조건) · 검색 막대 · 줄은 서버에서 오는 대로(Deferred — ADR 0027)
+export const instant = true;
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const PATH = '/admin/newcomers';
 
 // 새가족 접수함(설계 6.11) — 최신 접수부터. 조건: 상태 · 종류 · 접수 기간. 검색어 칸은 없다(이름 · 연락처가 주소에 남지 않게).
-export default async function AdminNewcomersPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default function AdminNewcomersPage({ searchParams }: { searchParams: SearchParams }) {
+  return (
+    <>
+      <ScreenHeader
+        menuKey="newcomers"
+        fallback="새가족"
+        actions={
+          <>
+            <IfCan menuKey="newcomers" action="EXPORT">
+              <Deferred
+                content={exportButton(searchParams)}
+                fallback={
+                  <Button variant="outline" disabled>
+                    <DownloadIcon data-icon="inline-start" />
+                    엑셀
+                  </Button>
+                }
+              />
+            </IfCan>
+            {/* 엑셀 받기 기록(누가 언제 몇 건) — 접수 한 건의 이력은 상세에서 */}
+            <IfCan menuKey="newcomers" action="HISTORY">
+              <HistorySheet table="newcomers" subject="엑셀 받기" />
+            </IfCan>
+          </>
+        }
+      />
+      <Deferred content={newcomerList(searchParams)} fallback={<ListBodySkeleton />} />
+    </>
+  );
+}
+
+/** «엑셀» — 지금 조건 그대로(쪽 나누기 없이) 받는 주소. 조건은 주소에서 읽어 오므로 그 전에는 누를 수 없는 같은 모양 */
+const exportButton = async (searchParams: SearchParams) => {
+  const query = parseListQuery(await searchParams, NEWCOMER_LIST_SPEC, await readListDefaults());
+  const exportParams = new URLSearchParams(
+    Object.entries({ ...query.filters, from: query.from, to: query.to, dir: query.dir }).filter(
+      ([, v]) => v
+    )
+  );
+  return (
+    <Button
+      variant="outline"
+      nativeButton={false}
+      render={<a href={`${PATH}/export?${exportParams}`} download />}
+    >
+      <DownloadIcon data-icon="inline-start" />
+      엑셀
+    </Button>
+  );
+};
+
+/** 검색 막대 · 줄 — 권한을 확인하고(없으면 «없음») 조건대로 읽어 그린다 */
+const newcomerList = async (searchParams: SearchParams) => {
   const supabase = await createSupabaseServerClient();
   const sp = await searchParams;
   const now = new Date().toISOString();
@@ -38,12 +89,6 @@ export default async function AdminNewcomersPage({
     requirePermission('newcomers', 'READ'),
     newcomerQuery(supabase, query, { count: true }).range(...rangeOf(query.page, query.size)),
   ]);
-  // 엑셀은 지금 조건 그대로(쪽 나누기 없이)
-  const exportParams = new URLSearchParams(
-    Object.entries({ ...query.filters, from: query.from, to: query.to, dir: query.dir }).filter(
-      ([, v]) => v
-    )
-  );
 
   const rows: TableRowData[] = (data ?? []).map(n => {
     const href = `${PATH}/${n.id}`;
@@ -84,27 +129,6 @@ export default async function AdminNewcomersPage({
 
   return (
     <>
-      <PageHeader
-        title={screenLabel(ctx.nav, 'newcomers', '새가족')}
-        actions={
-          <>
-            {can(ctx.permissions, 'newcomers', 'EXPORT') && (
-              <Button
-                variant="outline"
-                nativeButton={false}
-                render={<a href={`${PATH}/export?${exportParams}`} download />}
-              >
-                <DownloadIcon data-icon="inline-start" />
-                엑셀
-              </Button>
-            )}
-            {/* 엑셀 받기 기록(누가 언제 몇 건) — 접수 한 건의 이력은 상세에서 */}
-            {can(ctx.permissions, 'newcomers', 'HISTORY') && (
-              <HistorySheet table="newcomers" subject="엑셀 받기" />
-            )}
-          </>
-        }
-      />
       <ListToolbar
         userId={ctx.user.id}
         query={query}
@@ -131,4 +155,4 @@ export default async function AdminNewcomersPage({
       />
     </>
   );
-}
+};

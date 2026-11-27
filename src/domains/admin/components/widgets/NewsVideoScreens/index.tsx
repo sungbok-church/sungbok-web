@@ -11,8 +11,15 @@ import { DetailList } from '@/domains/admin/components/features/Detail/DetailLis
 import { ListNav } from '@/domains/admin/components/features/Detail/ListNav';
 import { RecordMeta } from '@/domains/admin/components/features/Detail/RecordMeta';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
+import { IfCan, ScreenHeader } from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { PermissionGate } from '@/domains/admin/components/features/PermissionGate';
+import {
+  DetailScreenSkeleton,
+  FormScreenSkeleton,
+  ListBodySkeleton,
+} from '@/domains/admin/components/features/ScreenSkeleton';
 import {
   CONTENT_STATUS_OPTIONS,
   ContentStatusBadge,
@@ -23,7 +30,7 @@ import {
   type NewsVideoNewData,
   NewsVideoNewForm,
 } from '@/domains/admin/components/widgets/NewsVideoForm/NewsVideoNewForm';
-import { can, screenLabel } from '@/domains/admin/lib/adminNav';
+import { can } from '@/domains/admin/lib/adminNav';
 import { formatShortTime } from '@/domains/admin/lib/adminTime';
 import { isCalendarDate, seoulToday } from '@/domains/admin/lib/content';
 import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
@@ -45,14 +52,39 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const FIRST_YEAR = 2024;
 
-/** 목록 — 최신 날짜부터. 조건: 분류 · 상태 · 연도 · 삭제된 항목, 검색어는 제목 */
-export const NewsVideoListScreen = async ({
+/**
+ * 목록 — 최신 날짜부터. 조건: 분류 · 상태 · 연도 · 삭제된 항목, 검색어는 제목.
+ * 머리(제목 · «새 ○○»)는 미리 만든 틀로 누르는 즉시, 검색 막대 · 줄은 서버에서 오는 대로(Deferred — ADR 0027).
+ * 화면(page)은 동기 함수여야 틀에 들어간다 — 이 부품을 기다리지 않고 그대로 돌려준다.
+ */
+export const NewsVideoListScreen = ({
   feed,
   searchParams,
 }: {
   feed: NewsFeedKey;
   searchParams: SearchParams;
 }) => {
+  const cfg = NEWS_FEEDS[feed];
+  return (
+    <>
+      <ScreenHeader
+        menuKey={cfg.menuKey}
+        fallback={cfg.label}
+        actions={
+          <IfCan menuKey={cfg.menuKey} action="CREATE">
+            <Button nativeButton={false} render={<Link href={`${cfg.adminPath}/new`} eager />}>
+              <PlusIcon data-icon="inline-start" />새 {cfg.label}
+            </Button>
+          </IfCan>
+        }
+      />
+      <Deferred content={newsVideoList(feed, searchParams)} fallback={<ListBodySkeleton />} />
+    </>
+  );
+};
+
+/** 목록의 검색 막대 · 줄 — 권한을 확인하고(없으면 «없음») 조건대로 읽어 그린다 */
+const newsVideoList = async (feed: NewsFeedKey, searchParams: SearchParams) => {
   const cfg = NEWS_FEEDS[feed];
   // 로그인 쿠키를 먼저 읽고 나서 지금 시각을 읽는다(Cache Components)
   const supabase = await createSupabaseServerClient();
@@ -136,16 +168,6 @@ export const NewsVideoListScreen = async ({
 
   return (
     <>
-      <PageHeader
-        title={screenLabel(ctx.nav, cfg.menuKey, cfg.label)}
-        actions={
-          canCreate && (
-            <Button nativeButton={false} render={<Link href={`${cfg.adminPath}/new`} eager />}>
-              <PlusIcon data-icon="inline-start" />새 {cfg.label}
-            </Button>
-          )
-        }
-      />
       <ListToolbar
         userId={ctx.user.id}
         query={query}
@@ -231,14 +253,21 @@ const idOrNotFound = async (params: Promise<{ id: string }>) => {
   return id;
 };
 
-/** 상세 — 머리: [목록] · 이전/다음 · [복제해서 새로 쓰기] · (공개면) [사이트에서 보기] · [수정] · «더 보기» */
-export const NewsVideoDetailScreen = async ({
+/**
+ * 상세 — 머리: [목록] · 이전/다음 · [복제해서 새로 쓰기] · (공개면) [사이트에서 보기] · [수정] · «더 보기».
+ * 머리부터 글마다 달라 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 상세 뼈대(Deferred — ADR 0027).
+ * 화면(page)은 동기 함수여야 틀에 들어간다 — 이 부품을 기다리지 않고 그대로 돌려준다.
+ */
+export const NewsVideoDetailScreen = ({
   feed,
   params,
 }: {
   feed: NewsFeedKey;
   params: Promise<{ id: string }>;
-}) => {
+}) => <Deferred content={newsVideoDetail(feed, params)} fallback={<DetailScreenSkeleton />} />;
+
+/** 상세 화면 전체(머리 · 값) — 권한을 확인하고(없으면 «없음») 읽어 그린다 */
+const newsVideoDetail = async (feed: NewsFeedKey, params: Promise<{ id: string }>) => {
   const cfg = NEWS_FEEDS[feed];
   const id = await idOrNotFound(params);
   const supabase = await createSupabaseServerClient();
@@ -357,14 +386,20 @@ export const NewsVideoDetailScreen = async ({
   );
 };
 
-/** 수정 — 휴지통에 든 글은 고치지 않는다(복구한 뒤에) */
-export const NewsVideoEditScreen = async ({
+/**
+ * 수정 — 휴지통에 든 글은 고치지 않는다(복구한 뒤에).
+ * 폼은 원래 값이 있어야 그릴 수 있어 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 폼 뼈대(Deferred — ADR 0027).
+ */
+export const NewsVideoEditScreen = ({
   feed,
   params,
 }: {
   feed: NewsFeedKey;
   params: Promise<{ id: string }>;
-}) => {
+}) => <Deferred content={newsVideoEdit(feed, params)} fallback={<FormScreenSkeleton />} />;
+
+/** 수정 화면 전체(머리 · 폼) — 권한을 확인하고(없으면 «없음») 읽어 그린다 */
+const newsVideoEdit = async (feed: NewsFeedKey, params: Promise<{ id: string }>) => {
   const cfg = NEWS_FEEDS[feed];
   const id = await idOrNotFound(params);
   const supabase = await createSupabaseServerClient();

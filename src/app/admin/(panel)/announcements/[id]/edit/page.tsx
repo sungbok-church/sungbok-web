@@ -1,7 +1,7 @@
 import { NewsVideoEditScreen } from '@/domains/admin/components/widgets/NewsVideoScreens';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 화면 전체를 서버에서 오는 대로 그린다 — 오기 전에는 폼 뼈대(NewsVideoEditScreen 의 Deferred — ADR 0027)
+export const instant = true;
 
 // 주일광고 수정
 export default function Page({ params }: { params: Promise<{ id: string }> }) {

@@ -7,12 +7,14 @@ import {
 } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
-import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { IfCan, ScreenHeader } from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { ListBodySkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import {
   CONTENT_STATUS_OPTIONS,
   ContentStatusBadge,
 } from '@/domains/admin/components/features/StatusBadge';
-import { can, screenLabel } from '@/domains/admin/lib/adminNav';
+import { can } from '@/domains/admin/lib/adminNav';
 import { formatShortTime } from '@/domains/admin/lib/adminTime';
 import { seoulToday } from '@/domains/admin/lib/content';
 import { type ListSpec, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
@@ -22,19 +24,37 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import { PlusIcon } from 'lucide-react';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · «새 주보»)는 미리 만든 틀로 누르는 즉시, 검색 막대 · 줄은 서버에서 오는 대로(Deferred — ADR 0027)
+export const instant = true;
 
 const PATH = '/admin/bulletin';
 /** 주보가 시작된 해(기존 사이트에서 옮긴 첫 호 2025-03-02) */
 const FIRST_YEAR = 2025;
 
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
 // 주보 목록(설계 6.10 «화면 흐름 표준 › 목록») — 최신 주일부터. 검색어 칸은 없다(글자가 없는 그림 글). 조건: 연도 · 상태 · 삭제된 항목.
-export default async function AdminBulletinPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default function AdminBulletinPage({ searchParams }: { searchParams: SearchParams }) {
+  return (
+    <>
+      <ScreenHeader
+        menuKey="bulletin"
+        fallback="주보"
+        actions={
+          <IfCan menuKey="bulletin" action="CREATE">
+            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
+              <PlusIcon data-icon="inline-start" />새 주보
+            </Button>
+          </IfCan>
+        }
+      />
+      <Deferred content={bulletinList(searchParams)} fallback={<ListBodySkeleton />} />
+    </>
+  );
+}
+
+/** 검색 막대 · 줄 — 권한을 확인하고(없으면 «없음») 조건대로 읽어 그린다 */
+const bulletinList = async (searchParams: SearchParams) => {
   // 로그인 쿠키를 먼저 읽고 나서 지금 시각을 읽는다(Cache Components — 요청 값을 읽기 전에 시각을 읽으면 미리 그리기 오류)
   const supabase = await createSupabaseServerClient();
   const sp = await searchParams;
@@ -107,16 +127,6 @@ export default async function AdminBulletinPage({
 
   return (
     <>
-      <PageHeader
-        title={screenLabel(ctx.nav, 'bulletin', '주보')}
-        actions={
-          canCreate && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
-              <PlusIcon data-icon="inline-start" />새 주보
-            </Button>
-          )
-        }
-      />
       <ListToolbar
         userId={ctx.user.id}
         query={query}
@@ -148,4 +158,4 @@ export default async function AdminBulletinPage({
       />
     </>
   );
-}
+};

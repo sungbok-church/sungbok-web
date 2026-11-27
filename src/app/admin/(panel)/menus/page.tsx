@@ -1,8 +1,12 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
 import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
-import { can, screenLabel } from '@/domains/admin/lib/adminNav';
-import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
-import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { can } from '@/domains/admin/lib/adminNav';
+import {
+  IfCan,
+  ScreenHeader,
+  ScreenHistory,
+} from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
 import { type SortableRow, SortableRows } from '@/domains/admin/components/widgets/SortableRows';
 import { createSupabaseServerClient } from '@/shared/api/supabase/serverClient.server';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
@@ -13,12 +17,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { SITE_CHILD_MAX, SITE_TOP_MAX } from '@/domains/admin/lib/siteMenuLimits';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { LockIcon } from 'lucide-react';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목 · 변경 이력)는 미리 만든 틀로 누르는 즉시, 안내 · 두 탭의 메뉴 줄은 서버에서 오는 대로(Deferred — ADR 0027)
+export const instant = true;
 
 type MenuRow = {
   id: string;
@@ -49,7 +54,25 @@ const toRow = (m: MenuRow): SortableRow => ({
 
 // 메뉴 관리(설계 6.5) — 관리자 메뉴 · 홈페이지 메뉴의 이름 · 사용 여부 · 순서(두 탭). 홈페이지 메뉴는 저장하면 공개 사이트의
 // 헤더 · 휴대폰 메뉴 · 페이지 제목에 바로 반영되고, 끈 메뉴의 주소는 없는 페이지가 된다.
-export default async function AdminMenusPage() {
+export default function AdminMenusPage() {
+  return (
+    <>
+      <ScreenHeader
+        menuKey="menus"
+        fallback="메뉴 관리"
+        actions={
+          <IfCan menuKey="menus" action="HISTORY">
+            <ScreenHistory menuKey="menus" fallback="메뉴 관리" table="menus" />
+          </IfCan>
+        }
+      />
+      <Deferred content={menuBody()} fallback={<MenusBodySkeleton />} />
+    </>
+  );
+}
+
+/** 안내 · 두 탭의 메뉴 줄 — 권한을 확인하고(없으면 «없음») 메뉴를 읽어 그린다 */
+const menuBody = async () => {
   const supabase = await createSupabaseServerClient();
   // 권한 확인과 함께 읽는다(DB 왕복 한 번 줄이기) — 권한이 없으면 404 로 끊고 읽은 값은 버린다(막는 것은 DB 의 RLS)
   // 켜기 · 끄기는 «전체 관리» 만(guard_menus) — 권한 확인 뒤 이어서 읽되 메뉴 읽기와는 함께
@@ -70,42 +93,50 @@ export default async function AdminMenusPage() {
   const toggleable = editable && fullAdmin;
 
   return (
-    <>
-      <PageHeader
-        title={screenLabel(ctx.nav, 'menus', '메뉴 관리')}
-        actions={
-          can(ctx.permissions, 'menus', 'HISTORY') && (
-            <HistorySheet table="menus" subject={screenLabel(ctx.nav, 'menus', '메뉴 관리')} />
-          )
-        }
-      />
-      <div className="flex flex-col gap-6">
-        {editable && !fullAdmin && (
-          <Alert>
-            <LockIcon aria-hidden />
-            <AlertDescription>메뉴 켜기 · 끄기는 «전체 관리» 만 합니다.</AlertDescription>
-          </Alert>
-        )}
-        <Tabs defaultValue="ADMIN">
-          <TabsList>
-            <TabsTrigger value="ADMIN">관리자</TabsTrigger>
-            <TabsTrigger value="SITE">홈페이지</TabsTrigger>
-          </TabsList>
-          {(['ADMIN', 'SITE'] as const).map(area => (
-            <TabsContent key={area} value={area} className="flex flex-col gap-6">
-              <AreaMenus
-                area={area}
-                menus={rows.filter(m => m.area === area)}
-                editable={editable}
-                toggleable={toggleable}
-              />
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-    </>
+    <div className="flex flex-col gap-6">
+      {editable && !fullAdmin && (
+        <Alert>
+          <LockIcon aria-hidden />
+          <AlertDescription>메뉴 켜기 · 끄기는 «전체 관리» 만 합니다.</AlertDescription>
+        </Alert>
+      )}
+      <Tabs defaultValue="ADMIN">
+        <TabsList>
+          <TabsTrigger value="ADMIN">관리자</TabsTrigger>
+          <TabsTrigger value="SITE">홈페이지</TabsTrigger>
+        </TabsList>
+        {(['ADMIN', 'SITE'] as const).map(area => (
+          <TabsContent key={area} value={area} className="flex flex-col gap-6">
+            <AreaMenus
+              area={area}
+              menus={rows.filter(m => m.area === area)}
+              editable={editable}
+              toggleable={toggleable}
+            />
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
   );
-}
+};
+
+/** 탭 · 메뉴 줄을 읽는 동안의 뼈대 — 탭 머리, 대메뉴 카드(이름 · 한 줄 안내 · 줄) */
+const MenusBodySkeleton = () => (
+  <div role="status" aria-label="불러오는 중" className="flex flex-col gap-6">
+    <Skeleton className="h-9 w-44" />
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-4 w-56 max-w-full" />
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </CardContent>
+    </Card>
+  </div>
+);
 
 /**
  * 하위 메뉴 줄 — 홈페이지 메뉴는 켜진 하위가 하나 남으면 그것을 끌 수 없게 한다(다 끄면 공개 화면에서 대메뉴도 빠지는데

@@ -26,6 +26,7 @@ export default async function AdminPanelLayout({
         user={user}
         userName={profile.name}
         nav={nav}
+        permissions={permissions}
         defaultOpen={sidebarOpen}
         prefill={{
           // Vercel 이 배포마다 주는 값(실행 중에도 읽힌다 — 같은 커밋을 다시 배포해도 바뀐다). 로컬에는 없다

@@ -18,6 +18,13 @@ const ListBody = () => (
       <Skeleton className="h-7 w-48" />
       <Skeleton className="h-4 w-80 max-w-full" />
     </div>
+    <ListRows />
+  </>
+);
+
+/** 검색 막대 · 표 줄 */
+const ListRows = () => (
+  <>
     <Skeleton className="h-14 w-full rounded-lg" />
     <div className="flex flex-col gap-2 rounded-lg border p-3">
       <Skeleton className="h-8 w-full" />
@@ -26,6 +33,16 @@ const ListBody = () => (
       ))}
     </div>
   </>
+);
+
+/**
+ * 목록의 몸통 뼈대(검색 막대 · 표 줄) — 머리(제목 · 단추)는 미리 만든 틀이 바로 그리고, 몸통은 서버에서 오는 동안 이것(Deferred,
+ * ADR 0027). 바깥 칸(본문)의 간격을 그대로 쓰려고 칸을 하나 더 두지 않는다(contents)
+ */
+export const ListBodySkeleton = () => (
+  <div role="status" aria-label="불러오는 중" className="contents">
+    <ListRows />
+  </div>
 );
 
 /** 코드 · 분류 관리 — 머리(제목 · 변경 이력), 왼쪽 묶음 목록 + 오른쪽 그 묶음(이름 · 더하기 칸 · 표). ItemGroups 와 같은 칸 나눔 */
@@ -108,4 +125,35 @@ const FormBody = () => (
       </div>
     </div>
   </>
+);
+
+/**
+ * 수정 화면 전체의 뼈대(머리 · 입력 칸 카드 · 아래 단추 줄) — 수정 폼은 원래 값이 있어야 그릴 수 있어 화면 전체가 서버에서 오는
+ * 동안 이것(Deferred, ADR 0027)
+ */
+export const FormScreenSkeleton = () => <ScreenSkeleton shape="form" />;
+
+/**
+ * 상세 화면 전체의 뼈대(머리 · 단추 · 값 줄) — 머리(글 제목)부터 글마다 달라 화면 전체가 서버에서 오는 동안 이것(Deferred, ADR 0027)
+ */
+export const DetailScreenSkeleton = () => (
+  <div role="status" aria-label="불러오는 중" className="flex flex-col gap-6">
+    <div className="flex items-start justify-between gap-4">
+      <Skeleton className="h-8 w-48" />
+      <div className="flex gap-2">
+        <Skeleton className="h-8 w-16" />
+        <Skeleton className="h-8 w-16" />
+      </div>
+    </div>
+    <Card>
+      <CardContent className="flex flex-col gap-4">
+        {Array.from({ length: 5 }, (_, i) => (
+          <div key={i} className="grid gap-2 sm:grid-cols-[8rem_1fr]">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-full max-w-md" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  </div>
 );

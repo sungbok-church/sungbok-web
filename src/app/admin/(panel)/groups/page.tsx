@@ -1,5 +1,4 @@
 import { requirePermission } from '@/domains/admin/api/server/adminContext.server';
-import { screenLabel } from '@/domains/admin/lib/adminNav';
 import { readListDefaults } from '@/domains/admin/api/server/listDefaults.server';
 import { loadMyGroups } from '@/domains/admin/api/server/myGroups.server';
 import { type ListSpec, orIlike, parseListQuery, rangeOf } from '@/domains/admin/lib/listQuery';
@@ -8,7 +7,9 @@ import {
   type TableRowData,
 } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
-import { PageHeader } from '@/domains/admin/components/features/PageHeader';
+import { ScreenHeader } from '@/domains/admin/components/features/AdminSession';
+import { Deferred } from '@/domains/admin/components/features/Deferred';
+import { ListBodySkeleton } from '@/domains/admin/components/features/ScreenSkeleton';
 import {
   StatusBadge,
   STATUS_FILTER_OPTIONS,
@@ -20,8 +21,10 @@ import { Card, CardContent } from '@/shared/components/ui/card';
 import { PlusIcon } from 'lucide-react';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
 
-// 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
-export const instant = false;
+// 머리(제목)는 미리 만든 틀로 누르는 즉시, «새 그룹» · 검색 막대 · 줄은 서버에서 오는 대로(Deferred — ADR 0027)
+export const instant = true;
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const PATH = '/admin/groups';
 const SPEC: ListSpec = {
@@ -32,11 +35,35 @@ const SPEC: ListSpec = {
 };
 
 // 그룹 목록(설계 6.10 «화면 흐름 표준 › 목록») — 줄을 누르면 상세. «전체 관리» 는 늘 맨 위.
-export default async function AdminGroupsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default function AdminGroupsPage({ searchParams }: { searchParams: SearchParams }) {
+  return (
+    <>
+      <ScreenHeader
+        menuKey="groups"
+        fallback="그룹 · 권한"
+        actions={<Deferred content={newGroupButton()} fallback={null} />}
+      />
+      <Deferred content={groupList(searchParams)} fallback={<ListBodySkeleton />} />
+    </>
+  );
+}
+
+/**
+ * «새 그룹» — 그룹 만들기는 «전체 관리» 만(설계 6.4). 권한이 아니라 그룹 소속이라 관리자 틀이 들고 있지 않아 서버에서 확인해 온다
+ * (권한 확인 · 그룹 소속은 한 요청에 한 번만 읽는다 — 아래 목록과 함께 쓴다)
+ */
+const newGroupButton = async () => {
+  const ctx = await requirePermission('groups', 'READ');
+  const { fullAdmin } = await loadMyGroups(ctx.user.id);
+  return fullAdmin ? (
+    <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
+      <PlusIcon data-icon="inline-start" />새 그룹
+    </Button>
+  ) : null;
+};
+
+/** 검색 막대 · 줄 — 권한을 확인하고(없으면 «없음») 조건대로 읽어 그린다 */
+const groupList = async (searchParams: SearchParams) => {
   const query = parseListQuery(await searchParams, SPEC, await readListDefaults());
   const supabase = await createSupabaseServerClient();
   let req = supabase
@@ -99,16 +126,6 @@ export default async function AdminGroupsPage({
 
   return (
     <>
-      <PageHeader
-        title={screenLabel(ctx.nav, 'groups', '그룹 · 권한')}
-        actions={
-          fullAdmin && (
-            <Button nativeButton={false} render={<Link href={`${PATH}/new`} eager />}>
-              <PlusIcon data-icon="inline-start" />새 그룹
-            </Button>
-          )
-        }
-      />
       <ListToolbar
         userId={ctx.user.id}
         query={query}
@@ -140,4 +157,4 @@ export default async function AdminGroupsPage({
       />
     </>
   );
-}
+};
