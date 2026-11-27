@@ -7,6 +7,7 @@ import {
   leadsToOtherScreen,
   NAVIGATION_START,
   type NavigationStartDetail,
+  screenShape,
   signalNavigationStart,
 } from './navigationProgress';
 
@@ -97,5 +98,20 @@ describe('isInAppClick — 이 탭에서 앱 안의 주소로 옮기는 클릭�
     expect(isInAppClick(click, link('/admin/groups', { target: '_blank' }), HERE)).toBe(false);
     expect(isInAppClick(click, link('/files/a.pdf', { download: true }), HERE)).toBe(false);
     expect(isInAppClick(click, link('https://example.com/'), HERE)).toBe(false);
+  });
+});
+
+describe('screenShape — 갈 화면의 뼈대 모양', () => {
+  it('코드 · 분류 관리는 묶음 모양(왼쪽 묶음 목록 + 오른쪽 표)', () => {
+    expect(screenShape('http://localhost:3005/admin/codes')).toBe('groups');
+    expect(screenShape('http://localhost:3005/admin/categories?group=album')).toBe('groups');
+    expect(screenShape('/admin/codes/')).toBe('groups');
+  });
+
+  it('그 밖은 목록 모양', () => {
+    expect(screenShape('http://localhost:3005/admin/users')).toBe('list');
+    expect(screenShape('http://localhost:3005/admin')).toBe('list');
+    expect(screenShape('http://localhost:3005/admin/codes-old')).toBe('list');
+    expect(screenShape('http://localhost:3005/admin/groups/1/codes')).toBe('list');
   });
 });

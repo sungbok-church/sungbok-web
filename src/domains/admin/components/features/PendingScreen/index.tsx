@@ -4,6 +4,8 @@ import {
   leadsToOtherScreen,
   NAVIGATION_START,
   type NavigationStartDetail,
+  type ScreenShape,
+  screenShape,
 } from '@/domains/admin/lib/navigationProgress';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -25,20 +27,22 @@ const GIVE_UP_MS = 10_000;
  */
 export const PendingScreen = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
-  // 뼈대를 띄운 화면의 경로 — 경로가 바뀌면(새 화면이 그려지면) 거둔다. 그리는 중에 바로 맞춘다
-  const [from, setFrom] = useState<string | null>(null);
-  if (from !== null && pathname !== from) setFrom(null);
+  // 뼈대를 띄운 화면의 경로와 갈 화면의 모양 — 경로가 바뀌면(새 화면이 그려지면) 거둔다. 그리는 중에 바로 맞춘다
+  const [pending, setPending] = useState<{ from: string; shape: ScreenShape } | null>(null);
+  if (pending !== null && pathname !== pending.from) setPending(null);
 
   useEffect(() => {
     const onStart = (e: Event) => {
       const href = (e as CustomEvent<NavigationStartDetail>).detail?.href;
       // 같은 화면으로 가는 이동(조건만 바꾸거나 지금 화면을 다시 고름)은 앞서 누른 이동을 대신한다 — 띄워 둔 뼈대를 거둔다
-      setFrom(
-        href && leadsToOtherScreen(href, window.location.href) ? window.location.pathname : null
+      setPending(
+        href && leadsToOtherScreen(href, window.location.href)
+          ? { from: window.location.pathname, shape: screenShape(href) }
+          : null
       );
     };
     // 뒤로 · 앞으로 가기는 신호 없이 옮겨 간다 — 띄워 둔 뼈대를 거둔다
-    const onPop = () => setFrom(null);
+    const onPop = () => setPending(null);
     window.addEventListener(NAVIGATION_START, onStart);
     window.addEventListener('popstate', onPop);
     return () => {
@@ -47,18 +51,18 @@ export const PendingScreen = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const pending = from !== null;
+  // 새 신호마다(pending 이 새 값) 다시 센다 — 뼈대를 띄운 채 다른 화면을 또 누르면 그때부터 10초(진행 표시줄과 같다)
   useEffect(() => {
     if (!pending) return;
-    const t = setTimeout(() => setFrom(null), GIVE_UP_MS);
+    const t = setTimeout(() => setPending(null), GIVE_UP_MS);
     return () => clearTimeout(t);
   }, [pending]);
 
   return (
     <>
-      {pending && <ScreenSkeleton />}
+      {pending && <ScreenSkeleton shape={pending.shape} />}
       {/* contents: 숨기지 않을 때는 이 칸이 없는 것처럼(본문의 간격 · 배치 그대로) */}
-      <div className="contents" hidden={pending}>
+      <div className="contents" hidden={pending !== null}>
         {children}
       </div>
     </>

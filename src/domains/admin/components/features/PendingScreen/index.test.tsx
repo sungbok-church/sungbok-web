@@ -37,6 +37,14 @@ describe('PendingScreen — 다른 화면으로 가는 동안 본문 자리에 �
     expect(screen.getByText('사용자 목록')).not.toBeVisible();
   });
 
+  it('갈 화면을 닮은 뼈대 — 코드 · 분류 관리는 묶음 모양, 그 밖은 목록 모양', () => {
+    render(page('사용자 목록'));
+    act(() => signalNavigationStart('/admin/codes'));
+    expect(skeleton()).toHaveAttribute('data-shape', 'groups');
+    act(() => signalNavigationStart('/admin/groups'));
+    expect(skeleton()).toHaveAttribute('data-shape', 'list');
+  });
+
   it('같은 화면의 조건만 바꾸는 이동(검색 · 쪽)은 뼈대 없이 지금 화면을 둔다', () => {
     render(page('사용자 목록'));
     act(() => signalNavigationStart('/admin/users?q=%ED%99%8D'));
@@ -79,5 +87,23 @@ describe('PendingScreen — 다른 화면으로 가는 동안 본문 자리에 �
     });
     expect(skeleton()).toBeNull();
     expect(screen.getByText('사용자 목록')).toBeVisible();
+  });
+
+  it('뼈대를 띄운 채 다른 화면을 또 누르면 그때부터 다시 센다', () => {
+    vi.useFakeTimers();
+    render(page('사용자 목록'));
+    act(() => signalNavigationStart('/admin/groups'));
+    act(() => {
+      vi.advanceTimersByTime(9_000);
+    });
+    act(() => signalNavigationStart('/admin/codes'));
+    act(() => {
+      vi.advanceTimersByTime(9_000);
+    });
+    expect(skeleton()).toHaveAttribute('data-shape', 'groups');
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(skeleton()).toBeNull();
   });
 });
