@@ -8,6 +8,8 @@ import { type ReactNode, Suspense } from 'react';
 import { CommandMenu } from '@/domains/admin/components/features/CommandMenu';
 import { NavigationProgress } from '@/domains/admin/components/features/NavigationProgress';
 import { PendingScreen } from '@/domains/admin/components/features/PendingScreen';
+import { ScreenPrefill } from '@/domains/admin/components/features/ScreenPrefill';
+import { prefillPaths } from '@/domains/admin/lib/screenPrefill';
 
 import { AdminSidebar } from './AdminSidebar';
 import { HeaderBreadcrumbs } from './HeaderTitle';
@@ -19,6 +21,8 @@ interface Props {
   userName: string;
   /** 왼쪽 메뉴를 펼친 채로 시작할지 — 지난번에 접어 뒀으면 false(쿠키 `sidebar_state`) */
   defaultOpen?: boolean;
+  /** 이 배포의 표시 — 배포마다 한 번 메뉴 화면들을 미리 받는다(ScreenPrefill). 없으면(로컬 개발) 받지 않는다 */
+  deployId?: string;
   children: ReactNode;
 }
 
@@ -27,13 +31,21 @@ interface Props {
  * 색만 이 사이트의 팔레트다(ADR 0016). md(768) 이상은 접을 수 있는 왼쪽 메뉴, 그 아래는 시트.
  * 공개 사이트의 헤더·푸터·부드러운 스크롤은 없다.
  */
-export const AdminShell = ({ user, userName, nav, defaultOpen = true, children }: Props) => (
+export const AdminShell = ({
+  user,
+  userName,
+  nav,
+  defaultOpen = true,
+  deployId = '',
+  children,
+}: Props) => (
   // 접힌 메뉴에 올리면 이름이 바로 뜨게 한다 — 제공자가 없으면 Base UI 기본값(600ms 뒤)이 쓰인다
   <TooltipProvider>
     {/* 화면 이동 중 위쪽 진행 표시줄 — 주소 조건(useSearchParams)을 읽으므로 Suspense 안에 둔다 */}
     <Suspense fallback={null}>
       <NavigationProgress />
     </Suspense>
+    <ScreenPrefill deployId={deployId} paths={prefillPaths(nav)} />
     <SidebarProvider defaultOpen={defaultOpen}>
       <AdminSidebar nav={nav} user={user} userName={userName} />
       <SidebarInset className="min-w-0">

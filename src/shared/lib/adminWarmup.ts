@@ -4,7 +4,7 @@
 //   · 첫 화면을 그대로 그리는 까닭(운영 실측 2026-11-24): 쉬던 서버에 바로 /admin 3.9초, 로그인 화면만 깨워 둔 뒤 2.3초.
 //     공개 페이지 · 관리자 화면은 같은 함수지만, 관리자 화면이 처음 하는 일(화면 코드 불러오기 · 로그인 확인 공개키 받기 ·
 //     Supabase 연결)은 그 화면을 그려야 데워진다.
-//   · 깨우기 표시(ADMIN_WARM_HEADER)가 달린 요청은 proxy 가 «마지막 요청 시각» 을 남기지도 지우지도 않는다 — 공개 페이지를
+//   · 깨우기 표시(ADMIN_WARM_HEADER — 관리자 화면의 배포마다 미리 받기 ScreenPrefill 도 단다)가 달린 요청은 proxy 가 «마지막 요청 시각» 을 남기지도 지우지도 않는다 — 공개 페이지를
 //     열었다고 8시간 규칙이 늘어나거나 새로 시작되면 안 된다(8시간이 지난 세션은 그대로 끊는다). 표시를 꾸며 붙여 얻는 것은
 //     규칙이 더 엄해지는 것뿐이라 권한이 늘지 않는다.
 //   · 넘겨 보내기는 따라가지 않는다(redirect: 'manual') — 꺼진 계정이면 첫 화면이 로그아웃 주소로 보내는데, 그것까지 열면
@@ -49,3 +49,25 @@ export const adminWarmPaths = (
     .filter(key => key !== 'dashboard' && ready.has(key))
     .slice(0, limit)
     .map(key => `${ADMIN_WARM_PATH}/${key}`);
+
+/**
+ * 관리자 화면 하나를 받아 버린다 — 공개 페이지의 깨우기(AdminWarmup) · 관리자 화면의 미리 받기(ScreenPrefill)가 쓴다.
+ * 깨우기 표시를 단다(proxy 가 마지막 요청 시각을 남기지 않는다 — 사람이 쓴 것이 아니다). 넘겨 보내기는 따라가지 않는다(위 머리 주석).
+ * keepalive: 응답에 실려 오는 새 로그인 토큰(쉬던 사이 만료돼 proxy 가 갱신한 것)을 페이지를 떠나도 받게 —
+ * 놓치면 옛 토큰을 다시 쓰다가 Supabase 가 재사용으로 보고 세션을 끊는다. 받은 내용은 끝까지 받아 버린다.
+ * rsc: 메뉴를 눌러 옮길 때처럼 화면 데이터로(아니면 주소줄로 열 때처럼 문서로). 그려졌으면 true.
+ */
+export const fetchAdminScreen = async (
+  path: string,
+  { rsc = false }: { rsc?: boolean } = {}
+): Promise<boolean> => {
+  const res = await fetch(path, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+    keepalive: true,
+    headers: { [ADMIN_WARM_HEADER]: '1', ...(rsc ? { RSC: '1' } : {}) },
+  });
+  await res.arrayBuffer();
+  return res.ok;
+};

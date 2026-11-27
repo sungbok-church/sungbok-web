@@ -17,7 +17,14 @@ export default async function AdminPanelLayout({
   return (
     // 저장 · 삭제 결과 알림(notifyResult)이 뜨는 자리
     <Toaster>
-      <AdminShell user={user} userName={profile.name} nav={nav} defaultOpen={sidebarOpen}>
+      <AdminShell
+        user={user}
+        userName={profile.name}
+        nav={nav}
+        defaultOpen={sidebarOpen}
+        // Vercel 이 배포마다 주는 값(실행 중에도 읽힌다 — 같은 커밋을 다시 배포해도 바뀐다). 로컬에는 없다
+        deployId={process.env.VERCEL_DEPLOYMENT_ID ?? ''}
+      >
         {children}
       </AdminShell>
     </Toaster>

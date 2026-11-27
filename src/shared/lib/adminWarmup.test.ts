@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  ADMIN_WARM_HEADER,
   ADMIN_WARM_INTERVAL_MS,
   adminWarmPaths,
+  fetchAdminScreen,
   hasAdminSessionCookie,
   shouldWarmAdmin,
 } from './adminWarmup';
@@ -53,5 +55,37 @@ describe('adminWarmPaths — 이어서 불러 둘 관리자 화면', () => {
 
   it('첫 화면은 넣지 않는다(따로 먼저 그린다)', () => {
     expect(adminWarmPaths(new Set(['dashboard']), ['dashboard'], 6)).toEqual([]);
+  });
+});
+
+describe('fetchAdminScreen — 관리자 화면 하나를 받아 버린다(깨우기 · 미리 받기)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('깨우기 표시를 달고 넘겨 보내기는 따라가지 않는다 — 화면 데이터(RSC)로 받을 때는 RSC 표시도', async () => {
+    const fetchMock = vi.fn(async () => new Response('x'));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(fetchAdminScreen('/admin/codes', { rsc: true })).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith('/admin/codes', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      redirect: 'manual',
+      keepalive: true,
+      headers: { [ADMIN_WARM_HEADER]: '1', RSC: '1' },
+    });
+    await fetchAdminScreen('/admin');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/admin',
+      expect.objectContaining({ headers: { [ADMIN_WARM_HEADER]: '1' } })
+    );
+  });
+
+  it('그려지지 않으면(넘겨 보내기 · 오류) false', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 404 }))
+    );
+    await expect(fetchAdminScreen('/admin/codes', { rsc: true })).resolves.toBe(false);
   });
 });
