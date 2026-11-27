@@ -1,7 +1,6 @@
 import { loadAdminContext } from '@/domains/admin/api/server/adminContext.server';
 import { can } from '@/domains/admin/lib/adminNav';
 import { SCREEN_DESCRIPTIONS } from '@/domains/admin/lib/screenDescriptions';
-import { periodStart } from '@/domains/admin/lib/adminTime';
 import { seoulToday, upcomingSunday } from '@/domains/admin/lib/content';
 import { issueLongDate } from '@/domains/news/api/bulletinList';
 import { MENU_ICONS } from '@/domains/admin/components/features/MenuIcon';
@@ -16,6 +15,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { ContentStatusBadge } from '@/domains/admin/components/features/StatusBadge';
+import { storageUsage } from '@/domains/admin/lib/storageUsage';
 import { CircleIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
@@ -23,7 +23,8 @@ import { IntentLink as Link } from '@/domains/admin/components/features/IntentLi
 // 관리자는 요청마다 그린다(src/app/admin/layout.tsx · ADR 0024) — 이 화면도 요청을 기다려도 된다(개발 중 «instant» 검사 제외).
 export const instant = false;
 
-type Stat = { label: string; value: number; href: string };
+/** 숫자 카드 — href 가 있으면 누르면 그 화면으로, note 는 값 아래 한 줄(저장 공간의 «1 GB 중 24%») */
+type Stat = { label: string; value: number | string; href?: string; note?: string };
 
 type Todo = { key: string; title: string; description: string };
 
@@ -49,7 +50,6 @@ export default async function AdminHomePage() {
   // 요청마다 지금 시각 기준(서버 컴포넌트)
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
-  const weekAgo = periodStart('7d', now) ?? '';
   const sunday = upcomingSunday(seoulToday(now));
   const count = async (query: PromiseLike<{ count: number | null }>) => (await query).count ?? 0;
   const active = (table: 'profiles' | 'groups' | 'categories') =>
@@ -57,15 +57,14 @@ export default async function AdminHomePage() {
 
   // 숫자는 권한 확인(loadAdminContext)을 기다리지 않고 함께 센다 — DB 를 한 번 덜 기다린다. 막는 것은 어차피 DB(RLS)이고,
   // 권한이 없는 숫자는 아래에서 버린다.
-  const [{ profile, permissions, nav }, users, groups, categories, changes, thisWeek, thisAd] =
+  const [{ profile, permissions, nav }, users, groups, categories, storageBytes, thisWeek, thisAd] =
     await Promise.all([
       loadAdminContext(),
       active('profiles'),
       active('groups'),
       active('categories'),
-      count(
-        supabase.from('audit_log').select('id', { count: 'exact', head: true }).gte('at', weekAgo)
-      ),
+      // 올린 파일 크기의 합(바이트) — 못 읽으면 카드를 빼려고 null
+      supabase.rpc('storage_usage').then(r => (r.error ? null : Number(r.data))),
       // 이번 주일 주보(휴지통 아닌 것) — 주보 조회 권한이 없으면 RLS 가 비워 준다
       supabase
         .from('bulletins')
@@ -86,7 +85,8 @@ export default async function AdminHomePage() {
     ]);
   // 연락 전 새가족 — 왼쪽 메뉴의 숫자(loadAdminContext 가 센다)와 같은 값을 쓴다
   const newcomers = nav.flatMap(g => g.items).find(item => item.key === 'newcomers')?.badge ?? 0;
-  const stats: Stat[] = [
+  const usage = storageBytes === null ? null : storageUsage(storageBytes);
+  const candidates: (Stat | false)[] = [
     can(permissions, 'users', 'READ') && {
       label: '사용 중인 계정',
       value: users,
@@ -102,12 +102,13 @@ export default async function AdminHomePage() {
       value: categories,
       href: '/admin/categories',
     },
-    can(permissions, 'audit', 'READ') && {
-      label: '최근 7일 변경',
-      value: changes,
-      href: '/admin/audit',
+    usage !== null && {
+      label: '저장 공간',
+      value: usage.used,
+      note: `${usage.included} 중 ${usage.percent}%`,
     },
-  ].filter((s): s is Stat => Boolean(s));
+  ];
+  const stats = candidates.filter((s): s is Stat => Boolean(s));
 
   // 왼쪽 메뉴에 있는 화면만(만들었고 · 켜져 있고 · 권한이 있는) — 메뉴를 끄면 카드도 빠진다
   const onNav = new Set(nav.flatMap(g => g.items).map(item => item.key));
@@ -157,19 +158,16 @@ export default async function AdminHomePage() {
         <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(stat => (
             <li key={stat.label}>
-              <Link
-                href={stat.href}
-                className="focus-visible:ring-ring/50 block rounded-xl outline-none focus-visible:ring-[3px]"
-              >
-                <Card className="hover:bg-muted/40 transition-colors">
-                  <CardHeader>
-                    <CardDescription>{stat.label}</CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums">
-                      {stat.value.toLocaleString('ko-KR')}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-              </Link>
+              {stat.href ? (
+                <Link
+                  href={stat.href}
+                  className="focus-visible:ring-ring/50 block h-full rounded-xl outline-none focus-visible:ring-[3px]"
+                >
+                  <StatCard stat={stat} className="hover:bg-muted/40 h-full transition-colors" />
+                </Link>
+              ) : (
+                <StatCard stat={stat} className="h-full" />
+              )}
             </li>
           ))}
         </ul>
@@ -263,3 +261,15 @@ export default async function AdminHomePage() {
     </>
   );
 }
+
+const StatCard = ({ stat, className }: { stat: Stat; className?: string }) => (
+  <Card className={className}>
+    <CardHeader>
+      <CardDescription>{stat.label}</CardDescription>
+      <CardTitle className="text-2xl font-semibold tabular-nums">
+        {typeof stat.value === 'number' ? stat.value.toLocaleString('ko-KR') : stat.value}
+      </CardTitle>
+      {stat.note && <CardDescription>{stat.note}</CardDescription>}
+    </CardHeader>
+  </Card>
+);

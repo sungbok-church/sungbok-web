@@ -456,6 +456,18 @@ select is(
   '00000000-0000-7000-8000-000000000001'::uuid,
   '다운로드 기록의 «누가» 는 기본값(로그인한 사람)'
 );
+-- 엑셀 받기 기록은 한 건에 묶이지 않는다(row_id 없음) — 새가족 목록의 «변경 이력» 이 «이력조회» 권한으로 읽는다
+select ok(
+  exists (select 1 from public.audit_log where table_name = 'newcomers' and action = 'EXPORT' and row_id is null),
+  '새가족 담당(이력조회): 엑셀 받기 기록을 읽는다'
+);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-00000000000e","role":"authenticated"}', true);
+select is(
+  (select count(*)::int from public.audit_log where table_name = 'newcomers' and action = 'EXPORT'),
+  0,
+  '새가족 이력조회 권한이 없으면 엑셀 받기 기록을 못 읽는다'
+);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-7000-8000-000000000001","role":"authenticated"}', true);
 select throws_ok(
   $$insert into public.audit_log (table_name, action, changes, at) values ('newcomers', 'EXPORT', '{}', now() - interval '1 year')$$,
   '42501', null, '다운로드 기록의 시각을 지어 넣을 수 없다'

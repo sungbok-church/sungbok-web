@@ -30,15 +30,6 @@ export const formatShortTime = (iso: string, now: string): string => {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const PERIODS = { '7d': 7, '30d': 30 } as const;
-export type Period = keyof typeof PERIODS;
-
-/** 기간 필터(최근 7일 · 30일)의 시작 시각(UTC ISO). 고르지 않았으면 null = 전체. */
-export const periodStart = (period: string | undefined, now: number): string | null => {
-  const days = period && period in PERIODS ? PERIODS[period as Period] : null;
-  return days === null ? null : new Date(now - days * DAY_MS).toISOString();
-};
-
 const KST_MIDNIGHT = 'T00:00:00+09:00';
 
 /** 목록의 기간 조건(YYYY-MM-DD, 한국 날짜) → `at >= gte` · `at < lt` 경계. 끝일은 그날 하루를 다 넣는다. */

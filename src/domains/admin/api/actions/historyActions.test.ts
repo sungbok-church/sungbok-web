@@ -6,6 +6,7 @@ const m = vi.hoisted(() => ({
   permission: vi.fn(async () => ({ user: { id: 'actor' } }) as unknown),
   orFilter: vi.fn(),
   eqFilter: vi.fn(),
+  ltFilter: vi.fn(),
   rows: [] as unknown[],
 }));
 
@@ -22,16 +23,17 @@ vi.mock('../server/auditRows.server', () => ({
 vi.mock('@/shared/api/supabase/serverClient.server', () => ({
   createSupabaseServerClient: vi.fn(async () => ({
     from: () => ({
-      select: () => ({
-        or: (f: string) => (
-          m.orFilter(f),
-          { order: () => ({ limit: async () => ({ data: m.rows, error: null }) }) }
-        ),
-        eq: (c: string, v: string) => (
-          m.eqFilter(c, v),
-          { order: () => ({ limit: async () => ({ data: m.rows, error: null }) }) }
-        ),
-      }),
+      select: () => {
+        const rest: Record<string, unknown> = {
+          eq: (c: string, v: string) => (m.eqFilter(c, v), rest),
+          lt: (c: string, v: number) => (m.ltFilter(c, v), rest),
+          order: () => ({ limit: async () => ({ data: m.rows, error: null }) }),
+        };
+        return {
+          or: (f: string) => (m.orFilter(f), rest),
+          eq: (c: string, v: string) => (m.eqFilter(c, v), rest),
+        };
+      },
     }),
   })),
 }));
@@ -58,6 +60,23 @@ describe('loadHistory', () => {
         hasMore: false,
       },
     });
+  });
+
+  it('더 보기 — 받은 것보다 오래된 것(id 가 before 보다 작은 것)만 이어서', async () => {
+    await loadHistory({ table: 'bulletins', rowId: ID }, 120);
+    expect(m.ltFilter).toHaveBeenCalledWith('id', 120);
+    vi.clearAllMocks();
+    await loadHistory({ table: 'bulletins', rowId: ID });
+    expect(m.ltFilter).not.toHaveBeenCalled();
+    // 숫자가 아니면 DB 를 부르지 않는다
+    expect(await loadHistory({ table: 'bulletins', rowId: ID }, 'x')).toMatchObject({ ok: false });
+  });
+
+  it('새가족 목록(한 건 없이)은 엑셀 받기 기록만 — 개인정보를 내려받은 기록을 볼 곳', async () => {
+    await loadHistory({ table: 'newcomers' });
+    expect(m.permission).toHaveBeenCalledWith('newcomers', 'HISTORY');
+    expect(m.eqFilter).toHaveBeenCalledWith('table_name', 'newcomers');
+    expect(m.eqFilter).toHaveBeenCalledWith('action', 'EXPORT');
   });
 
   it('사용자 이력은 «사용자» 메뉴의 이력조회 권한', async () => {

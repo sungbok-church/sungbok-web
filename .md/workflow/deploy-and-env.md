@@ -107,7 +107,7 @@ DB 는 **정본 두 파일**로만 바꾼다([ADR 0019](../decisions/0019-db-sch
 
 ## 7. Vercel 방화벽 — 공식 권장만
 
-Vercel 은 운영에서도 **Hobby(무료)** 로 쓴다(유료는 Supabase Pro). Hobby 는 청구가 없는 대신 한 달 한도(CDN 요청 100만 · 함수 호출 100만 · Active CPU 4시간 등, [Hobby 한도](https://vercel.com/docs/plans/hobby))를 넘으면 그 기능이 최대 30일 멈춘다. 방화벽이 막은 요청은 한도에 잡히지 않는다([공식](https://vercel.com/docs/vercel-firewall/vercel-waf/usage-and-pricing)).
+Vercel 은 운영에서도 **Hobby(무료)** 로 쓴다. Supabase 도 지금은 **무료 요금제**다(2026-11-26 사용자 확인 — 파일 1 GB · DB 500 MB, 일주일 쓰지 않으면 멈춤 — 예약 작업이 하루 한 번 읽어 막는다). Hobby 는 청구가 없는 대신 한 달 한도(CDN 요청 100만 · 함수 호출 100만 · Active CPU 4시간 등, [Hobby 한도](https://vercel.com/docs/plans/hobby))를 넘으면 그 기능이 최대 30일 멈춘다. 방화벽이 막은 요청은 한도에 잡히지 않는다([공식](https://vercel.com/docs/vercel-firewall/vercel-waf/usage-and-pricing)).
 
 [출시 전 체크리스트](https://vercel.com/docs/production-checklist)가 권하는 것만 한다(공식은 숫자를 정해 주지 않는다). DDoS 차단은 자동이라 할 것이 없다.
 

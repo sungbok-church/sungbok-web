@@ -525,6 +525,9 @@ isOneToOne: false
                            },
 "save_user":
 { Args: { "p_department": Database["public"]['Enums']["department_slug"],"p_group_ids": (string)[],"p_id": string,"p_is_active": boolean,"p_name": string,"p_seen_group_ids": (string)[],"p_updated_at": string }; Returns: string
+                           },
+"storage_usage":
+{ Args: Record<PropertyKey, never>; Returns: number
                            }
           }
           Enums: {

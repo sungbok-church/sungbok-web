@@ -17,7 +17,6 @@ export const ADMIN_SCREENS_READY: ReadonlySet<string> = new Set([
   'menus',
   'categories',
   'codes',
-  'audit',
 ]);
 
 /**
@@ -37,8 +36,7 @@ export const ADMIN_WARM_ORDER: readonly string[] = [
   // 사람 · 권한
   'users',
   'groups',
-  // 가끔 보는 기록 · 설정
-  'audit',
+  // 가끔 보는 설정
   'categories',
   'codes',
   'menus',

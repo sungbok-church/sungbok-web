@@ -117,9 +117,7 @@ with spec (key, parent_key, default_label, path, sort, is_locked, actions) as (
     ('menus',         'system',       '메뉴 관리',    '/admin/menus',         30, true,
        '{READ,UPDATE,HISTORY}'),
     ('codes',         'system',       '코드 관리',    '/admin/codes',         40, false,
-       '{READ,CREATE,UPDATE,HISTORY}'),
-    ('audit',         'system',       '변경 이력',    '/admin/audit',         50, false,
-       '{READ}')
+       '{READ,CREATE,UPDATE,HISTORY}')
 )
 insert into public.menus (area, key, parent_id, default_label, path, sort, is_locked, actions)
 select 'ADMIN', s.key, p.id, s.default_label, s.path, s.sort, s.is_locked, s.actions
@@ -132,6 +130,9 @@ on conflict (area, key) do update set
   is_locked     = excluded.is_locked,
   is_active     = public.menus.is_active or excluded.is_locked,
   actions       = excluded.actions;
+
+-- 전체 «변경 이력» 화면은 없앴다(2026-11-26, 사용자 결정 — 이력은 각 화면의 «변경 이력» 창에서 그 글만). 메뉴와 그 권한을 지운다.
+delete from public.menus where area = 'ADMIN' and key = 'audit';
 
 -- ----------------------------------------------------------------------------
 -- 홈페이지 메뉴(설계 6.5) — 어떤 페이지가 있는지는 코드(src/shared/config/siteNav.ts)가 정본이고, 여기 줄은 화면에서 덮어쓸

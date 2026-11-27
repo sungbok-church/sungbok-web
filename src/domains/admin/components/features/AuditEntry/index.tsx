@@ -25,7 +25,7 @@ export type AuditItem = {
   actorName: string;
 };
 
-export const ACTION_TONE: Record<string, 'success' | 'accent' | 'danger' | 'neutral'> = {
+const ACTION_TONE: Record<string, 'success' | 'accent' | 'danger' | 'neutral'> = {
   INSERT: 'success',
   UPDATE: 'accent',
   DELETE: 'danger',

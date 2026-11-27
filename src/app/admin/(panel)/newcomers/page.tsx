@@ -7,6 +7,7 @@ import {
 } from '@/domains/admin/components/features/AdminList/AdminTable';
 import { ListToolbar } from '@/domains/admin/components/features/AdminList/ListToolbar';
 import { IntentLink as Link } from '@/domains/admin/components/features/IntentLink';
+import { HistorySheet } from '@/domains/admin/components/features/HistorySheet';
 import { PageHeader } from '@/domains/admin/components/features/PageHeader';
 import { NewcomerStatusBadge } from '@/domains/admin/components/features/StatusBadge';
 import { can, screenLabel } from '@/domains/admin/lib/adminNav';
@@ -86,16 +87,22 @@ export default async function AdminNewcomersPage({
       <PageHeader
         title={screenLabel(ctx.nav, 'newcomers', '새가족')}
         actions={
-          can(ctx.permissions, 'newcomers', 'EXPORT') && (
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<a href={`${PATH}/export?${exportParams}`} download />}
-            >
-              <DownloadIcon data-icon="inline-start" />
-              엑셀
-            </Button>
-          )
+          <>
+            {can(ctx.permissions, 'newcomers', 'EXPORT') && (
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<a href={`${PATH}/export?${exportParams}`} download />}
+              >
+                <DownloadIcon data-icon="inline-start" />
+                엑셀
+              </Button>
+            )}
+            {/* 엑셀 받기 기록(누가 언제 몇 건) — 접수 한 건의 이력은 상세에서 */}
+            {can(ctx.permissions, 'newcomers', 'HISTORY') && (
+              <HistorySheet table="newcomers" subject="엑셀 받기" />
+            )}
+          </>
         }
       />
       <ListToolbar

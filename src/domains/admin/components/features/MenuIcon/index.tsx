@@ -3,7 +3,6 @@ import {
   BracesIcon,
   FileTextIcon,
   FilesIcon,
-  HistoryIcon,
   ImageIcon,
   ImagesIcon,
   InboxIcon,
@@ -43,5 +42,4 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   menus: ListTreeIcon,
   categories: TagsIcon,
   codes: BracesIcon,
-  audit: HistoryIcon,
 };

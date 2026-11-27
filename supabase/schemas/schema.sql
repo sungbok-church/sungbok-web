@@ -545,12 +545,10 @@ create table public.audit_log (
   -- 엑셀 다운로드는 여러 건이라 행을 가리키지 않는다(건수는 changes.count).
   check (action = 'EXPORT' or row_id is not null or parent_id is not null)
 );
--- 글 한 건의 이력(수정 화면 옆 패널) · 딸린 행의 이력 · 사람별 · 기간별(«변경 이력» 메뉴).
+-- 글 한 건의 이력(각 화면의 «변경 이력» 창) · 딸린 행의 이력. 사람별 · 기간별 색인은 전체 «변경 이력» 화면과 함께 지웠다
+-- (2026-11-26 — 읽는 곳이 없고 이력을 남기는 모든 쓰기에 비용만 든다).
 create index audit_log_row_idx on public.audit_log (table_name, row_id, id desc) where row_id is not null;
 create index audit_log_parent_idx on public.audit_log (parent_table, parent_id, id desc) where parent_id is not null;
-create index audit_log_actor_idx on public.audit_log (actor_id, id desc) where actor_id is not null;
--- 추가만 하는 표라 시각 순서와 저장 순서가 같다 — BRIN 이 아주 작게 기간 조회를 맡는다.
-create index audit_log_at_brin on public.audit_log using brin (at);
 
 -- ----------------------------------------------------------------------------
 -- 파일 묶음의 주인 — 묶음이 어느 글의 어느 자리에 붙었는가.
@@ -989,7 +987,7 @@ as $$
     from public.profiles p
    where p.id = any (p_ids)
      and exists (
-       select 1 from public.my_permissions() mp where mp.action = 'HISTORY' or (mp.menu_key = 'audit' and mp.action = 'READ')
+       select 1 from public.my_permissions() mp where mp.action = 'HISTORY'
      )
 $$;
 
@@ -1098,7 +1096,7 @@ as $$
      )
 $$;
 
--- 변경 이력 한 줄을 볼 수 있는가 — «변경 이력» 메뉴 조회, 또는 그 글 메뉴의 «이력조회».
+-- 변경 이력 한 줄을 볼 수 있는가 — 그 글 메뉴의 «이력조회»(전체 «변경 이력» 화면은 2026-11-26 없앴다 — 이력은 각 화면에서).
 create function private.can_read_history(p_table text, p_row_id uuid, p_parent_table text, p_parent_id uuid)
 returns boolean
 language plpgsql stable security definer
@@ -1724,6 +1722,17 @@ begin
 end
 $$;
 
+-- 첫 화면 «저장 공간» — 올린 파일(media 버킷)의 크기 합(바이트). 로그인한 관리자 누구나(합계만 — 파일 이름 · 경로는 주지 않는다).
+create function public.storage_usage() returns bigint
+language sql stable security definer
+set search_path = ''
+as $$
+  -- numeric 으로 더한다 — 크기가 소수 표기여도 함수 전체가 실패하지 않게(Storage API 는 정수를 쓴다)
+  select coalesce(sum((o.metadata ->> 'size')::numeric), 0)::bigint
+    from storage.objects o
+   where o.bucket_id = 'media'
+$$;
+
 -- 예약 작업 2단계: 어느 files 행도 가리키지 않는 Storage 파일(올린 지 8일 지난 것 — 올리는 중이거나 임시 보관한 글의 파일은
 -- 건드리지 않는다).
 -- 앱이 이 목록을 Storage API 로 지운다. purge_expired 뒤에 부른다.
@@ -2116,12 +2125,11 @@ create policy newcomers_delete on public.newcomers for delete to authenticated
 -- 유튜브 영상 — 누구나 읽기(공개 영상 화면). 쓰기 규칙 없음(서버 전용 키만). youtube_sync 는 규칙 없음(서버 전용 키만).
 create policy youtube_videos_select on public.youtube_videos for select to anon, authenticated using (true);
 
--- 변경 이력 — 읽기는 «변경 이력» 메뉴 또는 그 글의 «이력조회». 쓰기는 엑셀 다운로드 기록만(나머지는 트리거).
+-- 변경 이력 — 읽기는 그 글의 «이력조회». 쓰기는 엑셀 다운로드 기록만(나머지는 트리거).
 -- 다운로드 기록은 table_name · action · changes 만 보낼 수 있다(칸 단위 GRANT) — 누가 · 언제는 기본값.
 create policy audit_log_select on public.audit_log for select to authenticated
   using (
-    (select private.has_permission('audit', 'READ'))
-    or private.can_read_history(table_name, row_id, parent_table, parent_id)
+    private.can_read_history(table_name, row_id, parent_table, parent_id)
   );
 create policy audit_log_insert on public.audit_log for insert to authenticated
   with check (
@@ -2178,6 +2186,7 @@ grant execute on function public.save_group(uuid, timestamptz, text, text, boole
 grant execute on function public.create_group(text, text, text[]) to authenticated;
 grant execute on function public.save_department(public.department_slug, timestamptz, text, text, text, text, uuid, jsonb) to authenticated;
 grant execute on function public.reorder_rows(text, uuid[]) to authenticated;
+grant execute on function public.storage_usage() to authenticated;
 grant execute on function public.purge_expired() to service_role;
 grant execute on function public.orphan_storage_objects(integer) to service_role;
 grant execute on function public.newcomer_notify_emails() to service_role;

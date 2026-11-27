@@ -86,7 +86,7 @@ select ok(
 );
 
 -- 초기 행(reference.sql)
-select is((select count(*)::int from public.menus where area = 'ADMIN' and path is not null), 15, '관리자 화면 메뉴 15개');
+select is((select count(*)::int from public.menus where area = 'ADMIN' and path is not null), 14, '관리자 화면 메뉴 14개(전체 «변경 이력» 은 2026-11-26 없앰)');
 select ok((select is_system and is_active from public.groups where key = 'admin'), '«전체 관리» 그룹이 있다');
 select is(
   (select count(*)::int from public.group_permissions gp join public.groups g on g.id = gp.group_id where g.key = 'admin'),
@@ -133,6 +133,15 @@ select ok(
   (select count(*) from public.categories) >= 14 and (select count(*) from public.category_groups) = 6,
   '처음 분류(지금 사이트의 값)가 들어 있다'
 );
+
+-- 첫 화면 «저장 공간»(합계만) — 로그인한 관리자만
+select ok(has_function_privilege('authenticated', 'public.storage_usage()', 'execute'), '로그인 사용자는 저장 공간 합계를 본다');
+select ok(not has_function_privilege('anon', 'public.storage_usage()', 'execute'), '방문자는 못 본다');
+insert into storage.objects (bucket_id, name, metadata) values
+  ('media', 't-usage/a.webp', '{"size": 1000}'), ('media', 't-usage/b.webp', '{"size": 24}');
+select ok(public.storage_usage() >= 1024, '올린 파일 크기를 더한다');
+-- 전체 «변경 이력» 화면은 없앴다(2026-11-26) — 이력은 각 화면에서
+select is((select count(*)::int from public.menus where area = 'ADMIN' and key = 'audit'), 0, '«변경 이력» 메뉴는 없다');
 
 select * from finish();
 rollback;

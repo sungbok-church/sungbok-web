@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cleanupDay, dayRange, formatAdminTime, formatShortTime, periodStart } from './adminTime';
+import { cleanupDay, dayRange, formatAdminTime, formatShortTime } from './adminTime';
 
 describe('formatAdminTime', () => {
   it('UTC 로 받은 시각을 서울 시각으로(YYYY-MM-DD HH:mm)', () => {
@@ -29,15 +29,6 @@ describe('formatShortTime', () => {
 
   it('깨진 값은 그대로', () => {
     expect(formatShortTime('abc', now)).toBe('abc');
-  });
-});
-
-describe('periodStart', () => {
-  const now = Date.UTC(2026, 10, 20, 0, 0, 0);
-  it('최근 7일 · 30일의 시작(UTC ISO), 전체는 null', () => {
-    expect(periodStart('7d', now)).toBe('2026-11-13T00:00:00.000Z');
-    expect(periodStart('30d', now)).toBe('2026-10-21T00:00:00.000Z');
-    expect(periodStart(undefined, now)).toBeNull();
   });
 });
 

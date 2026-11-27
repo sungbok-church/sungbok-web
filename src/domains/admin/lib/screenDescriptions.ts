@@ -8,7 +8,6 @@ export const SCREEN_DESCRIPTIONS: Record<string, string> = {
   categories: '주일광고 · 성복의 뜰 · 교회앨범 · 설교 시트지의 분류(칩)를 관리합니다.',
   codes:
     '직분처럼 관리자가 바꾸는 값과, 새가족 상태 · 콘텐츠 상태처럼 화면에 보이는 이름을 관리합니다.',
-  audit: '누가 언제 무엇을 바꿨는지 모든 기록을 봅니다.',
   bulletin: '매주 주보 그림을 올립니다.',
   announcements: '주일광고 영상을 등록합니다.',
   garden: '성복의 뜰 영상을 등록합니다.',
