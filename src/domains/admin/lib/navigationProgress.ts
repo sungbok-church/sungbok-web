@@ -57,11 +57,15 @@ export const signalNavigationStart = (href: string): void => {
   window.dispatchEvent(new CustomEvent(NAVIGATION_START, { detail }));
 };
 
-/** 본문 뼈대의 모양 — 목록(머리 · 검색 막대 · 표) · 묶음(왼쪽 묶음 목록 + 오른쪽 표, 코드 · 분류 관리) */
-export type ScreenShape = 'list' | 'groups';
+/** 본문 뼈대의 모양 — 목록(머리 · 검색 막대 · 표) · 묶음(왼쪽 묶음 목록 + 오른쪽 표, 코드 · 분류 관리) · 입력(등록 · 수정) */
+export type ScreenShape = 'list' | 'groups' | 'form';
 
 const GROUP_SCREENS = /^\/admin\/(?:codes|categories)\/?$/;
+const FORM_SCREENS = /^\/admin\/.+\/(?:new|edit)\/?$/;
 
 /** 갈 화면(href)의 뼈대 모양 — 새 화면이 그려질 때 모양이 크게 바뀌지 않게 그 화면을 닮게 그린다. 모르는 화면은 목록 */
-export const screenShape = (href: string): ScreenShape =>
-  GROUP_SCREENS.test(new URL(href, 'http://localhost').pathname) ? 'groups' : 'list';
+export const screenShape = (href: string): ScreenShape => {
+  const { pathname } = new URL(href, 'http://localhost');
+  if (GROUP_SCREENS.test(pathname)) return 'groups';
+  return FORM_SCREENS.test(pathname) ? 'form' : 'list';
+};

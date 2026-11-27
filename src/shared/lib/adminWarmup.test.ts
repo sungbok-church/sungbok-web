@@ -66,7 +66,7 @@ describe('fetchAdminScreen — 관리자 화면 하나를 받아 버린다(깨�
   it('깨우기 표시를 달고 넘겨 보내기는 따라가지 않는다 — 화면 데이터(RSC)로 받을 때는 RSC 표시도', async () => {
     const fetchMock = vi.fn(async () => new Response('x'));
     vi.stubGlobal('fetch', fetchMock);
-    await expect(fetchAdminScreen('/admin/codes', { rsc: true })).resolves.toBe(true);
+    await expect(fetchAdminScreen('/admin/codes', { rsc: true })).resolves.toBe('ok');
     expect(fetchMock).toHaveBeenCalledWith('/admin/codes', {
       cache: 'no-store',
       credentials: 'same-origin',
@@ -81,11 +81,24 @@ describe('fetchAdminScreen — 관리자 화면 하나를 받아 버린다(깨�
     );
   });
 
-  it('그려지지 않으면(넘겨 보내기 · 오류) false', async () => {
+  it('넘겨 보내면(로그인이 끊김 — 따라가지 않은 응답) redirect', async () => {
+    const opaque = {
+      type: 'opaqueredirect',
+      ok: false,
+      arrayBuffer: async () => new ArrayBuffer(0),
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => opaque)
+    );
+    await expect(fetchAdminScreen('/admin/codes', { rsc: true })).resolves.toBe('redirect');
+  });
+
+  it('그 밖에 그려지지 않으면(없는 화면 · 오류) error', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response(null, { status: 404 }))
     );
-    await expect(fetchAdminScreen('/admin/codes', { rsc: true })).resolves.toBe(false);
+    await expect(fetchAdminScreen('/admin/codes', { rsc: true })).resolves.toBe('error');
   });
 });

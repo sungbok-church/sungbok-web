@@ -55,12 +55,26 @@ describe('ScreenPrefill — 배포마다 한 번 메뉴 화면들을 받아 둔�
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('하나라도 그려지지 않으면(로그인이 끊김) 나머지는 받지 않는다', async () => {
-    // 넘겨 보내기를 따라가지 않으면 그려지지 않은 응답(ok 아님)이 온다
-    fetchMock.mockImplementationOnce(async () => new Response(null, { status: 404 }));
+  it('로그인이 끊겨 넘겨 보내면 나머지는 받지 않는다', async () => {
+    // 넘겨 보내기를 따라가지 않으면 opaqueredirect 응답이 온다
+    fetchMock.mockImplementationOnce(
+      async () =>
+        ({
+          type: 'opaqueredirect',
+          ok: false,
+          arrayBuffer: async () => new ArrayBuffer(0),
+        }) as unknown as Response
+    );
     render(<ScreenPrefill deployId="dpl_1" paths={PATHS} />);
     await runAll();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('한 화면이 열리지 않아도(그룹 만들기는 전체 관리만 — 아니면 없는 화면) 다음 화면은 받는다', async () => {
+    fetchMock.mockImplementationOnce(async () => new Response(null, { status: 404 }));
+    render(<ScreenPrefill deployId="dpl_1" paths={PATHS} />);
+    await runAll();
+    expect(fetchMock).toHaveBeenCalledTimes(PATHS.length);
   });
 
   it('다시 그려 새 목록이 와도(저장 뒤 새로 고침) 받던 것을 멈추지 않는다', async () => {

@@ -9,7 +9,6 @@ import { CommandMenu } from '@/domains/admin/components/features/CommandMenu';
 import { NavigationProgress } from '@/domains/admin/components/features/NavigationProgress';
 import { PendingScreen } from '@/domains/admin/components/features/PendingScreen';
 import { ScreenPrefill } from '@/domains/admin/components/features/ScreenPrefill';
-import { prefillPaths } from '@/domains/admin/lib/screenPrefill';
 
 import { AdminSidebar } from './AdminSidebar';
 import { HeaderBreadcrumbs } from './HeaderTitle';
@@ -21,8 +20,11 @@ interface Props {
   userName: string;
   /** 왼쪽 메뉴를 펼친 채로 시작할지 — 지난번에 접어 뒀으면 false(쿠키 `sidebar_state`) */
   defaultOpen?: boolean;
-  /** 이 배포의 표시 — 배포마다 한 번 메뉴 화면들을 미리 받는다(ScreenPrefill). 없으면(로컬 개발) 받지 않는다 */
-  deployId?: string;
+  /**
+   * 배포마다 한 번 미리 받을 화면(ScreenPrefill) — deployId 는 이 배포의 표시(없으면 로컬 개발이라 받지 않는다),
+   * paths 는 메뉴 화면 · 등록 화면(prefillPaths)
+   */
+  prefill: { deployId: string; paths: string[] };
   children: ReactNode;
 }
 
@@ -36,7 +38,7 @@ export const AdminShell = ({
   userName,
   nav,
   defaultOpen = true,
-  deployId = '',
+  prefill,
   children,
 }: Props) => (
   // 접힌 메뉴에 올리면 이름이 바로 뜨게 한다 — 제공자가 없으면 Base UI 기본값(600ms 뒤)이 쓰인다
@@ -45,7 +47,7 @@ export const AdminShell = ({
     <Suspense fallback={null}>
       <NavigationProgress />
     </Suspense>
-    <ScreenPrefill deployId={deployId} paths={prefillPaths(nav)} />
+    <ScreenPrefill deployId={prefill.deployId} paths={prefill.paths} />
     <SidebarProvider defaultOpen={defaultOpen}>
       <AdminSidebar nav={nav} user={user} userName={userName} />
       <SidebarInset className="min-w-0">

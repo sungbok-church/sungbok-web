@@ -10,7 +10,8 @@ import { useEffect, useRef } from 'react';
 
 /**
  * 배포마다 이 브라우저에서 한 번, 왼쪽 메뉴의 화면들을 화면 데이터(RSC)로 받아 둔다 — 그리는 것은 없다(까닭은 lib/screenPrefill).
- * 화면을 열고 잠시 뒤(PREFILL_DELAY_MS)에 하나씩 차례로 받는다. 로그인이 끊겨 proxy 가 넘겨 보내면(그려지지 않음) 멈춘다.
+ * 화면을 열고 잠시 뒤(PREFILL_DELAY_MS)에 하나씩 차례로 받는다. 로그인이 끊겨 proxy 가 넘겨 보내면 멈추고, 한 화면이 열리지
+ * 않으면(그룹 만들기는 전체 관리만 — 아니면 없는 화면) 건너뛰고 다음을 받는다.
  * 데이터 절약 모드 · 저장소를 못 쓰는 브라우저(열 때마다 다시 받게 되므로)에서는 받지 않는다. 실패해도 조용히 넘어간다.
  */
 export const ScreenPrefill = ({ deployId, paths }: { deployId: string; paths: string[] }) => {
@@ -37,7 +38,7 @@ export const ScreenPrefill = ({ deployId, paths }: { deployId: string; paths: st
         for (const path of latest.current) {
           if (stopped) return;
           try {
-            if (!(await fetchAdminScreen(path, { rsc: true }))) return;
+            if ((await fetchAdminScreen(path, { rsc: true })) === 'redirect') return;
           } catch {
             return;
           }

@@ -44,7 +44,7 @@ export const AdminWarmup = () => {
         // 첫 화면은 주소줄로 열 때처럼 문서로, 나머지는 메뉴를 눌러 옮길 때처럼 화면 데이터(RSC)로.
         // 첫 화면이 그려지지 않으면(로그인이 끊김 · 8시간 지남 · 꺼진 계정 · 비밀번호를 바꿔야 함 — 넘겨 보내기는 status 0)
         // 나머지도 그려지지 않으니 부르지 않는다
-        if (!(await fetchAdminScreen(ADMIN_WARM_PATH))) return;
+        if ((await fetchAdminScreen(ADMIN_WARM_PATH)) !== 'ok') return;
         for (const path of adminWarmPaths(ADMIN_SCREENS_READY, ADMIN_WARM_ORDER, ADMIN_WARM_LIMIT))
           await fetchAdminScreen(path, { rsc: true });
       } catch {

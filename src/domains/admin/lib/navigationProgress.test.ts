@@ -108,10 +108,18 @@ describe('screenShape — 갈 화면의 뼈대 모양', () => {
     expect(screenShape('/admin/codes/')).toBe('groups');
   });
 
+  it('등록 · 수정 화면은 입력 폼 모양', () => {
+    expect(screenShape('http://localhost:3005/admin/resources/new')).toBe('form');
+    expect(screenShape('http://localhost:3005/admin/users/0194-abc/edit')).toBe('form');
+    expect(screenShape('/admin/bulletin/new/')).toBe('form');
+  });
+
   it('그 밖은 목록 모양', () => {
     expect(screenShape('http://localhost:3005/admin/users')).toBe('list');
     expect(screenShape('http://localhost:3005/admin')).toBe('list');
     expect(screenShape('http://localhost:3005/admin/codes-old')).toBe('list');
     expect(screenShape('http://localhost:3005/admin/groups/1/codes')).toBe('list');
+    expect(screenShape('http://localhost:3005/admin/news')).toBe('list');
+    expect(screenShape('http://localhost:3005/admin/users/new-guide')).toBe('list');
   });
 });

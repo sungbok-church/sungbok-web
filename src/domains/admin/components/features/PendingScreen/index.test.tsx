@@ -37,12 +37,14 @@ describe('PendingScreen — 다른 화면으로 가는 동안 본문 자리에 �
     expect(screen.getByText('사용자 목록')).not.toBeVisible();
   });
 
-  it('갈 화면을 닮은 뼈대 — 코드 · 분류 관리는 묶음 모양, 그 밖은 목록 모양', () => {
+  it('갈 화면을 닮은 뼈대 — 코드 · 분류 관리는 묶음, 등록 · 수정은 입력 폼, 그 밖은 목록 모양', () => {
     render(page('사용자 목록'));
     act(() => signalNavigationStart('/admin/codes'));
     expect(skeleton()).toHaveAttribute('data-shape', 'groups');
     act(() => signalNavigationStart('/admin/groups'));
     expect(skeleton()).toHaveAttribute('data-shape', 'list');
+    act(() => signalNavigationStart('/admin/resources/new'));
+    expect(skeleton()).toHaveAttribute('data-shape', 'form');
   });
 
   it('같은 화면의 조건만 바꾸는 이동(검색 · 쪽)은 뼈대 없이 지금 화면을 둔다', () => {

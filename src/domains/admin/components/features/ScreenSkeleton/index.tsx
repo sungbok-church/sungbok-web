@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 
-// 관리자 화면을 읽는 동안의 뼈대(설계 6.10 «편의 기능 › 불러오는 중») — 모양은 갈 화면을 보고 고른다(screenShape: 묶음 · 목록).
+// 관리자 화면을 읽는 동안의 뼈대(설계 6.10 «편의 기능 › 불러오는 중») — 모양은 갈 화면을 보고 고른다(screenShape: 묶음 · 입력 · 목록).
 // 다른 화면으로 가는 순간 브라우저가 바로 그린다(PendingScreen) — 서버에서 받는 loading.tsx 는 두지 않는다.
 export const ScreenSkeleton = ({ shape }: { shape: ScreenShape }) => (
   <div role="status" aria-label="불러오는 중" data-shape={shape} className="flex flex-col gap-6">
-    {shape === 'groups' ? <GroupsBody /> : <ListBody />}
+    {shape === 'groups' ? <GroupsBody /> : shape === 'form' ? <FormBody /> : <ListBody />}
   </div>
 );
 
@@ -70,6 +70,42 @@ const GroupsBody = () => (
           </div>
         </CardContent>
       </Card>
+    </div>
+  </>
+);
+
+/** 입력 칸 하나 — 이름 · 칸 */
+const FieldSkeleton = () => (
+  <div className="flex flex-col gap-2">
+    <Skeleton className="h-4 w-16" />
+    <Skeleton className="h-9 w-full" />
+  </div>
+);
+
+/** 등록 · 수정 — 머리, 입력 칸 카드(칸 몇 줄 · 파일 고르는 자리), 아래 버튼 줄(AdminForm 과 같은 배치) */
+const FormBody = () => (
+  <>
+    <Skeleton className="h-8 w-32" />
+    <Card>
+      <CardContent className="flex flex-col gap-6">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <FieldSkeleton />
+          <FieldSkeleton />
+        </div>
+        <FieldSkeleton />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-16 w-full rounded-lg" />
+        </div>
+      </CardContent>
+    </Card>
+    <div className="flex items-center justify-between gap-4">
+      <Skeleton className="h-4 w-36" />
+      <div className="flex gap-2">
+        {Array.from({ length: 3 }, (_, i) => (
+          <Skeleton key={i} className="h-8 w-16" />
+        ))}
+      </div>
     </div>
   </>
 );

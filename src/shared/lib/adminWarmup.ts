@@ -55,12 +55,15 @@ export const adminWarmPaths = (
  * 깨우기 표시를 단다(proxy 가 마지막 요청 시각을 남기지 않는다 — 사람이 쓴 것이 아니다). 넘겨 보내기는 따라가지 않는다(위 머리 주석).
  * keepalive: 응답에 실려 오는 새 로그인 토큰(쉬던 사이 만료돼 proxy 가 갱신한 것)을 페이지를 떠나도 받게 —
  * 놓치면 옛 토큰을 다시 쓰다가 Supabase 가 재사용으로 보고 세션을 끊는다. 받은 내용은 끝까지 받아 버린다.
- * rsc: 메뉴를 눌러 옮길 때처럼 화면 데이터로(아니면 주소줄로 열 때처럼 문서로). 그려졌으면 true.
+ * rsc: 메뉴를 눌러 옮길 때처럼 화면 데이터로(아니면 주소줄로 열 때처럼 문서로).
+ * 결과: 그려짐(ok) · 넘겨 보냄(redirect — proxy 가 로그인 화면으로: 로그인이 끊김 · 8시간 지남) · 그 밖의 실패(error — 없는 화면 등).
  */
+export type AdminScreenFetch = 'ok' | 'redirect' | 'error';
+
 export const fetchAdminScreen = async (
   path: string,
   { rsc = false }: { rsc?: boolean } = {}
-): Promise<boolean> => {
+): Promise<AdminScreenFetch> => {
   const res = await fetch(path, {
     cache: 'no-store',
     credentials: 'same-origin',
@@ -69,5 +72,6 @@ export const fetchAdminScreen = async (
     headers: { [ADMIN_WARM_HEADER]: '1', ...(rsc ? { RSC: '1' } : {}) },
   });
   await res.arrayBuffer();
-  return res.ok;
+  if (res.ok) return 'ok';
+  return res.type === 'opaqueredirect' ? 'redirect' : 'error';
 };
